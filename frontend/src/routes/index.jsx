@@ -54,17 +54,28 @@ const PrivateRoute = ({ children, allowedRoles = [] }) => {
   return children;
 };
 
+const PublicRoute = ({ children }) => {
+  const { isAuthenticated } = useAuth();
+  
+  if (isAuthenticated) {
+    return <Navigate to="/home" replace />;
+  }
+  
+  return children;
+};
+
 const AppRoutes = () => {
   return (
     <Routes>
       {/* Public Routes */}
+      <Route path="/" element={<PublicRoute><Landing /></PublicRoute>} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/2fa" element={<TwoFA />} />
 
       {/* Private Routes */}
       <Route
-        path="/"
+        path="/home"
         element={
           <PrivateRoute>
             <Home />
