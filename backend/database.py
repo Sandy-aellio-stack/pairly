@@ -17,7 +17,8 @@ from backend.config import settings
 
 async def init_db():
     client = AsyncIOMotorClient(settings.MONGODB_URI)
-    database = client.get_default_database()
+    # Extract database name from URI or use default
+    database = client.get_database("pairly")
 
     await init_beanie(
         database=database,
