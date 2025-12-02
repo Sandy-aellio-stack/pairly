@@ -8,6 +8,10 @@ from backend.models.failed_login import FailedLogin
 from backend.models.audit_log import AuditLog
 from backend.models.notification import Notification
 from backend.models.otp import OTP
+from backend.models.profile import Profile
+from backend.models.message import Message
+from backend.models.credits_transaction import CreditsTransaction
+from backend.models.payout import Payout
 from backend.config import settings
 
 
@@ -25,6 +29,10 @@ async def init_db():
             FailedLogin,
             AuditLog,
             Notification,
-            OTP
+            OTP,
+            Profile,
+            Message,
+            CreditsTransaction,
+            Payout
         ]
     )
