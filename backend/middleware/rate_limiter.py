@@ -2,52 +2,41 @@ import time
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
-import redis.asyncio as aioredis
-from backend.config import settings
-from backend.services.audit import log_event
+from collections import defaultdict
 
-redis_client = None
-
-async def get_redis():
-    global redis_client
-    if redis_client is None:
-        redis_client = await aioredis.from_url(settings.REDIS_URL, encoding="utf-8", decode_responses=True)
-    return redis_client
-
-
+# In-memory rate limiting (for development without Redis)
 class RateLimiterMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app, requests_per_minute: int = 30, ban_threshold_per_minute: int = 150, ban_seconds: int = 3600):
+    def __init__(self, app, requests_per_minute: int = 60, ban_threshold_per_minute: int = 150, ban_seconds: int = 3600):
         super().__init__(app)
         self.requests_per_minute = requests_per_minute
         self.ban_threshold = ban_threshold_per_minute
         self.ban_seconds = ban_seconds
+        self.request_counts = defaultdict(list)
+        self.banned_ips = {}
 
     async def dispatch(self, request: Request, call_next):
-        redis = await get_redis()
         client = request.client.host if request.client else "unknown"
+        now = time.time()
         
-        now = int(time.time())
-        window_start = now - 60
+        # Check if banned
+        if client in self.banned_ips:
+            ban_time, ban_until = self.banned_ips[client]
+            if now < ban_until:
+                retry_after = int(ban_until - now)
+                return JSONResponse({"detail": "ip_banned", "retry_after": retry_after}, status_code=429)
+            else:
+                del self.banned_ips[client]
         
-        ban_key = f"banned:ip:{client}"
-        is_banned = await redis.get(ban_key)
-        if is_banned:
-            ttl = await redis.ttl(ban_key)
-            retry_after = max(ttl, 0)
-            return JSONResponse({"detail": "ip_banned", "retry_after": retry_after}, status_code=429)
+        # Clean old requests (older than 60 seconds)
+        self.request_counts[client] = [t for t in self.request_counts[client] if now - t < 60]
         
-        ip_key = f"rl:ip:{client}"
-        ip_count = await redis.incr(ip_key)
-        if ip_count == 1:
-            await redis.expire(ip_key, 60)
+        # Add current request
+        self.request_counts[client].append(now)
         
-        if ip_count > self.ban_threshold:
-            await redis.setex(ban_key, self.ban_seconds, "1")
-            await log_event(
-                actor_user_id=None,
-                actor_ip=client,
-                action="ip_banned",
-                details={"ip": client, "count": ip_count},
+        # Check if should ban
+        if len(self.request_counts[client]) > self.ban_threshold:
+            self.banned_ips[client] = (now, now + self.ban_seconds)
+            return JSONResponse({"detail": "rate_limit_exceeded", "retry_after": self.ban_seconds}, status_code=429)
                 severity="warning"
             )
             return JSONResponse({"detail": "ip_banned", "retry_after": self.ban_seconds}, status_code=429)
