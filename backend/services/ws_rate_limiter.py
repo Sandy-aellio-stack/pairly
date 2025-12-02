@@ -11,6 +11,31 @@ async def get_redis():
     return redis_client
 
 
+class WSRateLimiter:
+    def __init__(self):
+        self.messages_per_window = {}
+    
+    async def allow_message(self, user_id: str) -> bool:
+        """Simple in-memory rate limiter for WebSocket messages"""
+        now = int(time.time())
+        window = now // 5  # 5 second window
+        
+        key = f"{user_id}:{window}"
+        count = self.messages_per_window.get(key, 0)
+        
+        if count >= 30:  # Max 30 messages per 5 seconds
+            return False
+        
+        self.messages_per_window[key] = count + 1
+        
+        # Clean up old windows
+        old_keys = [k for k in self.messages_per_window.keys() if int(k.split(':')[1]) < window - 2]
+        for k in old_keys:
+            del self.messages_per_window[k]
+        
+        return True
+
+
 async def check_ws_rate(user_id: str, ip: str) -> tuple[bool, int]:
     redis = await get_redis()
     now = int(time.time())
