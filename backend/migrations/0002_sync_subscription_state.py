@@ -82,7 +82,7 @@ async def run_migration():
     
     # Initialize Beanie
     client = AsyncIOMotorClient(settings.MONGODB_URI)
-    db = client.get_default_database()
+    db = client.get_database("pairly")
     
     await init_beanie(
         database=db,
