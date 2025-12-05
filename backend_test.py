@@ -352,8 +352,10 @@ class SubscriptionTester:
         """Test subscription cancellation with invalid ID"""
         try:
             headers = self.get_headers()
+            # Use a valid ObjectId format but non-existent ID
+            fake_object_id = "507f1f77bcf86cd799439011"
             response = self.session.post(
-                f"{BACKEND_URL}/subscriptions/cancel/nonexistent_subscription_id",
+                f"{BACKEND_URL}/subscriptions/cancel/{fake_object_id}",
                 headers=headers
             )
             
@@ -362,6 +364,8 @@ class SubscriptionTester:
                 return True
             else:
                 self.log(f"✗ Subscription cancellation test failed: {response.status_code}", "ERROR")
+                if response.text:
+                    self.log(f"  Response: {response.text}")
                 return False
                 
         except Exception as e:
