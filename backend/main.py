@@ -17,10 +17,12 @@ from backend.routes import (
     posts,
     feed,
     subscriptions,
-    webhooks
+    webhooks,
+    compliance
 )
 from backend.admin.routes import admin_payouts
 from backend.middleware.rate_limiter import RateLimiterMiddleware
+from backend.middleware.content_moderation import ContentModerationMiddleware
 from backend.core.redis_client import redis_client
 import os
 
