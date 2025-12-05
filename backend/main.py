@@ -43,6 +43,9 @@ app.add_middleware(
     ban_seconds=3600
 )
 
+# Content Moderation Middleware (pre-screens content)
+app.add_middleware(ContentModerationMiddleware)
+
 @app.on_event("startup")
 async def startup_event():
     await init_db()
