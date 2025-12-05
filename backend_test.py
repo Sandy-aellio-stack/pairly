@@ -50,7 +50,8 @@ class SubscriptionTester:
             register_data = {
                 "email": email,
                 "password": password,
-                "display_name": f"Test User {email.split('@')[0]}"
+                "name": f"Test User {email.split('@')[0]}",
+                "role": "fan"
             }
             
             response = self.session.post(f"{BACKEND_URL}/auth/register", json=register_data)
