@@ -11,11 +11,17 @@ class RedisClient:
     async def connect(self):
         """Initialize Redis connection"""
         if not self.redis:
-            self.redis = await aioredis.from_url(
-                self.redis_url,
-                encoding="utf-8",
-                decode_responses=True
-            )
+            try:
+                self.redis = await aioredis.from_url(
+                    self.redis_url,
+                    encoding="utf-8",
+                    decode_responses=True
+                )
+                print(f"✓ Redis connected: {self.redis_url}")
+            except Exception as e:
+                print(f"⚠ Redis connection failed: {e}")
+                print("  Subscription features will work with degraded performance (no caching)")
+                self.redis = None
 
     async def disconnect(self):
         """Close Redis connection"""
