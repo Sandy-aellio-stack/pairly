@@ -19,7 +19,8 @@ from backend.routes import (
     subscriptions,
     webhooks,
     compliance,
-    calls
+    calls,
+    matchmaking
 )
 from backend.admin.routes import admin_payouts
 from backend.middleware.rate_limiter import RateLimiterMiddleware
