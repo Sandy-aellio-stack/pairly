@@ -76,6 +76,7 @@ app.include_router(admin_security.router)
 app.include_router(admin_analytics.router)
 app.include_router(compliance.router)
 app.include_router(calls.router)
+app.include_router(matchmaking.router)
 
 @app.get("/api")
 async def root():
