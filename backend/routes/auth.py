@@ -340,6 +340,10 @@ async def login_2fa_verify(req: Login2FARequest, request: Request):
 
     access_token = create_access_token(str(user.id), user.role, rtid, 30)
     refresh_token = create_refresh_token(str(user.id), user.role, rtid, 7)
+    
+    # Store refresh token JTI for validation
+    refresh_payload = verify_token(refresh_token, "refresh")
+    await set_user_refresh_jti(str(user.id), refresh_payload["jti"], ttl_days=7)
 
     return TokenResponse(
         access_token=access_token,
