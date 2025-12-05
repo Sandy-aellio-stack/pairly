@@ -6,7 +6,7 @@ from enum import Enum
 import csv
 import io
 
-from backend.models.user import User, UserRole
+from backend.models.user import User, Role
 from backend.routes.auth import get_current_user
 from backend.models.payment_subscription import UserSubscription, SubscriptionStatus
 
