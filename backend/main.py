@@ -44,7 +44,12 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     await init_db()
+    await redis_client.connect()
     await start_presence_monitor()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    await redis_client.disconnect()
 
 app.include_router(auth.router)
 app.include_router(twofa.router)
