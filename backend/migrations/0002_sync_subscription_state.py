@@ -78,7 +78,7 @@ async def generate_migration_report():
 async def run_migration():
     """Execute the migration"""
     print("Starting migration: 0002_sync_subscription_state")
-    print(f"Database: {settings.MONGO_URL}\n")
+    print(f"Database: {settings.MONGODB_URI}\n")
     
     # Initialize Beanie
     client = AsyncIOMotorClient(settings.MONGO_URL)
