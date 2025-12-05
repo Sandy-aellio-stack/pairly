@@ -217,23 +217,30 @@ async def admin_recompute_recommendations(
     if admin.role != Role.ADMIN:
         raise HTTPException(403, "Admin access required")
     
-    if req.user_ids:
-        # Recompute for specific users
-        for user_id in req.user_ids:
-            refresh_user_recommendations.delay(user_id)
-        
+    try:
+        if req.user_ids:
+            # Recompute for specific users
+            for user_id in req.user_ids:
+                refresh_user_recommendations.delay(user_id)
+            
+            return {
+                "success": True,
+                "message": f"Queued recomputation for {len(req.user_ids)} users"
+            }
+        else:
+            # Trigger batch recomputation
+            from backend.services.matchmaking.recommendation_worker import generate_batch_recommendations
+            generate_batch_recommendations.delay()
+            
+            return {
+                "success": True,
+                "message": "Queued batch recomputation for all users"
+            }
+    except Exception as e:
+        # Graceful fallback if Celery unavailable
         return {
-            "success": True,
-            "message": f"Queued recomputation for {len(req.user_ids)} users"
-        }
-    else:
-        # Trigger batch recomputation
-        from backend.services.matchmaking.recommendation_worker import generate_batch_recommendations
-        generate_batch_recommendations.delay()
-        
-        return {
-            "success": True,
-            "message": "Queued batch recomputation for all users"
+            "success": False,
+            "message": f"Background worker unavailable: {str(e)}. Recommendations will be generated on-demand."
         }
 
 
