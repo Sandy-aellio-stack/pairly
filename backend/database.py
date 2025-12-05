@@ -43,6 +43,7 @@ async def init_db():
             SubscriptionTier,
             LegacyUserSubscription,
             UserSubscription,
-            PaymentMethod
+            PaymentMethod,
+            Report
         ]
     )
