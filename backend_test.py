@@ -65,7 +65,7 @@ class SubscriptionTester:
                 return token, user_id
             else:
                 # User might already exist, try login
-                login_data = {"email": email, "password": password}
+                login_data = {"email": email, "password": password, "device_info": "test_device"}
                 login_response = self.session.post(f"{BACKEND_URL}/auth/login", json=login_data)
                 
                 if login_response.status_code == 200:
@@ -75,7 +75,9 @@ class SubscriptionTester:
                     self.log(f"✓ Existing user logged in: {email}")
                     return token, user_id
                 else:
-                    self.log(f"✗ Registration and login failed for {email}", "ERROR")
+                    self.log(f"✗ Registration and login failed for {email}: {response.status_code} / {login_response.status_code}", "ERROR")
+                    self.log(f"  Registration response: {response.text}")
+                    self.log(f"  Login response: {login_response.text}")
                     return None, None
                     
         except Exception as e:
