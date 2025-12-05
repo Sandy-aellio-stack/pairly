@@ -442,7 +442,14 @@ async def refresh(req: RefreshRequest):
 
 
 @router.post("/logout")
-async def logout(req: LogoutRequest, user: User = Depends(get_current_user)):
+async def logout(req: LogoutRequest, creds: HTTPAuthorizationCredentials = Depends(security), user: User = Depends(get_current_user)):
+    # Revoke the current access token
+    payload = verify_token(creds.credentials, "access")
+    access_jti = payload.get("jti")
+    if access_jti:
+        # Revoke for 30 minutes (access token TTL)
+        await revoke_token(access_jti, ttl_seconds=30 * 60)
+    
     if req.session_id:
         session = await Session.find_one(Session.session_id == req.session_id, Session.user_id == user.id)
     else:
@@ -456,7 +463,7 @@ async def logout(req: LogoutRequest, user: User = Depends(get_current_user)):
             actor_user_id=user.id,
             actor_ip=None,
             action="session_revoked",
-            details={"session_id": session.session_id},
+            details={"session_id": session.session_id, "access_jti_revoked": access_jti},
             severity="info"
         )
     
