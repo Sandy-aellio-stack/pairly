@@ -13,7 +13,9 @@ from backend.routes import (
     payouts,
     media,
     admin_security,
-    admin_analytics
+    admin_analytics,
+    posts,
+    feed
 )
 from backend.middleware.rate_limiter import RateLimiterMiddleware
 import os
