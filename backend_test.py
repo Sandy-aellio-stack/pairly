@@ -14,7 +14,7 @@ from typing import Dict, Any, Optional
 
 # Configuration
 BACKEND_URL = "https://social-date-1.preview.emergentagent.com/api"
-WEBHOOK_BASE_URL = "https://social-date-1.preview.emergentagent.com/webhooks"
+WEBHOOK_BASE_URL = "https://social-date-1.preview.emergentagent.com/api/webhooks"
 
 class SubscriptionTester:
     def __init__(self):
