@@ -51,6 +51,8 @@ app.include_router(credits.router)
 app.include_router(payments.router)
 app.include_router(payouts.router)
 app.include_router(media.router)
+app.include_router(posts.router)
+app.include_router(feed.router)
 app.include_router(admin_security.router)
 app.include_router(admin_analytics.router)
 
