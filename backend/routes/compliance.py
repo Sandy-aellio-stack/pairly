@@ -121,6 +121,13 @@ async def submit_report(
             severity="warning"
         )
         
+        # Track metric
+        try:
+            from backend.services.moderation.metrics import track_report
+            track_report(req.reason)
+        except:
+            pass
+        
         return {
             "report_id": report.id,
             "status": "submitted",
