@@ -193,7 +193,7 @@ class RecommendationPipeline:
         # Exclude previously blocked/skipped (recent)
         recent_feedback = await MatchFeedback.find(
             MatchFeedback.user_id == user_id,
-            MatchFeedback.feedback_type.in_([FeedbackType.BLOCK, FeedbackType.SKIP])
+            In(MatchFeedback.feedback_type, [FeedbackType.BLOCK, FeedbackType.SKIP])
         ).to_list()
         
         blocked_ids = {fb.target_user_id for fb in recent_feedback}
