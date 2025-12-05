@@ -17,6 +17,9 @@ from backend.models.subscription import SubscriptionTier, UserSubscription as Le
 from backend.models.payment_subscription import UserSubscription, PaymentMethod
 from backend.routes.compliance import Report
 from backend.models.call_session import CallSession
+from backend.models.user_preferences import UserPreferences
+from backend.models.match_feedback import MatchFeedback
+from backend.models.match_recommendation import MatchRecommendation
 from backend.config import settings
 
 
