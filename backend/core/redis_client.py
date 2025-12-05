@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 redis_client: Optional[aioredis.Redis] = None
 
 
-async def get_redis() -> aioredis.Redis:
+async def get_redis() -> Optional[aioredis.Redis]:
     """Get or create Redis client."""
     global redis_client
     
@@ -29,25 +29,17 @@ async def get_redis() -> aioredis.Redis:
                 encoding="utf-8",
                 decode_responses=True
             )
-            # Test connection
             await redis_client.ping()
             logger.info("Redis connected successfully")
         except Exception as e:
-            logger.warning(f"Redis connection failed: {e}. Using fallback mode.")
+            logger.warning(f"Redis connection failed: {e}. Continuing without Redis.")
             redis_client = None
     
     return redis_client
 
 
 async def cache_subscription(user_id: str, tier_id: str, value: bool, ttl: int = 300):
-    """Cache subscription check result.
-    
-    Args:
-        user_id: User ID
-        tier_id: Tier ID
-        value: Is subscribed (boolean)
-        ttl: Time to live in seconds (default 5 minutes)
-    """
+    """Cache subscription check result."""
     try:
         redis = await get_redis()
         if redis:
@@ -58,15 +50,7 @@ async def cache_subscription(user_id: str, tier_id: str, value: bool, ttl: int =
 
 
 async def get_cached_subscription(user_id: str, tier_id: str) -> Optional[bool]:
-    """Get cached subscription check result.
-    
-    Args:
-        user_id: User ID
-        tier_id: Tier ID
-        
-    Returns:
-        True if subscribed, False if not, None if not cached
-    """
+    """Get cached subscription check result."""
     try:
         redis = await get_redis()
         if not redis:
@@ -85,12 +69,7 @@ async def get_cached_subscription(user_id: str, tier_id: str) -> Optional[bool]:
 
 
 async def invalidate_subscription_cache(user_id: str, tier_id: Optional[str] = None):
-    """Invalidate subscription cache for a user.
-    
-    Args:
-        user_id: User ID
-        tier_id: Specific tier ID, or None to clear all
-    """
+    """Invalidate subscription cache for a user."""
     try:
         redis = await get_redis()
         if not redis:
@@ -100,46 +79,33 @@ async def invalidate_subscription_cache(user_id: str, tier_id: Optional[str] = N
             key = f"subscription:{user_id}:{tier_id}"
             await redis.delete(key)
         else:
-            # Clear all subscription caches for this user
             pattern = f"subscription:{user_id}:*"
+            keys = []
             async for key in redis.scan_iter(match=pattern):
-                await redis.delete(key)
+                keys.append(key)
+            if keys:
+                await redis.delete(*keys)
     except Exception as e:
         logger.warning(f"Redis cache invalidation failed: {e}")
 
 
 async def acquire_event_lock(event_id: str, ttl: int = 3600) -> bool:
-    """Acquire lock for webhook event processing (idempotency).
-    
-    Args:
-        event_id: Unique event identifier
-        ttl: Lock duration in seconds
-        
-    Returns:
-        True if lock acquired, False if already locked
-    """
+    """Acquire lock for webhook event processing (idempotency)."""
     try:
         redis = await get_redis()
         if not redis:
-            # Fallback to DB-based idempotency
             return True
         
         key = f"event_lock:{event_id}"
-        
-        # Use SET with NX (only set if not exists)
         result = await redis.set(key, "1", ex=ttl, nx=True)
         return result is not None
     except Exception as e:
         logger.warning(f"Redis lock acquisition failed: {e}")
-        return True  # Fallback to allow processing
+        return True
 
 
 async def release_event_lock(event_id: str):
-    """Release webhook event lock.
-    
-    Args:
-        event_id: Unique event identifier
-    """
+    """Release webhook event lock."""
     try:
         redis = await get_redis()
         if redis:
@@ -150,13 +116,7 @@ async def release_event_lock(event_id: str):
 
 
 async def cache_set(key: str, value: Any, ttl: Optional[int] = None):
-    """Generic cache set.
-    
-    Args:
-        key: Cache key
-        value: Value to cache (will be JSON serialized)
-        ttl: Time to live in seconds
-    """
+    """Generic cache set."""
     try:
         redis = await get_redis()
         if not redis:
@@ -173,14 +133,7 @@ async def cache_set(key: str, value: Any, ttl: Optional[int] = None):
 
 
 async def cache_get(key: str) -> Optional[Any]:
-    """Generic cache get.
-    
-    Args:
-        key: Cache key
-        
-    Returns:
-        Cached value or None
-    """
+    """Generic cache get."""
     try:
         redis = await get_redis()
         if not redis:
@@ -201,11 +154,7 @@ async def cache_get(key: str) -> Optional[Any]:
 
 
 async def cache_delete(key: str):
-    """Delete cache key.
-    
-    Args:
-        key: Cache key
-    """
+    """Delete cache key."""
     try:
         redis = await get_redis()
         if redis:
