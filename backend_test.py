@@ -177,8 +177,10 @@ class SubscriptionTester:
         """Test subscription session creation with invalid tier"""
         try:
             headers = self.get_headers()
+            # Use a valid ObjectId format but non-existent tier
+            fake_object_id = "507f1f77bcf86cd799439011"
             session_data = {
-                "tier_id": "nonexistent_tier_id",
+                "tier_id": fake_object_id,
                 "provider": "stripe"
             }
             
