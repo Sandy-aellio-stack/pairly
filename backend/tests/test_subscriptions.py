@@ -26,7 +26,7 @@ from backend.models.payment_subscription import (
 )
 from backend.utils.subscription_utils import is_user_subscribed
 
-client = TestClient(app)
+client = test_imports()
 
 # Mock user for testing
 mock_user = User(
