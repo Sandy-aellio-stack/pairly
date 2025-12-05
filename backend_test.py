@@ -54,24 +54,15 @@ class SubscriptionTester:
                 "role": "fan"
             }
             
-            response = self.session.post(f"{BACKEND_URL}/auth/register", json=register_data)
+            response = self.session.post(f"{BACKEND_URL}/auth/signup", json=register_data)
             
-            if response.status_code == 201:
-                self.log(f"✓ User registered: {email}")
-                
-                # Login to get token
-                login_data = {"email": email, "password": password}
-                login_response = self.session.post(f"{BACKEND_URL}/auth/login", json=login_data)
-                
-                if login_response.status_code == 200:
-                    token_data = login_response.json()
-                    token = token_data.get("access_token")
-                    user_id = token_data.get("user", {}).get("id")
-                    self.log(f"✓ User logged in: {email}")
-                    return token, user_id
-                else:
-                    self.log(f"✗ Login failed for {email}: {login_response.status_code}", "ERROR")
-                    return None, None
+            if response.status_code == 200:
+                # Registration successful, token returned directly
+                token_data = response.json()
+                token = token_data.get("access_token")
+                user_id = token_data.get("user", {}).get("id")
+                self.log(f"✓ User registered and logged in: {email}")
+                return token, user_id
             else:
                 # User might already exist, try login
                 login_data = {"email": email, "password": password}
