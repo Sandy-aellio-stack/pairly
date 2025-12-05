@@ -197,6 +197,8 @@ class TestAdminPayouts:
         # Non-admin user
         mock_user_dep.return_value = User(
             email="user@example.com",
+            password_hash="hashed_password",
+            name="Test User",
             role=Role.FAN
         )
         
