@@ -95,8 +95,12 @@ async def update_preferences(
     else:
         await prefs.insert()
     
-    # Trigger recommendation refresh asynchronously
-    refresh_user_recommendations.delay(str(user.id))
+    # Trigger recommendation refresh asynchronously (graceful degradation)
+    try:
+        refresh_user_recommendations.delay(str(user.id))
+    except Exception as e:
+        # Log but don't fail if Celery/Redis unavailable
+        print(f"Warning: Could not queue recommendation refresh: {e}")
     
     return {"success": True, "message": "Preferences updated"}
 
