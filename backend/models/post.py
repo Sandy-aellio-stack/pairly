@@ -37,6 +37,14 @@ class Post(Document):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     
+    # Moderation fields
+    moderation_status: str = "published"  # published, quarantined, removed
+    moderation_score: float = 0.0
+    moderation_engine: str = "local_heuristic"
+    moderation_categories: List[str] = Field(default_factory=list)
+    moderation_processed_at: datetime | None = None
+    removed_reason: str | None = None
+    
     @field_validator('media')
     @classmethod
     def validate_media(cls, v: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
