@@ -38,11 +38,6 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
             self.banned_ips[client] = (now, now + self.ban_seconds)
             return JSONResponse({"detail": "rate_limit_exceeded", "retry_after": self.ban_seconds}, status_code=429)
         
-        # Check rate limit (simple in-memory check)
-        if len(self.request_counts[client]) > self.requests_per_minute:
-            retry_after = max(ttl, 0)
-            return JSONResponse({"detail": "rate_limited", "retry_after": retry_after}, status_code=429)
-        
         auth_header = request.headers.get("authorization")
         
         # Check rate limit (simple in-memory check)
