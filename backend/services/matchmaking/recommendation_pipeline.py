@@ -10,6 +10,7 @@ from backend.models.match_feedback import MatchFeedback, FeedbackType
 from backend.models.user import User
 from backend.services.matchmaking.scoring_engine import MatchScoringEngine
 from beanie import PydanticObjectId
+from beanie.operators import In
 
 
 class RecommendationPipeline:
