@@ -95,6 +95,13 @@ class ContentModerationMiddleware(BaseHTTPMiddleware):
                 
                 # Block if explicit
                 if should_block(result):
+                    # Track metric
+                    try:
+                        from backend.services.moderation.metrics import track_block
+                        track_block("text")
+                    except:
+                        pass
+                    
                     return JSONResponse(
                         status_code=400,
                         content={
@@ -108,6 +115,13 @@ class ContentModerationMiddleware(BaseHTTPMiddleware):
                 # Mark for quarantine if suspicious
                 if should_quarantine(result):
                     request.state.moderation["requires_quarantine"] = True
+                    
+                    # Track metric
+                    try:
+                        from backend.services.moderation.metrics import track_quarantine
+                        track_quarantine("text")
+                    except:
+                        pass
             
             else:
                 # No text content to analyze
