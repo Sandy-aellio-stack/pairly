@@ -49,6 +49,9 @@ async def init_db():
             UserSubscription,
             PaymentMethod,
             Report,
-            CallSession
+            CallSession,
+            UserPreferences,
+            MatchFeedback,
+            MatchRecommendation
         ]
     )
