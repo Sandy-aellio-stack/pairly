@@ -45,6 +45,7 @@ async def init_db():
             LegacyUserSubscription,
             UserSubscription,
             PaymentMethod,
-            Report
+            Report,
+            CallSession
         ]
     )
