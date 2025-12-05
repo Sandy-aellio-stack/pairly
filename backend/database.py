@@ -15,6 +15,7 @@ from backend.models.payout import Payout
 from backend.models.post import Post
 from backend.models.subscription import SubscriptionTier, UserSubscription as LegacyUserSubscription
 from backend.models.payment_subscription import UserSubscription, PaymentMethod
+from backend.routes.compliance import Report
 from backend.config import settings
 
 
