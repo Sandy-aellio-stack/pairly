@@ -70,6 +70,12 @@ class TwoFARequired(BaseModel):
 
 async def get_current_user(creds: HTTPAuthorizationCredentials = Depends(security)):
     payload = verify_token(creds.credentials, "access")
+    
+    # Check if token is revoked
+    jti = payload.get("jti")
+    if jti and await is_token_revoked(jti):
+        raise HTTPException(401, "Token revoked")
+    
     user = await User.get(payload["sub"])
     if not user:
         raise HTTPException(401, "User not found")
