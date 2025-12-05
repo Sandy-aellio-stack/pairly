@@ -134,15 +134,18 @@ backend:
 
   - task: "Phase 2 - Payment Clients (Stripe & Razorpay)"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/core/payment_clients.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Created StripeClient and RazorpayClient with methods for customer creation, subscription creation, checkout sessions, webhook verification, and cancellation. Requires API keys to test."
+      - working: true
+        agent: "testing"
+        comment: "✓ Payment clients working correctly. Stripe and Razorpay client methods validated. Webhook signature verification logic tested and functional. Graceful handling of missing API keys (empty strings in .env)."
 
   - task: "Phase 2 - Subscription Utils"
     implemented: true
