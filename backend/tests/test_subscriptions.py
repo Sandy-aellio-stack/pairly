@@ -1,9 +1,22 @@
 import pytest
 from unittest.mock import Mock, patch, AsyncMock
 from datetime import datetime, timedelta
-from fastapi.testclient import TestClient
+import asyncio
 
-from backend.main import app
+# Mock the database initialization to avoid Beanie collection errors
+@patch('backend.database.init_db')
+@patch('backend.services.presence.start_presence_monitor')
+@patch('backend.core.redis_client.redis_client.connect')
+def test_imports(mock_redis, mock_presence, mock_db):
+    """Test that imports work without database initialization"""
+    mock_db.return_value = None
+    mock_presence.return_value = None
+    mock_redis.return_value = None
+    
+    from fastapi.testclient import TestClient
+    from backend.main import app
+    
+    return TestClient(app)
 from backend.models.user import User, Role
 from backend.models.subscription import SubscriptionTier
 from backend.models.payment_subscription import (
