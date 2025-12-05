@@ -18,7 +18,7 @@ client = TestClient(app)
 # Mock user for testing
 mock_user = User(
     email="test@example.com",
-    role=UserRole.FAN,
+    role=Role.FAN,
     credits_balance=100
 )
 
