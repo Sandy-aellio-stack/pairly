@@ -164,15 +164,18 @@ backend:
 
   - task: "Phase 2 - Subscription Routes"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/routes/subscriptions.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Created endpoints: POST /api/subscriptions/create-session, POST /api/subscriptions/cancel/{id}, GET /api/subscriptions, GET /api/subscriptions/tiers. Feature flag FEATURE_SUBSCRIPTIONS controls availability."
+      - working: true
+        agent: "testing"
+        comment: "✓ All subscription routes working correctly. GET /api/subscriptions/tiers returns empty array (expected). GET /api/subscriptions returns user subscriptions. POST /api/subscriptions/create-session properly validates tier_id and rejects invalid tiers (404). POST /api/subscriptions/cancel/{id} properly validates subscription_id. Feature flag FEATURE_SUBSCRIPTIONS=true working correctly."
 
   - task: "Phase 2 - Webhook Routes"
     implemented: true
