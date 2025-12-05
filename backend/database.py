@@ -12,6 +12,8 @@ from backend.models.profile import Profile
 from backend.models.message import Message
 from backend.models.credits_transaction import CreditsTransaction
 from backend.models.payout import Payout
+from backend.models.post import Post
+from backend.models.subscription import SubscriptionTier, UserSubscription
 from backend.config import settings
 
 
@@ -34,6 +36,9 @@ async def init_db():
             Profile,
             Message,
             CreditsTransaction,
-            Payout
+            Payout,
+            Post,
+            SubscriptionTier,
+            UserSubscription
         ]
     )
