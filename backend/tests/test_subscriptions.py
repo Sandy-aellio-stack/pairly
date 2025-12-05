@@ -195,7 +195,7 @@ class TestAdminPayouts:
         # Non-admin user
         mock_user_dep.return_value = User(
             email="user@example.com",
-            role=UserRole.FAN
+            role=Role.FAN
         )
         
         response = client.get("/api/admin/payouts")
