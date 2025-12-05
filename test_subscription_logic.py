@@ -94,7 +94,7 @@ def test_webhook_signature_verification():
 
 @patch('backend.utils.subscription_utils.redis_client')
 @patch('backend.models.payment_subscription.UserSubscription')
-async def test_subscription_utils_logic(mock_subscription, mock_redis):
+def test_subscription_utils_logic(mock_subscription, mock_redis):
     """Test subscription utility functions logic"""
     from backend.utils.subscription_utils import is_user_subscribed
     from backend.models.payment_subscription import SubscriptionStatus
