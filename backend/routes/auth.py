@@ -363,6 +363,20 @@ async def login_2fa_verify(req: Login2FARequest, request: Request):
 async def refresh(req: RefreshRequest):
     payload = verify_token(req.refresh_token, "refresh")
     
+    # Validate refresh token JTI
+    refresh_jti = payload.get("jti")
+    user_id = payload["sub"]
+    
+    if not refresh_jti or not await validate_user_refresh_jti(user_id, refresh_jti):
+        await log_event(
+            actor_user_id=user_id,
+            actor_ip=None,
+            action="refresh_failed",
+            details={"reason": "invalid_refresh_jti"},
+            severity="warning"
+        )
+        raise HTTPException(401, "Invalid refresh token")
+    
     rtid = payload.get("rtid")
     if not rtid:
         raise HTTPException(401, "Invalid token format")
@@ -408,6 +422,10 @@ async def refresh(req: RefreshRequest):
 
     access_token = create_access_token(str(user.id), user.role, new_rtid, 30)
     refresh_token = create_refresh_token(str(user.id), user.role, new_rtid, 7)
+    
+    # Store new refresh token JTI
+    new_refresh_payload = verify_token(refresh_token, "refresh")
+    await set_user_refresh_jti(str(user.id), new_refresh_payload["jti"], ttl_days=7)
 
     return TokenResponse(
         access_token=access_token,
