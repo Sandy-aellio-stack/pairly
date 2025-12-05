@@ -253,6 +253,13 @@ async def take_moderation_action(
             severity="info"
         )
         
+        # Track metric
+        try:
+            from backend.services.moderation.metrics import track_report_resolution
+            track_report_resolution(req.action)
+        except:
+            pass
+        
         return {
             "report_id": report_id,
             "action": req.action,
