@@ -53,8 +53,7 @@ async def _billing_tick(call_id: str):
         
         # Only bill active calls
         if call.status != CallStatus.ACTIVE:
-            print(f"⚠️  Call {call_id} is not active (status: {call.status})
-")
+            print(f"⚠️  Call {call_id} is not active (status: {call.status})")
             return
         
         # Calculate billing amount (cost per minute)
