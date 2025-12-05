@@ -13,7 +13,8 @@ from backend.models.message import Message
 from backend.models.credits_transaction import CreditsTransaction
 from backend.models.payout import Payout
 from backend.models.post import Post
-from backend.models.subscription import SubscriptionTier, UserSubscription
+from backend.models.subscription import SubscriptionTier, UserSubscription as LegacyUserSubscription
+from backend.models.payment_subscription import UserSubscription, PaymentMethod
 from backend.config import settings
 
 
@@ -39,6 +40,8 @@ async def init_db():
             Payout,
             Post,
             SubscriptionTier,
-            UserSubscription
+            LegacyUserSubscription,
+            UserSubscription,
+            PaymentMethod
         ]
     )
