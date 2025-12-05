@@ -1,236 +1,146 @@
 <analysis>**original_problem_statement:**
-The user wants to build a credits-based dating and creator SaaS platform, described as a hybrid of OnlyFans, OkCupid, and Omegle. The initial request was for a Node.js and PostgreSQL stack, but this was pivoted to the platform's supported stack of FastAPI (Python) and MongoDB. The user has provided detailed project documentation and has approved a comprehensive backend architecture that includes JWT authentication, real-time messaging, payment processing (Stripe/Razorpay), creator payouts, and an admin panel. The latest set of features requested and architected includes a multi-layered security system with device fingerprinting, risk scoring, fraud detection, and detailed admin security analytics.
+The user wants to build a credits-based dating and creator SaaS platform called Pairly, a hybrid of OnlyFans, OkCupid, and Omegle. The project started with a pivot from Node.js/PostgreSQL to the required FastAPI/MongoDB stack.
+
+After an initial audit revealed the project was largely incomplete, the user has taken charge of the development process by providing highly detailed, multi-phase roadmaps and paste-ready prompts for the agent to execute. The current plan is to build out the backend features in distinct, testable phases before tackling the frontend implementation.
 
 **PRODUCT REQUIREMENTS:**
-- User roles: Fan, Creator, Admin.
-- Credits-based system for interactions (e.g., messaging).
-- Creator profiles with discovery and search (including geo-search).
-- Real-time messaging via WebSockets.
-- Payment integration for purchasing credits (Stripe, Razorpay).
-- Creator earnings and payout system.
-- Comprehensive admin panel for management and security analytics.
-- Advanced security: 2FA, rate limiting, session management, device fingerprinting, and risk-based fraud detection.
-- Media uploads using pre-signed S3 URLs.
+-   **Core:** A complete backend with a hybrid monetization model (credits + recurring subscriptions).
+-   **Features:** User roles (Fan, Creator, Admin), real-time messaging, creator profiles with posts/media, discovery/feed, payment processing (Stripe, Razorpay), creator payouts, and an admin panel.
+-   **Technical:** The system must be containerized (Docker), include a CI pipeline, and utilize Redis for caching and distributed tasks.
 
-**User's preferred language**:
-English
+**User's preferred language**: English
 
 **what currently exists?**
-The agent and user have collaboratively designed a comprehensive backend architecture. The agent has generated the code for the entire backend, including models, routes, services, middleware, and configuration for all required features. This includes the core application logic and the advanced security layers. However, this code has been generated in the chat history but not all of it has been successfully written to the file system, compiled, or tested. No frontend code has been created.
+The backend has been significantly built out. The initial missing models, routes, and dependencies have been fixed. **Phase 1** is complete, which added a full Post/Feed system with subscription-based visibility gating, cursor pagination, unit tests, a , and a basic GitHub Actions CI workflow. The  entrypoint now correctly includes all routes.
+
+The frontend is a skeleton of React components and pages. While all the necessary files for different pages (Auth, Chat, Profile, Admin, etc.) exist, they contain only placeholder content. A new Patreon-inspired landing page has been created and is functional.
 
 **Last working item**:
-    - Last item agent was working: The agent was in the middle of a large, multi-step task: writing all the generated backend code to the appropriate files within the  directory structure. This was a prerequisite to committing and pushing the entire backend to the user's GitHub repository.
-    - Status: IN PROGRESS
-    - Agent Testing Done: N
-    - Which testing method agent to use? backend testing agent. Once the files are written, the first step is to ensure the backend server can start. This will involve installing dependencies and then using backend: stopped
-backend: started. After that, backend testing agent can be used to test key API endpoints.
-    - User Testing Done: N
+-   **Last item agent was working:** Implementing **Phase 2 - Hybrid Payment & Subscription System**. This is a large, multi-file task based on a highly detailed user prompt to add a full subscription system (Stripe/Razorpay) alongside the existing credits system. This includes creating models, routes, payment client helpers, webhook handlers, Redis integration, admin views, tests, and documentation.
+-   **Status:** IN PROGRESS
+-   **Agent Testing Done:** N
+-   **Which testing method agent to use?** backend testing agent. This is a complex feature involving multiple services (Stripe, Razorpay, Redis) and critical business logic (payments, webhooks).
+-   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-  - Issue 1: **Backend Code Implementation is Incomplete (P0)**
-     - Attempted fixes: The agent has been instructed multiple times to write all backend files. It has started this process in batches but has not confirmed completion. The large volume of code may be causing interruptions.
-     - Next debug checklist: 
-        1.  Verify the existence and content of every file defined in the architecture (models, routes, services, etc.) against the generated code from chat history.
-        2.  Systematically create or overwrite any missing or incomplete files. Key directories to check are , , , and .
-        3.  Ensure  correctly imports and includes all routers.
-        4.  Ensure  correctly initializes all Beanie models.
-     - Why fix this issue and what will be achieved with the fix? This is the most critical issue. The application cannot be run, tested, or developed further until the backend source code is fully and correctly placed on the file system.
-     - Status: IN PROGRESS
-     - Is recurring issue? Y
-     - Should Test frontend/backend/both after fix? backend
-  - Issue 2: **Backend Dependencies are Missing (P1)**
-     - Attempted fixes: None.
-     - Next debug checklist: 
-        1.  Create a  file in .
-        2.  Add all necessary Python libraries: To use the fastapi command, please install "fastapi[standard]":
-
-	pip install "fastapi[standard]", , , , , , , , , , , , , .
-        3.  Run Looking in indexes: https://pypi.org/simple, https://d33sy5i8bnduwe.cloudfront.net/simple/
-Requirement already satisfied: fastapi==0.110.1 in /root/.venv/lib/python3.11/site-packages (from -r /app/backend/requirements.txt (line 1)) (0.110.1)
-Requirement already satisfied: uvicorn==0.25.0 in /root/.venv/lib/python3.11/site-packages (from -r /app/backend/requirements.txt (line 2)) (0.25.0)
-Requirement already satisfied: boto3>=1.34.129 in /root/.venv/lib/python3.11/site-packages (from -r /app/backend/requirements.txt (line 3)) (1.41.3)
-Requirement already satisfied: requests-oauthlib>=2.0.0 in /root/.venv/lib/python3.11/site-packages (from -r /app/backend/requirements.txt (line 4)) (2.0.0)
-Requirement already satisfied: cryptography>=42.0.8 in /root/.venv/lib/python3.11/site-packages (from -r /app/backend/requirements.txt (line 5)) (46.0.3)
-Requirement already satisfied: python-dotenv>=1.0.1 in /root/.venv/lib/python3.11/site-packages (from -r /app/backend/requirements.txt (line 6)) (1.2.1)
-Requirement already satisfied: pymongo==4.5.0 in /root/.venv/lib/python3.11/site-packages (from -r /app/backend/requirements.txt (line 7)) (4.5.0)
-Requirement already satisfied: pydantic>=2.6.4 in /root/.venv/lib/python3.11/site-packages (from -r /app/backend/requirements.txt (line 8)) (2.12.4)
-Requirement already satisfied: email-validator>=2.2.0 in /root/.venv/lib/python3.11/site-packages (from -r /app/backend/requirements.txt (line 9)) (2.3.0)
-Requirement already satisfied: pyjwt>=2.10.1 in /root/.venv/lib/python3.11/site-packages (from -r /app/backend/requirements.txt (line 10)) (2.10.1)
-Requirement already satisfied: bcrypt==4.1.3 in /root/.venv/lib/python3.11/site-packages (from -r /app/backend/requirements.txt (line 11)) (4.1.3)
-Requirement already satisfied: passlib>=1.7.4 in /root/.venv/lib/python3.11/site-packages (from -r /app/backend/requirements.txt (line 12)) (1.7.4)
-Requirement already satisfied: tzdata>=2024.2 in /root/.venv/lib/python3.11/site-packages (from -r /app/backend/requirements.txt (line 13)) (2025.2)
-Requirement already satisfied: motor==3.3.1 in /root/.venv/lib/python3.11/site-packages (from -r /app/backend/requirements.txt (line 14)) (3.3.1)
-Requirement already satisfied: pytest>=8.0.0 in /root/.venv/lib/python3.11/site-packages (from -r /app/backend/requirements.txt (line 15)) (9.0.1)
-Requirement already satisfied: black>=24.1.1 in /root/.venv/lib/python3.11/site-packages (from -r /app/backend/requirements.txt (line 16)) (25.11.0)
-Requirement already satisfied: isort>=5.13.2 in /root/.venv/lib/python3.11/site-packages (from -r /app/backend/requirements.txt (line 17)) (7.0.0)
-Requirement already satisfied: flake8>=7.0.0 in /root/.venv/lib/python3.11/site-packages (from -r /app/backend/requirements.txt (line 18)) (7.3.0)
-Requirement already satisfied: mypy>=1.8.0 in /root/.venv/lib/python3.11/site-packages (from -r /app/backend/requirements.txt (line 19)) (1.18.2)
-Requirement already satisfied: python-jose>=3.3.0 in /root/.venv/lib/python3.11/site-packages (from -r /app/backend/requirements.txt (line 20)) (3.5.0)
-Requirement already satisfied: requests>=2.31.0 in /root/.venv/lib/python3.11/site-packages (from -r /app/backend/requirements.txt (line 21)) (2.32.5)
-Requirement already satisfied: pandas>=2.2.0 in /root/.venv/lib/python3.11/site-packages (from -r /app/backend/requirements.txt (line 22)) (2.3.3)
-Requirement already satisfied: numpy>=1.26.0 in /root/.venv/lib/python3.11/site-packages (from -r /app/backend/requirements.txt (line 23)) (2.3.5)
-Requirement already satisfied: python-multipart>=0.0.9 in /root/.venv/lib/python3.11/site-packages (from -r /app/backend/requirements.txt (line 24)) (0.0.20)
-Requirement already satisfied: jq>=1.6.0 in /root/.venv/lib/python3.11/site-packages (from -r /app/backend/requirements.txt (line 25)) (1.10.0)
-Requirement already satisfied: typer>=0.9.0 in /root/.venv/lib/python3.11/site-packages (from -r /app/backend/requirements.txt (line 26)) (0.20.0)
-Requirement already satisfied: starlette<0.38.0,>=0.37.2 in /root/.venv/lib/python3.11/site-packages (from fastapi==0.110.1->-r /app/backend/requirements.txt (line 1)) (0.37.2)
-Requirement already satisfied: typing-extensions>=4.8.0 in /root/.venv/lib/python3.11/site-packages (from fastapi==0.110.1->-r /app/backend/requirements.txt (line 1)) (4.15.0)
-Requirement already satisfied: click>=7.0 in /root/.venv/lib/python3.11/site-packages (from uvicorn==0.25.0->-r /app/backend/requirements.txt (line 2)) (8.3.1)
-Requirement already satisfied: h11>=0.8 in /root/.venv/lib/python3.11/site-packages (from uvicorn==0.25.0->-r /app/backend/requirements.txt (line 2)) (0.16.0)
-Requirement already satisfied: dnspython<3.0.0,>=1.16.0 in /root/.venv/lib/python3.11/site-packages (from pymongo==4.5.0->-r /app/backend/requirements.txt (line 7)) (2.8.0)
-Requirement already satisfied: annotated-types>=0.6.0 in /root/.venv/lib/python3.11/site-packages (from pydantic>=2.6.4->-r /app/backend/requirements.txt (line 8)) (0.7.0)
-Requirement already satisfied: pydantic-core==2.41.5 in /root/.venv/lib/python3.11/site-packages (from pydantic>=2.6.4->-r /app/backend/requirements.txt (line 8)) (2.41.5)
-Requirement already satisfied: typing-inspection>=0.4.2 in /root/.venv/lib/python3.11/site-packages (from pydantic>=2.6.4->-r /app/backend/requirements.txt (line 8)) (0.4.2)
-Requirement already satisfied: anyio<5,>=3.4.0 in /root/.venv/lib/python3.11/site-packages (from starlette<0.38.0,>=0.37.2->fastapi==0.110.1->-r /app/backend/requirements.txt (line 1)) (4.11.0)
-Requirement already satisfied: idna>=2.8 in /root/.venv/lib/python3.11/site-packages (from anyio<5,>=3.4.0->starlette<0.38.0,>=0.37.2->fastapi==0.110.1->-r /app/backend/requirements.txt (line 1)) (3.11)
-Requirement already satisfied: sniffio>=1.1 in /root/.venv/lib/python3.11/site-packages (from anyio<5,>=3.4.0->starlette<0.38.0,>=0.37.2->fastapi==0.110.1->-r /app/backend/requirements.txt (line 1)) (1.3.1)
-Requirement already satisfied: botocore<1.42.0,>=1.41.3 in /root/.venv/lib/python3.11/site-packages (from boto3>=1.34.129->-r /app/backend/requirements.txt (line 3)) (1.41.3)
-Requirement already satisfied: jmespath<2.0.0,>=0.7.1 in /root/.venv/lib/python3.11/site-packages (from boto3>=1.34.129->-r /app/backend/requirements.txt (line 3)) (1.0.1)
-Requirement already satisfied: s3transfer<0.16.0,>=0.15.0 in /root/.venv/lib/python3.11/site-packages (from boto3>=1.34.129->-r /app/backend/requirements.txt (line 3)) (0.15.0)
-Requirement already satisfied: python-dateutil<3.0.0,>=2.1 in /root/.venv/lib/python3.11/site-packages (from botocore<1.42.0,>=1.41.3->boto3>=1.34.129->-r /app/backend/requirements.txt (line 3)) (2.9.0.post0)
-Requirement already satisfied: urllib3!=2.2.0,<3,>=1.25.4 in /root/.venv/lib/python3.11/site-packages (from botocore<1.42.0,>=1.41.3->boto3>=1.34.129->-r /app/backend/requirements.txt (line 3)) (2.5.0)
-Requirement already satisfied: six>=1.5 in /root/.venv/lib/python3.11/site-packages (from python-dateutil<3.0.0,>=2.1->botocore<1.42.0,>=1.41.3->boto3>=1.34.129->-r /app/backend/requirements.txt (line 3)) (1.17.0)
-Requirement already satisfied: oauthlib>=3.0.0 in /root/.venv/lib/python3.11/site-packages (from requests-oauthlib>=2.0.0->-r /app/backend/requirements.txt (line 4)) (3.3.1)
-Requirement already satisfied: cffi>=2.0.0 in /root/.venv/lib/python3.11/site-packages (from cryptography>=42.0.8->-r /app/backend/requirements.txt (line 5)) (2.0.0)
-Requirement already satisfied: iniconfig>=1.0.1 in /root/.venv/lib/python3.11/site-packages (from pytest>=8.0.0->-r /app/backend/requirements.txt (line 15)) (2.3.0)
-Requirement already satisfied: packaging>=22 in /root/.venv/lib/python3.11/site-packages (from pytest>=8.0.0->-r /app/backend/requirements.txt (line 15)) (25.0)
-Requirement already satisfied: pluggy<2,>=1.5 in /root/.venv/lib/python3.11/site-packages (from pytest>=8.0.0->-r /app/backend/requirements.txt (line 15)) (1.6.0)
-Requirement already satisfied: pygments>=2.7.2 in /root/.venv/lib/python3.11/site-packages (from pytest>=8.0.0->-r /app/backend/requirements.txt (line 15)) (2.19.2)
-Requirement already satisfied: mypy-extensions>=0.4.3 in /root/.venv/lib/python3.11/site-packages (from black>=24.1.1->-r /app/backend/requirements.txt (line 16)) (1.1.0)
-Requirement already satisfied: pathspec>=0.9.0 in /root/.venv/lib/python3.11/site-packages (from black>=24.1.1->-r /app/backend/requirements.txt (line 16)) (0.12.1)
-Requirement already satisfied: platformdirs>=2 in /root/.venv/lib/python3.11/site-packages (from black>=24.1.1->-r /app/backend/requirements.txt (line 16)) (4.5.0)
-Requirement already satisfied: pytokens>=0.3.0 in /root/.venv/lib/python3.11/site-packages (from black>=24.1.1->-r /app/backend/requirements.txt (line 16)) (0.3.0)
-Requirement already satisfied: mccabe<0.8.0,>=0.7.0 in /root/.venv/lib/python3.11/site-packages (from flake8>=7.0.0->-r /app/backend/requirements.txt (line 18)) (0.7.0)
-Requirement already satisfied: pycodestyle<2.15.0,>=2.14.0 in /root/.venv/lib/python3.11/site-packages (from flake8>=7.0.0->-r /app/backend/requirements.txt (line 18)) (2.14.0)
-Requirement already satisfied: pyflakes<3.5.0,>=3.4.0 in /root/.venv/lib/python3.11/site-packages (from flake8>=7.0.0->-r /app/backend/requirements.txt (line 18)) (3.4.0)
-Requirement already satisfied: ecdsa!=0.15 in /root/.venv/lib/python3.11/site-packages (from python-jose>=3.3.0->-r /app/backend/requirements.txt (line 20)) (0.19.1)
-Requirement already satisfied: rsa!=4.1.1,!=4.4,<5.0,>=4.0 in /root/.venv/lib/python3.11/site-packages (from python-jose>=3.3.0->-r /app/backend/requirements.txt (line 20)) (4.9.1)
-Requirement already satisfied: pyasn1>=0.5.0 in /root/.venv/lib/python3.11/site-packages (from python-jose>=3.3.0->-r /app/backend/requirements.txt (line 20)) (0.6.1)
-Requirement already satisfied: charset_normalizer<4,>=2 in /root/.venv/lib/python3.11/site-packages (from requests>=2.31.0->-r /app/backend/requirements.txt (line 21)) (3.4.4)
-Requirement already satisfied: certifi>=2017.4.17 in /root/.venv/lib/python3.11/site-packages (from requests>=2.31.0->-r /app/backend/requirements.txt (line 21)) (2025.11.12)
-Requirement already satisfied: pytz>=2020.1 in /root/.venv/lib/python3.11/site-packages (from pandas>=2.2.0->-r /app/backend/requirements.txt (line 22)) (2025.2)
-Requirement already satisfied: shellingham>=1.3.0 in /root/.venv/lib/python3.11/site-packages (from typer>=0.9.0->-r /app/backend/requirements.txt (line 26)) (1.5.4)
-Requirement already satisfied: rich>=10.11.0 in /root/.venv/lib/python3.11/site-packages (from typer>=0.9.0->-r /app/backend/requirements.txt (line 26)) (14.2.0)
-Requirement already satisfied: pycparser in /root/.venv/lib/python3.11/site-packages (from cffi>=2.0.0->cryptography>=42.0.8->-r /app/backend/requirements.txt (line 5)) (2.23)
-Requirement already satisfied: markdown-it-py>=2.2.0 in /root/.venv/lib/python3.11/site-packages (from rich>=10.11.0->typer>=0.9.0->-r /app/backend/requirements.txt (line 26)) (4.0.0)
-Requirement already satisfied: mdurl~=0.1 in /root/.venv/lib/python3.11/site-packages (from markdown-it-py>=2.2.0->rich>=10.11.0->typer>=0.9.0->-r /app/backend/requirements.txt (line 26)) (0.1.2).
-     - Why fix this issue and what will be achieved with the fix? The backend server will fail to start without its dependencies installed.
-     - Status: NOT STARTED
-     - Is recurring issue? N
-     - Should Test frontend/backend/both after fix? backend
-     - Blocked on other issue: Backend Code Implementation is Incomplete
+-   **Issue 1: Redis is not properly integrated (P1)**
+    -   **Attempted fixes:** The agent previously commented out Redis-based rate limiting to get the server running, as Redis was not available.
+    -   **Next debug checklist:** The Phase 2 implementation requires  for caching and webhook idempotency locks. The agent must ensure a Redis service is available (e.g., via  provided in the Phase 2 plan) and properly initialize the .
+    -   **Why fix this issue and what will be achieved with the fix?** Redis is critical for production-level performance (caching subscription checks) and reliability (making webhook handlers idempotent).
+    -   **Status:** NOT STARTED
+    -   **Is recurring issue?** Y
+    -   **Should Test frontend/backend/both after fix?** backend
 
 **In progress Task List**:
-  - Task 1: **Finalize Writing All Backend Files (P0)**
-     - Where to resume: The agent must perform a full comparison between the planned file structure and what currently exists in . It should then proceed to write all missing or incomplete files.
-     - What will be achieved with this? The complete source code for the backend will be present in the workspace, ready for dependency installation and testing.
-     - Status: IN PROGRESS
-     - Should Test frontend/backend/both after fix? backend
+-   **Task 1: Implement Phase 2 - Hybrid Payment & Subscription System (P0)**
+    -   **Where to resume:** The agent was about to start creating the ~12 files specified in the user's detailed Phase 2 prompt (Chat Message 332). It should proceed to create the models (), core clients (, ), routes (, ), and all other specified components.
+    -   **What will be achieved with this?** The platform will have a complete, hybrid monetization system, allowing creators to offer recurring subscriptions via Stripe and Razorpay, in addition to the existing credits system.
+    -   **Status:** IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?** backend
+    -   **Blocked on something:** Potentially on setting up the Redis service (see Issue 1).
 
 **Upcoming and Future Tasks**
-Upcoming Tasks:
-    - (P0) **Commit and Push Code to GitHub:** Once all files are written and  is created, commit all changes and push to the remote repository.
-    - (P1) **Start and Debug Backend Server:** Attempt to start the backend service and debug any import errors, dependency issues, or syntax errors until it runs successfully.
-    - (P2) **Build Frontend Application:** Begin the multi-phase process of building the React frontend.
-        - Phase 1: Authentication UI (Login, Signup, 2FA flows).
-        - Phase 2: Core layout, creator/fan dashboards, and profile pages.
-        - Phase 3: Real-time messaging UI.
-        - Phase 4: Payments, credits, and earnings UI.
-        - Phase 5: Admin security and analytics dashboards.
+Upcoming Tasks (based on user's roadmap):
+-   **(P0) Phase 3: Enhanced Media Processing:** Add video upload support, FFmpeg compression, and thumbnail generation.
+-   **(P1) Phase 4: Advanced Search & Discovery:** Integrate a search engine (e.g., Meilisearch) and a ranking algorithm.
+-   **(P2) Phase 5: Enhanced WebSocket:** Add features like read receipts, typing indicators, and message reactions.
+-   **(P3) Phase 6: Deployment & Production Hardening:** Finalize Docker setup, CI/CD pipeline, and add monitoring.
 
 Future Tasks:
-    - Implement WebRTC for video and audio calls.
-    - Create a comprehensive test suite for the frontend.
-    - Perform full end-to-end testing of the entire application.
+-   **(P0) Full Frontend Implementation:** Implement the logic for all the placeholder frontend pages (Auth, Discovery, Chat, Profiles, Payments, Dashboards) and connect them to the backend API.
 
 **Completed work in this session**
-- **Architecture & Planning:**
-  - Defined the full backend architecture, database models (using Beanie for MongoDB), and a comprehensive API specification for a complex dating/creator SaaS platform.
-- **Backend Code Generation:**
-  - Generated the complete Python code for all backend features, including:
-    - **Core Features**: Auth, Profiles, Discovery, Messaging, Payments, Credits, Payouts, Media Uploads.
-    - **Advanced Security**: 2FA (TOTP/Email), Device-Bound Sessions, Rate Limiting, Login Throttling, Device Fingerprinting, and a rule-based Risk Scoring engine.
-    - **Real-time System**: WebSocket-based presence and messaging delivery system.
-    - **Admin Capabilities**: Endpoints for user management, payout approval, and a full security analytics dashboard.
+-   **Project Integrity Audit:** Conducted a thorough audit of the entire repository to establish a correct baseline of what was actually implemented.
+-   **Backend Core Fixes:** Created missing models (, ), fixed dependency issues, and resolved the / conflict.
+-   **Backend Phase 1 (Post/Feed System):**
+    -   Created models (, ) and routes (, ).
+    -   Implemented subscription-based content gating and cursor pagination.
+    -   Added a , , and a basic CI workflow ().
+    -   Wrote unit tests for the new functionality ().
+-   **Frontend Scaffolding:** Created a full directory structure with placeholder files for all required pages and components.
+-   **Frontend Landing Page:** Built and integrated a new landing page inspired by Patreon.
+-   **Architecture Documentation:** Generated  and  to visualize the project's current structure.
 
 **Earlier issues found/mentioned but not fixed**
-   - No specific bugs have been found as the code has not been run yet. The primary issue is the incomplete state of the file implementation.
+-   **Issue 1: Redis Integration:** Redis was temporarily bypassed to fix a startup error. The Phase 2 implementation now explicitly requires it for caching and distributed locks, so it must be properly configured.
 
 **Known issue recurrence from previous fork**
-  - N/A
+-   N/A
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Backend:** FastAPI (Python)
-- **Database:** MongoDB with Beanie (asynchronous ODM)
-- **Real-time:** WebSockets for presence and messaging.
-- **Authentication:** JWT, device-bound sessions, 2FA (TOTP & Email OTP).
-- **Security:** Redis-based rate limiting, login attempt throttling, device fingerprinting, and a rule-based risk scoring engine for fraud detection.
-- **Payments:** Stripe and Razorpay integrations.
-- **File Storage:** AWS S3 (via boto3) for media.
-- **Asynchronous:** The entire backend is built on  principles, using libraries like  and .
+-   **Backend:** FastAPI, Beanie (MongoDB ODM), Pydantic
+-   **Frontend:** React, Shadcn UI
+-   **DevOps:** Docker, GitHub Actions (CI)
+-   **Real-time:** WebSockets
+-   **Payments:** Stripe, Razorpay (Hybrid: Credits + Subscriptions)
+-   **Caching/Queues:** Redis (being implemented)
 
 **key DB schema**
-  - **User:** 
-  - **Profile:** 
-  - **Session:** 
-  - **DeviceFingerprint:** 
-  - **FraudAlert:** 
-  - **AuditLog:** 
+-   **User:** 
+-   **Profile:** 
+-   **Post:** 
+-   **SubscriptionTier:** 
+-   **UserSubscription:**  (being added in Phase 2)
+-   **CreditsTransaction:** 
 
 **changes in tech stack**
-  - The project was pivoted from the user's requested stack (Node.js/Express, PostgreSQL/Prisma) to the platform-supported stack of FastAPI and MongoDB.
+-   Redis is being formally introduced as a core dependency for caching and distributed locking.
 
 **All files of reference**
-- All files are located under . The agent is currently creating these files, which include , , , and all modules inside , , , , and .
+-   **Phase 1 (Completed):** , , , , , , .
+-   **Phase 2 (In Progress):** All files listed in the user's prompt (Chat Message 332), including , , , , .
+-   **Frontend Skeleton:** All files under , , etc., are placeholders awaiting implementation.
 
 **Areas that need refactoring**:
-- N/A
+- The in-memory rate limiter in  should be fully replaced by the new Redis-based implementation once the  is complete.
 
 **key api endpoints**
--  - User login, with 2FA and device fingerprinting.
--  - Initiates a credit purchase, with fraud risk scoring.
--  - Sends a message, deducting credits.
--  - Finds creator profiles with complex filtering.
--  - Retrieves the security dashboard data.
--  - Establishes a real-time chat connection.
+-   : Create a new post.
+-   : Get the main user feed with cursor pagination.
+-   : (In Progress) Create a Stripe/Razorpay session to start a subscription.
+-   : (In Progress) Handle incoming webhook events from Stripe.
 
 **Critical Info for New Agent**
-- Your immediate and highest priority task is to **complete the writing of all backend files**. The user has requested this multiple times. Refer to the architecture defined in the chat history (e.g., Chat Message 134) and ensure every single file is created correctly in the  directory.
-- After all files are written, you MUST create  and install all dependencies.
-- The backend is completely untested. After installing dependencies, your first action should be to restart the server (backend: stopped
-backend: started) and check the logs for errors.
-- The frontend has not been started. This is the next major phase of the project after the backend is stable.
+-   **Follow the User's Prompts Exactly:** The user is highly technical and provides extremely detailed, paste-ready prompts for each development phase. Do not deviate. Your primary job is to execute these prompts accurately.
+-   **Current Task is Phase 2:** Your immediate focus is to complete the **Phase 2 - Hybrid Payment & Subscription System** as defined in the user's prompt (Chat Message 332).
+-   **Redis is a Hard Dependency:** Unlike before, Redis is now required for caching and webhook idempotency. Ensure it is configured and running before testing the new payment flows.
+-   **Frontend is Skeleton Only:** Do not assume any frontend logic is working. It is a set of placeholder files that will be implemented in a future phase.
 
 **documents created in this job**
-  -  (content generated in chat, file needs to be created)
+-   
+-   
+-   
 
 **Last 10 User Messages and any pending user messages**
-- The user has repeatedly and emphatically instructed the agent to write all the generated backend files to the filesystem and push them to GitHub. The last messages are a chain of these instructions. The core pending request is to get the application running, which starts with getting the code into the files.
+The user has been providing extremely detailed, phase-by-phase implementation plans as prompts for the agent.
+1.  **Provided Final Phase 1 Prompt:** A detailed, paste-ready prompt to build the Post/Feed system, including models, routes, tests, Docker, and CI. (COMPLETED)
+2.  **Provided Final Phase 2 Prompt:** A massive, detailed prompt to build the Hybrid Subscription system (Stripe/Razorpay), including models, routes, webhooks, Redis clients, admin views, tests, and documentation. (IN PROGRESS)
+3.  **Corrected Agent Error:** Re-pasted the Phase 2 prompt after the agent failed on a tool call.
+4.  **Provided Context Reset:** Gave the agent a concise summary to reset its context and focus on the Phase 2 implementation. (LAST MESSAGE)
 
 **Project Health Check:**
-- **Broken:** The application is entirely non-functional. The backend source code is not fully written to the filesystem, and the frontend does not exist.
-- **Mocked:** N/A
+-   **Backend:** **Partially Functional.** The core app, auth, and post/feed systems are working. The critical subscription payment system is currently being built.
+-   **Frontend:** **Broken.** The application is a non-interactive skeleton of pages and UI components.
 
 **3rd Party Integrations**
-- **Stripe:** Payment processing.
-- **Razorpay:** Payment processing.
-- **boto3 (for S3):** Cloud file storage for media.
-- **aioredis (Redis):** Caching, rate limiting, 2FA tracking, and WebSocket management.
-- **pyotp / qrcode:** For TOTP-based 2FA.
+-   **Stripe:** For global subscription payments (being implemented).
+-   **Razorpay:** For India-based subscription payments (being implemented).
+-   **boto3 (AWS S3):** For media storage (basic implementation exists).
+-   **aioredis (Redis):** For caching and distributed locks (being implemented).
 
 **Testing status**
-  - Testing agent used after significant changes: NO
-  - Troubleshoot agent used after agent stuck in loop: NO
-  - Test files created: Skeletons for  and  were designed.
-  - Known regressions: N/A
+-   **Testing agent used after significant changes:** NO
+-   **Troubleshoot agent used after agent stuck in loop:** NO
+-   **Test files created:**
+    -    (Phase 1)
+    -    (scaffold created for Phase 2)
+-   **Known regressions:** None.
 
 **Credentials to test flow:**
-N/A
+N/A - The agent will need to use mock data and potentially ask the user for test API keys for Stripe/Razorpay to test the Phase 2 implementation.
 
 **What agent forgot to execute**
-- The agent has not finished the primary task of writing all the backend source code to the file system.
-- The agent has not created the  file, which is critical for installing dependencies.
-- The agent has not created the  file, despite generating its content.
-- The git push to the remote repository has not been completed.</analysis>
+The agent has not forgotten anything but was interrupted mid-execution of the user's detailed Phase 2 prompt. The immediate task is to resume and complete that implementation.</analysis>

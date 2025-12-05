@@ -1,157 +1,162 @@
-"""Payment provider clients for Stripe and Razorpay."""
 import stripe
 import razorpay
-import os
 import hmac
 import hashlib
-import logging
-from typing import Optional, Dict, Any
-from backend.models.user import User
+import os
+from typing import Dict, Any, Optional
+from datetime import datetime
 
-logger = logging.getLogger(__name__)
-
-stripe.api_key = os.getenv("STRIPE_API_KEY", "")
+# Stripe Configuration
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 
+# Razorpay Configuration
 RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID", "")
 RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET", "")
+razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET)) if RAZORPAY_KEY_ID else None
 
-if RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET:
-    razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
-else:
-    razorpay_client = None
-
-
-async def get_or_create_stripe_customer(user: User) -> str:
-    """Get or create Stripe customer."""
-    try:
-        customers = stripe.Customer.list(email=user.email, limit=1)
-        
+class StripeClient:
+    @staticmethod
+    async def get_or_create_customer(user_id: str, email: str, name: str) -> str:
+        """Get existing Stripe customer or create new one"""
+        # Search for existing customer
+        customers = stripe.Customer.list(email=email, limit=1)
         if customers.data:
             return customers.data[0].id
         
+        # Create new customer
         customer = stripe.Customer.create(
-            email=user.email,
-            metadata={"user_id": str(user.id), "platform": "pairly"}
+            email=email,
+            name=name,
+            metadata={"user_id": user_id}
         )
-        
         return customer.id
-    except stripe.error.StripeError as e:
-        raise Exception(f"Stripe error: {str(e)}")
 
+    @staticmethod
+    async def attach_payment_method(customer_id: str, payment_method_id: str):
+        """Attach payment method to customer"""
+        stripe.PaymentMethod.attach(payment_method_id, customer=customer_id)
+        stripe.Customer.modify(
+            customer_id,
+            invoice_settings={"default_payment_method": payment_method_id}
+        )
 
-async def attach_payment_method_stripe(customer_id: str, payment_method_id: str, set_as_default: bool = True) -> Dict[str, Any]:
-    """Attach payment method to Stripe customer."""
-    try:
-        payment_method = stripe.PaymentMethod.attach(payment_method_id, customer=customer_id)
-        
-        if set_as_default:
-            stripe.Customer.modify(customer_id, invoice_settings={"default_payment_method": payment_method_id})
-        
-        return payment_method
-    except stripe.error.StripeError as e:
-        raise Exception(f"Stripe error: {str(e)}")
-
-
-async def create_stripe_subscription(customer_id: str, price_id: str, trial_days: int = 0, metadata: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
-    """Create Stripe subscription."""
-    try:
-        params = {
-            "customer": customer_id,
-            "items": [{"price": price_id}],
-            "payment_behavior": "default_incomplete",
-            "payment_settings": {"save_default_payment_method": "on_subscription"},
-            "expand": ["latest_invoice.payment_intent"],
-        }
-        
-        if trial_days > 0:
-            params["trial_period_days"] = trial_days
-        
-        if metadata:
-            params["metadata"] = metadata
-        
-        subscription = stripe.Subscription.create(**params)
+    @staticmethod
+    async def create_subscription(
+        customer_id: str,
+        price_id: str,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """Create a Stripe subscription"""
+        subscription = stripe.Subscription.create(
+            customer=customer_id,
+            items=[{"price": price_id}],
+            payment_behavior="default_incomplete",
+            payment_settings={"save_default_payment_method": "on_subscription"},
+            expand=["latest_invoice.payment_intent"],
+            metadata=metadata or {}
+        )
         return subscription
-    except stripe.error.StripeError as e:
-        raise Exception(f"Stripe error: {str(e)}")
 
+    @staticmethod
+    async def create_checkout_session(
+        customer_id: str,
+        price_id: str,
+        success_url: str,
+        cancel_url: str,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """Create a Stripe Checkout session"""
+        session = stripe.checkout.Session.create(
+            customer=customer_id,
+            payment_method_types=["card"],
+            line_items=[{"price": price_id, "quantity": 1}],
+            mode="subscription",
+            success_url=success_url,
+            cancel_url=cancel_url,
+            metadata=metadata or {}
+        )
+        return session
 
-async def cancel_stripe_subscription(subscription_id: str, at_period_end: bool = True) -> Dict[str, Any]:
-    """Cancel Stripe subscription."""
-    try:
-        if at_period_end:
-            subscription = stripe.Subscription.modify(subscription_id, cancel_at_period_end=True)
+    @staticmethod
+    def verify_webhook_signature(payload: bytes, sig_header: str) -> Dict[str, Any]:
+        """Verify Stripe webhook signature"""
+        return stripe.Webhook.construct_event(
+            payload, sig_header, STRIPE_WEBHOOK_SECRET
+        )
+
+    @staticmethod
+    async def cancel_subscription(subscription_id: str, cancel_at_period_end: bool = True):
+        """Cancel a Stripe subscription"""
+        if cancel_at_period_end:
+            return stripe.Subscription.modify(
+                subscription_id,
+                cancel_at_period_end=True
+            )
         else:
-            subscription = stripe.Subscription.delete(subscription_id)
+            return stripe.Subscription.delete(subscription_id)
+
+class RazorpayClient:
+    @staticmethod
+    async def create_subscription(
+        plan_id: str,
+        customer_notify: int = 1,
+        total_count: int = 12,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """Create a Razorpay subscription"""
+        if not razorpay_client:
+            raise ValueError("Razorpay client not configured")
+        
+        subscription = razorpay_client.subscription.create({
+            "plan_id": plan_id,
+            "customer_notify": customer_notify,
+            "total_count": total_count,
+            "notes": metadata or {}
+        })
         return subscription
-    except stripe.error.StripeError as e:
-        raise Exception(f"Stripe error: {str(e)}")
 
-
-def verify_stripe_webhook(payload: bytes, sig_header: str) -> Dict[str, Any]:
-    """Verify Stripe webhook signature."""
-    if not STRIPE_WEBHOOK_SECRET:
-        raise ValueError("STRIPE_WEBHOOK_SECRET not configured")
-    
-    try:
-        event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
-        return event
-    except Exception as e:
-        raise ValueError(f"Invalid signature: {str(e)}")
-
-
-async def create_razorpay_subscription(plan_id: str, customer_notify: int = 1, total_count: int = 12, metadata: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
-    """Create Razorpay subscription."""
-    if not razorpay_client:
-        raise Exception("Razorpay not configured")
-    
-    try:
-        params = {"plan_id": plan_id, "customer_notify": customer_notify, "total_count": total_count}
-        if metadata:
-            params["notes"] = metadata
+    @staticmethod
+    async def create_order(
+        amount: int,
+        currency: str = "INR",
+        receipt: str = "",
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """Create a Razorpay order"""
+        if not razorpay_client:
+            raise ValueError("Razorpay client not configured")
         
-        return razorpay_client.subscription.create(params)
-    except razorpay.errors.BadRequestError as e:
-        raise Exception(f"Razorpay error: {str(e)}")
+        order = razorpay_client.order.create({
+            "amount": amount,
+            "currency": currency,
+            "receipt": receipt,
+            "notes": metadata or {}
+        })
+        return order
 
+    @staticmethod
+    def verify_webhook_signature(payload: str, signature: str, secret: str) -> bool:
+        """Verify Razorpay webhook signature"""
+        expected_signature = hmac.new(
+            secret.encode(),
+            payload.encode(),
+            hashlib.sha256
+        ).hexdigest()
+        return hmac.compare_digest(expected_signature, signature)
 
-async def cancel_razorpay_subscription(subscription_id: str, cancel_at_cycle_end: int = 1) -> Dict[str, Any]:
-    """Cancel Razorpay subscription."""
-    if not razorpay_client:
-        raise Exception("Razorpay not configured")
-    
-    try:
-        return razorpay_client.subscription.cancel(subscription_id, cancel_at_cycle_end)
-    except razorpay.errors.BadRequestError as e:
-        raise Exception(f"Razorpay error: {str(e)}")
-
-
-def verify_razorpay_signature(payload: str, signature: str, secret: Optional[str] = None) -> bool:
-    """Verify Razorpay webhook signature."""
-    if secret is None:
-        secret = RAZORPAY_KEY_SECRET
-    
-    if not secret:
-        raise ValueError("Razorpay webhook secret not configured")
-    
-    expected_signature = hmac.new(secret.encode('utf-8'), payload.encode('utf-8'), hashlib.sha256).hexdigest()
-    
-    if not hmac.compare_digest(expected_signature, signature):
-        raise ValueError("Invalid Razorpay webhook signature")
-    
-    return True
-
-
-async def create_razorpay_order_for_subscription(amount_paise: int, currency: str = "INR", notes: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
-    """Create Razorpay order for subscription."""
-    if not razorpay_client:
-        raise Exception("Razorpay not configured")
-    
-    try:
-        params = {"amount": amount_paise, "currency": currency, "payment_capture": 1}
-        if notes:
-            params["notes"] = notes
+    @staticmethod
+    async def cancel_subscription(subscription_id: str):
+        """Cancel a Razorpay subscription"""
+        if not razorpay_client:
+            raise ValueError("Razorpay client not configured")
         
-        return razorpay_client.order.create(params)
-    except razorpay.errors.BadRequestError as e:
-        raise Exception(f"Razorpay error: {str(e)}")
+        return razorpay_client.subscription.cancel(subscription_id)
+
+    @staticmethod
+    async def fetch_subscription(subscription_id: str) -> Dict[str, Any]:
+        """Fetch subscription details from Razorpay"""
+        if not razorpay_client:
+            raise ValueError("Razorpay client not configured")
+        
+        return razorpay_client.subscription.fetch(subscription_id)

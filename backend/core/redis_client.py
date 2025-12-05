@@ -1,163 +1,68 @@
-"""Redis client for caching and distributed operations.
-
-Usage:
-    from backend.core.redis_client import get_redis, cache_subscription
-    
-    redis = await get_redis()
-    await redis.set('key', 'value')
-"""
 import aioredis
+from typing import Optional
 import os
-from typing import Optional, Any
-import json
-import logging
+from contextlib import asynccontextmanager
 
-logger = logging.getLogger(__name__)
+class RedisClient:
+    def __init__(self):
+        self.redis: Optional[aioredis.Redis] = None
+        self.redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
 
-redis_client: Optional[aioredis.Redis] = None
-
-
-async def get_redis() -> Optional[aioredis.Redis]:
-    """Get or create Redis client."""
-    global redis_client
-    
-    if redis_client is None:
-        redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
-        try:
-            redis_client = await aioredis.from_url(
-                redis_url,
+    async def connect(self):
+        """Initialize Redis connection"""
+        if not self.redis:
+            self.redis = await aioredis.from_url(
+                self.redis_url,
                 encoding="utf-8",
                 decode_responses=True
             )
-            await redis_client.ping()
-            logger.info("Redis connected successfully")
-        except Exception as e:
-            logger.warning(f"Redis connection failed: {e}. Continuing without Redis.")
-            redis_client = None
-    
-    return redis_client
 
+    async def disconnect(self):
+        """Close Redis connection"""
+        if self.redis:
+            await self.redis.close()
+            self.redis = None
 
-async def cache_subscription(user_id: str, tier_id: str, value: bool, ttl: int = 300):
-    """Cache subscription check result."""
-    try:
-        redis = await get_redis()
-        if redis:
-            key = f"subscription:{user_id}:{tier_id}"
-            await redis.setex(key, ttl, "1" if value else "0")
-    except Exception as e:
-        logger.warning(f"Redis cache write failed: {e}")
+    async def cache_subscription(self, user_id: str, is_subscribed: bool, ttl: int = 300):
+        """Cache subscription status for a user"""
+        if not self.redis:
+            return
+        key = f"subscription:{user_id}"
+        await self.redis.setex(key, ttl, str(int(is_subscribed)))
 
-
-async def get_cached_subscription(user_id: str, tier_id: str) -> Optional[bool]:
-    """Get cached subscription check result."""
-    try:
-        redis = await get_redis()
-        if not redis:
+    async def get_cached_subscription(self, user_id: str) -> Optional[bool]:
+        """Get cached subscription status"""
+        if not self.redis:
             return None
-            
-        key = f"subscription:{user_id}:{tier_id}"
-        value = await redis.get(key)
-        
+        key = f"subscription:{user_id}"
+        value = await self.redis.get(key)
         if value is None:
             return None
-        
-        return value == "1"
-    except Exception as e:
-        logger.warning(f"Redis cache read failed: {e}")
-        return None
+        return bool(int(value))
 
-
-async def invalidate_subscription_cache(user_id: str, tier_id: Optional[str] = None):
-    """Invalidate subscription cache for a user."""
-    try:
-        redis = await get_redis()
-        if not redis:
-            return
-        
-        if tier_id:
-            key = f"subscription:{user_id}:{tier_id}"
-            await redis.delete(key)
-        else:
-            pattern = f"subscription:{user_id}:*"
-            keys = []
-            async for key in redis.scan_iter(match=pattern):
-                keys.append(key)
-            if keys:
-                await redis.delete(*keys)
-    except Exception as e:
-        logger.warning(f"Redis cache invalidation failed: {e}")
-
-
-async def acquire_event_lock(event_id: str, ttl: int = 3600) -> bool:
-    """Acquire lock for webhook event processing (idempotency)."""
-    try:
-        redis = await get_redis()
-        if not redis:
-            return True
-        
-        key = f"event_lock:{event_id}"
-        result = await redis.set(key, "1", ex=ttl, nx=True)
-        return result is not None
-    except Exception as e:
-        logger.warning(f"Redis lock acquisition failed: {e}")
-        return True
-
-
-async def release_event_lock(event_id: str):
-    """Release webhook event lock."""
-    try:
-        redis = await get_redis()
-        if redis:
-            key = f"event_lock:{event_id}"
-            await redis.delete(key)
-    except Exception as e:
-        logger.warning(f"Redis lock release failed: {e}")
-
-
-async def cache_set(key: str, value: Any, ttl: Optional[int] = None):
-    """Generic cache set."""
-    try:
-        redis = await get_redis()
-        if not redis:
-            return
-        
-        serialized = json.dumps(value)
-        
-        if ttl:
-            await redis.setex(key, ttl, serialized)
-        else:
-            await redis.set(key, serialized)
-    except Exception as e:
-        logger.warning(f"Redis cache set failed: {e}")
-
-
-async def cache_get(key: str) -> Optional[Any]:
-    """Generic cache get."""
-    try:
-        redis = await get_redis()
-        if not redis:
-            return None
-        
-        value = await redis.get(key)
-        
-        if value is None:
-            return None
-        
+    @asynccontextmanager
+    async def acquire_lock(self, key: str, ttl: int = 60):
+        """Acquire a distributed lock for idempotency"""
+        lock_key = f"lock:{key}"
+        acquired = False
         try:
-            return json.loads(value)
-        except json.JSONDecodeError:
-            return value
-    except Exception as e:
-        logger.warning(f"Redis cache get failed: {e}")
-        return None
+            if self.redis:
+                acquired = await self.redis.set(lock_key, "1", ex=ttl, nx=True)
+                if not acquired:
+                    # Lock already held
+                    yield False
+                    return
+            yield True
+        finally:
+            if acquired and self.redis:
+                await self.redis.delete(lock_key)
 
+    async def invalidate_subscription_cache(self, user_id: str):
+        """Invalidate cached subscription status"""
+        if not self.redis:
+            return
+        key = f"subscription:{user_id}"
+        await self.redis.delete(key)
 
-async def cache_delete(key: str):
-    """Delete cache key."""
-    try:
-        redis = await get_redis()
-        if redis:
-            await redis.delete(key)
-    except Exception as e:
-        logger.warning(f"Redis cache delete failed: {e}")
+# Global instance
+redis_client = RedisClient()
