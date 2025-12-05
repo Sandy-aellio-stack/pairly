@@ -1,4 +1,4 @@
-import aioredis
+import redis.asyncio as aioredis
 from typing import Optional
 import os
 from contextlib import asynccontextmanager
@@ -12,11 +12,13 @@ class RedisClient:
         """Initialize Redis connection"""
         if not self.redis:
             try:
-                self.redis = await aioredis.from_url(
+                self.redis = aioredis.from_url(
                     self.redis_url,
                     encoding="utf-8",
                     decode_responses=True
                 )
+                # Test connection
+                await self.redis.ping()
                 print(f"✓ Redis connected: {self.redis_url}")
             except Exception as e:
                 print(f"⚠ Redis connection failed: {e}")
