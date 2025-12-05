@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from fastapi.testclient import TestClient
 
 from backend.main import app
-from backend.models.user import User, UserRole
+from backend.models.user import User, Role
 from backend.models.subscription import SubscriptionTier
 from backend.models.payment_subscription import (
     UserSubscription,
