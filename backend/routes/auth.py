@@ -17,6 +17,8 @@ from backend.services.twofa import (
     clear_otp_attempts
 )
 from backend.middleware.failed_login import check_login_lock, register_failed_attempt, clear_failed_attempts
+from backend.utils.jwt_revocation import is_token_revoked, revoke_token
+from backend.utils.refresh_store import set_user_refresh_jti, validate_user_refresh_jti
 import uuid
 
 router = APIRouter(prefix="/api/auth")
