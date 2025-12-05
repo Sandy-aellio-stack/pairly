@@ -1,0 +1,125 @@
+# Moderation Worker Deployment
+# Runs Celery worker for async content moderation
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pairly-moderation-worker
+  namespace: default
+  labels:
+    app: pairly-moderation-worker
+    component: worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pairly-moderation-worker
+  template:
+    metadata:
+      labels:
+        app: pairly-moderation-worker
+        component: worker
+    spec:
+      containers:
+      - name: moderation-worker
+        image: pairly-backend:latest
+        command: ["celery"]
+        args:
+          - "-A"
+          - "backend.services.moderation.worker.celery_app"
+          - "worker"
+          - "--loglevel=info"
+          - "--concurrency=4"
+          - "--queues=moderation"
+        env:
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: pairly-secrets
+              key: redis-url
+        - name: MONGO_URL
+          valueFrom:
+            secretKeyRef:
+              name: pairly-secrets
+              key: mongo-url
+        - name: DB_NAME
+          value: "pairly"
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: "/secrets/google/credentials.json"
+        - name: ENVIRONMENT
+          value: "production"
+        volumeMounts:
+        - name: google-credentials
+          mountPath: /secrets/google
+          readOnly: true
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: google-credentials
+        secret:
+          secretName: google-cloud-credentials
+          optional: true
+      restartPolicy: Always
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pairly-moderation-beat
+  namespace: default
+  labels:
+    app: pairly-moderation-beat
+    component: scheduler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pairly-moderation-beat
+  template:
+    metadata:
+      labels:
+        app: pairly-moderation-beat
+        component: scheduler
+    spec:
+      containers:
+      - name: moderation-beat
+        image: pairly-backend:latest
+        command: ["celery"]
+        args:
+          - "-A"
+          - "backend.services.moderation.worker.celery_app"
+          - "beat"
+          - "--loglevel=info"
+        env:
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: pairly-secrets
+              key: redis-url
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+      restartPolicy: Always
+
+---
+
+# ConfigMap for moderation thresholds (optional, can override defaults)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: moderation-config
+  namespace: default
+data:
+  BLOCK_THRESHOLD: "0.85"
+  QUARANTINE_LOW: "0.50"
+  MODERATION_ENGINE: "google_vision"

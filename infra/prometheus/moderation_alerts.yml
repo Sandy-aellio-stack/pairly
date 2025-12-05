@@ -1,0 +1,80 @@
+# Prometheus Alert Rules for Content Moderation
+
+groups:
+  - name: moderation_alerts
+    interval: 30s
+    rules:
+      - alert: ModerationQueueBacklog
+        expr: moderation_quarantine_queue_length > 100
+        for: 10m
+        labels:
+          severity: warning
+          component: moderation
+        annotations:
+          summary: "Moderation queue backlog detected"
+          description: "Quarantine queue has {{ $value }} items waiting for review. Expected < 100. Check worker status and scale if needed."
+          runbook: "https://docs.pairly.app/runbooks/moderation-queue-backlog"
+
+      - alert: HighExplicitContentRate
+        expr: |
+          (
+            rate(moderation_removed_total[1h]) + rate(moderation_quarantined_total[1h])
+          ) / (
+            rate(moderation_removed_total[1h]) + rate(moderation_quarantined_total[1h]) + rate(moderation_published_total[1h]) + 0.001
+          ) > 0.10
+        for: 15m
+        labels:
+          severity: warning
+          component: moderation
+        annotations:
+          summary: "High explicit content submission rate"
+          description: "More than 10% of content is being blocked/quarantined in the last hour. This may indicate a spam attack or coordinated policy violation."
+          runbook: "https://docs.pairly.app/runbooks/high-explicit-content-rate"
+
+      - alert: ModerationWorkerDown
+        expr: up{job="moderation-worker"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          component: moderation
+        annotations:
+          summary: "Moderation worker is down"
+          description: "Moderation worker {{ $labels.instance }} has been down for 5 minutes. Quarantine processing is stopped."
+          runbook: "https://docs.pairly.app/runbooks/moderation-worker-down"
+
+      - alert: CSAMSuspected
+        expr: increase(moderation_removed_total{category="minor"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          component: moderation
+          escalate: legal
+        annotations:
+          summary: "CSAM (Child Sexual Abuse Material) suspected"
+          description: "Content flagged for minor-related policy violation. IMMEDIATE ACTION REQUIRED: Follow CSAM response protocol."
+          runbook: "https://docs.pairly.app/runbooks/csam-response-protocol"
+          action: "1. Do not view content. 2. Preserve evidence. 3. File NCMEC report. 4. Contact legal@pairly.app"
+
+      - alert: ModerationAPIHighLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{endpoint=~"/api/(posts|media)"}[5m])) > 2
+        for: 10m
+        labels:
+          severity: warning
+          component: moderation
+        annotations:
+          summary: "Moderation API high latency"
+          description: "95th percentile latency for content submission endpoints is {{ $value }}s. Expected < 2s. Moderation middleware may be slow."
+          runbook: "https://docs.pairly.app/runbooks/moderation-api-latency"
+
+      - alert: ModeratorOverload
+        expr: |
+          sum(moderation_quarantine_queue_length) + 
+          count(reports{status="pending"}) > 500
+        for: 1h
+        labels:
+          severity: warning
+          component: moderation
+        annotations:
+          summary: "Moderator team overloaded"
+          description: "Combined quarantine queue and pending reports exceed 500 items for over 1 hour. Consider scaling moderation team or adjusting thresholds."
+          runbook: "https://docs.pairly.app/runbooks/moderator-overload"
