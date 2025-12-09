@@ -150,7 +150,7 @@ async def create_payment_intent(
         
         # Log event
         await log_event(
-            user_id=user.id,
+            user_id=str(user.id),
             event_type="payment_intent_created",
             metadata={
                 "payment_intent_id": payment_intent.id,
