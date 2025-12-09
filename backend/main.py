@@ -84,13 +84,11 @@ app.add_middleware(ContentModerationMiddleware)
 
 @app.on_event("startup")
 async def startup_event():
-    await init_db()
-    await redis_client.connect()
-    await start_presence_monitor()
+    logger.info(f\"Starting Pairly API - Environment: {settings.ENVIRONMENT}\")\n    \n    # Run security validation\n    try:\n        SecurityValidator.validate_all()\n    except Exception as e:\n        logger.error(f\"Security validation failed: {str(e)}\")\n        if settings.ENVIRONMENT == 'production':\n            raise\n    \n    # Initialize database\n    logger.info(\"Initializing database connection\")\n    await init_db()\n    \n    # Connect to Redis\n    logger.info(\"Connecting to Redis\")\n    await redis_client.connect()\n    \n    # Start presence monitor\n    logger.info(\"Starting presence monitor\")\n    await start_presence_monitor()\n    \n    logger.info(\"Pairly API startup completed successfully\")
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    await redis_client.disconnect()
+    logger.info(\"Shutting down Pairly API\")\n    await redis_client.disconnect()\n    logger.info(\"Shutdown complete\")
 
 app.include_router(auth.router)
 app.include_router(twofa.router)
