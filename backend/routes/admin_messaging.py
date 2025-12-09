@@ -110,11 +110,13 @@ async def view_conversation(
     Requires: moderation.view permission
     """
     messages = await MessageV2.find(
-        MessageV2.is_deleted == False,
-        (
-            ((MessageV2.sender_id == user1_id) & (MessageV2.receiver_id == user2_id)) |
-            ((MessageV2.sender_id == user2_id) & (MessageV2.receiver_id == user1_id))
-        )
+        {
+            "is_deleted": False,
+            "$or": [
+                {"sender_id": user1_id, "receiver_id": user2_id},
+                {"sender_id": user2_id, "receiver_id": user1_id}
+            ]
+        }
     ).sort("-created_at").limit(limit).to_list()
     
     await AdminLoggingService.log_action(
