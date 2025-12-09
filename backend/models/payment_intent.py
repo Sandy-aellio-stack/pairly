@@ -68,13 +68,28 @@ class PaymentIntent(Document):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     completed_at: Optional[datetime] = None  # When payment succeeded/failed
+    processed_at: Optional[datetime] = None  # When payment processing started
+    expired_at: Optional[datetime] = None  # When payment intent expired
+    refunded_at: Optional[datetime] = None  # When payment was refunded
+    expires_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(minute=datetime.now(timezone.utc).minute + 10))  # 10 min expiry
     
     # Provider response data (for debugging)
     provider_response: Optional[Dict[str, Any]] = None
+    provider_raw_payload: Optional[Dict[str, Any]] = None  # Phase 8.2: Store raw provider response
     
     # Credits fulfillment
     credits_added: bool = Field(default=False)  # Track if credits were added
     credits_transaction_id: Optional[str] = None  # Link to CreditsTransaction
+    credits_refunded: bool = Field(default=False)  # Track if credits were refunded
+    refund_transaction_id: Optional[str] = None  # Link to refund transaction
+    
+    # Retry and failure tracking
+    retry_count: int = Field(default=0)  # Number of retry attempts
+    last_error: Optional[str] = None  # Last error message
+    fraud_score: Optional[float] = None  # Fraud detection score
+    
+    # Client-side tracking
+    client_idempotency_key: Optional[str] = None  # Client-provided idempotency key
     
     class Settings:
         name = "payment_intents"
