@@ -71,11 +71,13 @@ class MessagingServiceV2:
     ) -> List[MessageV2]:
         """Fetch conversation between two users"""
         messages = await MessageV2.find(
-            MessageV2.is_deleted == False,
-            (
-                ((MessageV2.sender_id == user1_id) & (MessageV2.receiver_id == user2_id)) |
-                ((MessageV2.sender_id == user2_id) & (MessageV2.receiver_id == user1_id))
-            )
+            {
+                "is_deleted": False,
+                "$or": [
+                    {"sender_id": user1_id, "receiver_id": user2_id},
+                    {"sender_id": user2_id, "receiver_id": user1_id}
+                ]
+            }
         ).sort("-created_at").skip(skip).limit(limit).to_list()
         
         return list(reversed(messages))  # Return in chronological order
