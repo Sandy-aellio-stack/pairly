@@ -1,450 +1,124 @@
 <analysis>**original_problem_statement:**
-The user wants to build a credits-based dating and creator SaaS platform called Pairly. The initial goal was to build out the complete backend functionality in distinct, testable phases before tackling the frontend.
-
-In this session, the user has provided a series of large, detailed prompts to implement several major backend features sequentially:
-1.  **Phase 6.3 (Continuation):** Apply final security hardening patches, including JWT revocation, refresh token rotation, and hardened encryption key loading.
-2.  **Phase 6.5:** Implement a comprehensive content moderation system (text and image) with an 18+ enforcement policy, quarantine workflow, and admin review panel.
-3.  **Credits System:** Build a full credit ledger, purchase flows (Stripe/Razorpay), and credit spending logic.
-4.  **WebRTC Calling:** Implement the backend for a complete WebRTC calling feature, including a signaling server, per-minute billing, and moderation hooks.
-5.  **Matchmaking Engine:** Build a backend matchmaking system with user preferences, a weighted scoring engine, and a recommendation pipeline.
+The user has provided a multi-phase plan to build out the remaining backend functionality for the Pairly application, covering Phases 9 through 15. The core task is to implement these features sequentially while maintaining integration with the existing codebase and adhering to a mock mode development approach where external infrastructure is not yet available.
 
 **PRODUCT REQUIREMENTS:**
-- A complete backend with a hybrid monetization model (credits + recurring subscriptions).
-- Features: User roles, real-time messaging, creator profiles, discovery/feed, payment processing, creator payouts, admin panel, content moderation, WebRTC calling, and a matchmaking engine.
-- Technical: The system must be containerized (Docker), include a CI/CD pipeline, and be scalable.
+- **Phase 9: Realtime Messaging V2:** Upgrade the chat system with read/delivered receipts, typing indicators, and credit integration.
+- **Phase 10: Realtime Calling V2:** Implement a full WebRTC signaling layer with call lifecycle management and per-minute billing.
+- **Phase 11: Presence Engine Finalization:** Production-ready presence system with WebSocket broadcasts and inactivity tracking.
+- **Phase 12: System Analytics & Insights:** Build a custom analytics pipeline for key metrics like DAU, retention, and funnels.
+- **Phase 13: Notification Engine:** Create a service for sending email, push, and in-app notifications (mocked).
+- **Phase 14: Backend QA + Hardening:** System-wide improvements to error handling, validation, performance, and security.
+- **Phase 15: Final Deployment Prep:** Create checklists, monitoring dashboards, and final documentation for production readiness.
+- All implementations must be done in **mock mode**, without reliance on production Redis, Celery, or transaction-enabled MongoDB.
+- All new features must integrate with the existing structured logging, RBAC, and the recently completed Phase 8 Payments & Ledger system.
 
 **User's preferred language**: English
 
 **what currently exists?**
-The backend is now vastly expanded and almost feature-complete. The agent successfully implemented several large backend systems based on user prompts. This includes:
-- **Security Hardening:** A JWT revocation and refresh token flow using Redis has been integrated into the authentication system. The system can also gracefully degrade if Redis is unavailable.
-- **Content Moderation:** A complete content moderation system is in place, with middleware to block/quarantine explicit content, a Celery worker for processing, and API endpoints for user reporting and admin review.
-- **Credits System:** A full-fledged credits ledger system has been built, with a dedicated service for handling transactions (add, spend, refund), API endpoints for purchasing credits, and admin adjustments.
-- **WebRTC Calling:** The backend infrastructure for WebRTC calling is implemented, including a signaling service, call session management, a Celery worker for per-minute billing, and API endpoints to manage call states.
-- **Matchmaking Engine:** The foundational files for a matchmaking engine have been created, including models for user preferences and services for scoring and generating recommendations. However, this feature is not fully integrated or tested.
-- The frontend remains a skeleton of placeholder components.
+The Pairly application has a stable FastAPI backend with Phases 1 through 8 completed. The entire **Phase 8 (Payments, Credits, and Financial Ledger System)** was just implemented successfully in **mock mode**. This includes a provider-agnostic payment architecture (Stripe/Razorpay mocks), an idempotency layer with an in-memory fallback, a double-entry financial ledger with hash-chaining, webhook processing with a DLQ, and comprehensive admin dashboards for managing payments, webhooks, the ledger, reconciliation, fraud, and monitoring. The server is running and all Phase 8 features have been tested via  and unit tests.
 
 **Last working item**:
-- **Last item agent was working:** The agent was implementing the Matchmaking Engine based on the user's detailed prompt. It created multiple new files for the models, services, routes, and tests.
-- **Status:** IN PROGRESS
-- **Agent Testing Done:** N
-- **Which testing method agent to use?** Backend testing agent. The new matchmaking endpoints (, etc.) need to be tested for logic, filtering, and caching behavior once the feature is fully integrated.
-- **User Testing Done:** N
+The agent received the user's directive to begin implementing the next major block of work, covering Phases 9 through 15.
+
+-   **Last item agent was working:** Acknowledging the user's request and preparing to start the implementation of **Phase 9: Realtime Messaging V2**.
+-   **Status:** NOT STARTED
+-   **Agent Testing Done:** N
+-   **Which testing method agent to use?** backend testing agent. Each phase (9-15) is a significant feature set that will require its own dedicated test suite.
+-   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-- **Issue 1: Complete and Verify Matchmaking System (P0)**
-- **Issue 2: Verify Content Moderation 'report' endpoint (P1)**
-- **Issue 3: Integrate  into  (P2)**
-- **Issue 4: Address Dependency Vulnerabilities (P3)**
-
-**Issues Detail:**
-- **Issue 1: Complete and Verify Matchmaking System (P0)**
-  - **Description:** The agent created the files for the matchmaking system but did not fully integrate them. The  router needs to be added to , and the  model needs to be initialized in . The agent also violated the user's explicit instruction to *not* output code for this feature, which should be noted.
-  - **Attempted fixes:** N/A.
-  - **Next debug checklist:**
-    1.  In , import and include the .
-    2.  In , import and add  and any other new models to the  document models list.
-    3.  Restart the backend server and ensure it starts without errors.
-    4.  Use the backend testing agent or  to test the new endpoints (e.g., GET ).
-  - **Why fix this issue and what will be achieved with the fix?** This will complete the last requested backend feature, making the entire backend ready for comprehensive integration testing before starting the frontend.
-  - **Status:** IN PROGRESS
-  - **Is recurring issue?** N
-  - **Should Test frontend/backend/both after fix?** backend
-  - **Blocked on other issue:** None
-
-- **Issue 2: Verify Content Moderation 'report' endpoint (P1)**
-  - **Description:** While testing the content moderation system, the  endpoint failed with a  attribute error. The agent suspected a missing model initialization and added the  model to , but it never re-tested the endpoint to confirm the fix was successful.
-  - **Attempted fixes:** Added  model to  in .
-  - **Next debug checklist:**
-    1.  Construct a  request to POST to the  endpoint.
-    2.  Check the response and backend logs for errors.
-    3.  If the  error persists, it may be a dependency version conflict. Check Package                                  Version
----------------------------------------- -----------
-aioredis                                 2.0.1
-annotated-types                          0.7.0
-anyio                                    4.11.0
-async-timeout                            5.0.1
-attrs                                    25.4.0
-bandit                                   1.9.2
-bcrypt                                   4.1.3
-beanie                                   1.30.0
-bidict                                   0.23.1
-black                                    25.11.0
-boltons                                  21.0.0
-boolean.py                               5.0
-boto3                                    1.41.3
-botocore                                 1.41.3
-bracex                                   2.6
-CacheControl                             0.14.4
-certifi                                  2025.11.12
-cffi                                     2.0.0
-charset-normalizer                       3.4.4
-click                                    8.1.8
-click-option-group                       0.5.9
-colorama                                 0.4.6
-cryptography                             46.0.3
-cyclonedx-python-lib                     9.1.0
-defusedxml                               0.7.1
-dnspython                                2.8.0
-ecdsa                                    0.19.1
-email-validator                          2.3.0
-exceptiongroup                           1.2.2
-face                                     24.0.0
-fastapi                                  0.110.1
-ffmpeg-python                            0.2.0
-filelock                                 3.20.0
-flake8                                   7.3.0
-future                                   1.0.0
-glom                                     22.1.0
-googleapis-common-protos                 1.72.0
-h11                                      0.16.0
-httpcore                                 1.0.9
-httpx                                    0.28.1
-httpx-sse                                0.4.3
-idna                                     3.11
-importlib_metadata                       8.7.0
-iniconfig                                2.3.0
-isort                                    7.0.0
-jmespath                                 1.0.1
-jq                                       1.10.0
-jsonschema                               4.25.1
-jsonschema-specifications                2025.9.1
-lazy-model                               0.2.0
-license-expression                       30.4.4
-markdown-it-py                           4.0.0
-mccabe                                   0.7.0
-mcp                                      1.16.0
-mdurl                                    0.1.2
-motor                                    3.3.1
-msgpack                                  1.1.2
-mypy                                     1.18.2
-mypy_extensions                          1.1.0
-numpy                                    2.3.5
-oauthlib                                 3.3.1
-opentelemetry-api                        1.37.0
-opentelemetry-exporter-otlp-proto-common 1.37.0
-opentelemetry-exporter-otlp-proto-http   1.37.0
-opentelemetry-instrumentation            0.58b0
-opentelemetry-instrumentation-requests   0.58b0
-opentelemetry-proto                      1.37.0
-opentelemetry-sdk                        1.37.0
-opentelemetry-semantic-conventions       0.58b0
-opentelemetry-util-http                  0.58b0
-packageurl-python                        0.17.6
-packaging                                25.0
-pandas                                   2.3.3
-passlib                                  1.7.4
-pathspec                                 0.12.1
-peewee                                   3.18.3
-pillow                                   12.0.0
-pip                                      25.3
-pip-api                                  0.0.34
-pip_audit                                2.9.0
-pip-requirements-parser                  32.0.1
-platformdirs                             4.5.0
-pluggy                                   1.6.0
-protobuf                                 6.33.1
-py-serializable                          2.1.0
-pyasn1                                   0.6.1
-pycodestyle                              2.14.0
-pycparser                                2.23
-pydantic                                 2.12.4
-pydantic_core                            2.41.5
-pydantic-settings                        2.12.0
-pyflakes                                 3.4.0
-Pygments                                 2.19.2
-PyJWT                                    2.10.1
-pymongo                                  4.5.0
-pyotp                                    2.9.0
-pyparsing                                3.2.5
-pytest                                   9.0.1
-pytest-asyncio                           1.3.0
-python-dateutil                          2.9.0.post0
-python-dotenv                            1.2.1
-python-engineio                          4.12.3
-python-jose                              3.5.0
-python-multipart                         0.0.20
-python-socketio                          5.15.0
-pytokens                                 0.3.0
-pytz                                     2025.2
-PyYAML                                   6.0.3
-qrcode                                   8.2
-razorpay                                 2.0.0
-redis                                    7.1.0
-referencing                              0.37.0
-requests                                 2.32.5
-requests-oauthlib                        2.0.0
-rich                                     13.5.3
-rpds-py                                  0.30.0
-rsa                                      4.9.1
-ruamel.yaml                              0.18.16
-ruamel.yaml.clib                         0.2.14
-ruff                                     0.14.8
-s3transfer                               0.15.0
-s5cmd                                    0.2.0
-semgrep                                  1.145.0
-shellingham                              1.5.4
-simple-websocket                         1.1.0
-six                                      1.17.0
-sniffio                                  1.3.1
-sortedcontainers                         2.4.0
-sse-starlette                            3.0.3
-starlette                                0.37.2
-stevedore                                5.6.0
-stripe                                   14.0.1
-toml                                     0.10.2
-tomli                                    2.0.2
-typer                                    0.20.0
-typing_extensions                        4.15.0
-typing-inspection                        0.4.2
-tzdata                                   2025.2
-urllib3                                  2.5.0
-uvicorn                                  0.38.0
-watchfiles                               1.1.1
-wcmatch                                  8.5.2
-websockets                               15.0.1
-wrapt                                    1.17.3
-wsproto                                  1.3.2
-zipp                                     3.23.0 and  for  and  versions.
-  - **Why fix this issue and what will be achieved with the fix?** Ensures the user-facing content reporting feature is functional, which is critical for platform safety.
-  - **Status:** TESTING PENDING
-  - **Is recurring issue?** N
-  - **Should Test frontend/backend/both after fix?** backend
-  - **Blocked on other issue:** None
-
-- **Issue 3: Integrate  into  (P2)**
-  - **Description:** The agent noted that  contains its own logic for deducting credits for messages. This should be refactored to use the centralized  to ensure consistency and proper ledger entries.
-  - **Attempted fixes:** None. The agent deferred this task.
-  - **Next debug checklist:**
-    1.  Edit .
-    2.  Import the .
-    3.  Replace the direct user credit modification () with a call to .
-  - **Why fix this issue and what will be achieved with the fix?** Centralizes all credit transactions, improves maintainability, and ensures all credit spending is properly recorded in the  ledger.
-  - **Status:** NOT STARTED
-  - **Is recurring issue?** N
-  - **Should Test frontend/backend/both after fix?** backend
-  - **Blocked on other issue:** None
-
-- **Issue 4: Address Dependency Vulnerabilities (P3)**
-  - **Description:** When running Name      Version ID                  Fix Versions
---------- ------- ------------------- ------------
-ecdsa     0.19.1  GHSA-wj6h-64fc-37mp
-mcp       1.16.0  GHSA-9h52-p55h-vw2f 1.23.0
-pymongo   4.5.0   GHSA-m87m-mmvp-v9qm 4.6.3
-starlette 0.37.2  GHSA-f96h-pmfr-66vw 0.40.0
-starlette 0.37.2  GHSA-2c2j-9gv5-cj73 0.47.2
-urllib3   2.5.0   GHSA-gm62-xv2j-4w53 2.6.0
-urllib3   2.5.0   GHSA-2xpw-w6gg-jr37 2.6.0, the tool reported 7 known vulnerabilities in packages like  and . These were noted but not addressed.
-  - **Attempted fixes:** None.
-  - **Next debug checklist:**
-    1.  Run Name      Version ID                  Fix Versions
---------- ------- ------------------- ------------
-ecdsa     0.19.1  GHSA-wj6h-64fc-37mp
-mcp       1.16.0  GHSA-9h52-p55h-vw2f 1.23.0
-pymongo   4.5.0   GHSA-m87m-mmvp-v9qm 4.6.3
-starlette 0.37.2  GHSA-f96h-pmfr-66vw 0.40.0
-starlette 0.37.2  GHSA-2c2j-9gv5-cj73 0.47.2
-urllib3   2.5.0   GHSA-gm62-xv2j-4w53 2.6.0
-urllib3   2.5.0   GHSA-2xpw-w6gg-jr37 2.6.0 to get the latest list of vulnerabilities.
-    2.  For each vulnerability, review the recommended patched version.
-    3.  Run  or  for each dependency.
-    4.  After updating, run .
-    5.  Run ============================= test session starts ==============================
-platform linux -- Python 3.11.14, pytest-9.0.1, pluggy-1.6.0
-rootdir: /app
-plugins: asyncio-1.3.0, anyio-4.11.0
-asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
-collected 18 items / 4 errors
-
-==================================== ERRORS ====================================
-_________________ ERROR collecting backend/tests/test_calls.py _________________
-ImportError while importing test module '/app/backend/tests/test_calls.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-/usr/local/lib/python3.11/importlib/__init__.py:126: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-backend/tests/test_calls.py:17: in <module>
-    from backend.models.call_session import CallSession, CallStatus
-E   ModuleNotFoundError: No module named 'backend'
-________________ ERROR collecting backend/tests/test_credits.py ________________
-ImportError while importing test module '/app/backend/tests/test_credits.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-/usr/local/lib/python3.11/importlib/__init__.py:126: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-backend/tests/test_credits.py:17: in <module>
-    from backend.services.credits_service import (
-E   ModuleNotFoundError: No module named 'backend'
-______________ ERROR collecting backend/tests/test_matchmaking.py ______________
-ImportError while importing test module '/app/backend/tests/test_matchmaking.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-/usr/local/lib/python3.11/importlib/__init__.py:126: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-backend/tests/test_matchmaking.py:8: in <module>
-    from backend.models.user import User, Role
-E   ModuleNotFoundError: No module named 'backend'
-_____________ ERROR collecting backend/tests/test_subscriptions.py _____________
-ImportError while importing test module '/app/backend/tests/test_subscriptions.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-/usr/local/lib/python3.11/importlib/__init__.py:126: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-backend/tests/test_subscriptions.py:20: in <module>
-    from backend.models.user import User, Role
-E   ModuleNotFoundError: No module named 'backend'
-=========================== short test summary info ============================
-ERROR backend/tests/test_calls.py
-ERROR backend/tests/test_credits.py
-ERROR backend/tests/test_matchmaking.py
-ERROR backend/tests/test_subscriptions.py
-!!!!!!!!!!!!!!!!!!! Interrupted: 4 errors during collection !!!!!!!!!!!!!!!!!!!!
-============================== 4 errors in 0.50s =============================== to ensure the updates did not break any functionality.
-  - **Why fix this issue and what will be achieved with the fix?** Improves the security posture of the application by patching known vulnerabilities in third-party libraries.
-  - **Status:** NOT STARTED
-  - **Is recurring issue?** N
-  - **Should Test frontend/backend/both after fix?** backend
-  - **Blocked on other issue:** None
+-   There are no pending issues. All work from Phase 8 was completed and tested successfully in mock mode.
 
 **In progress Task List**:
-- **Task 1: Matchmaking System Implementation (P0)**
-  - **Description:** This is the current active task, which involves finalizing the integration of the newly created matchmaking engine files.
-  - **Where to resume:** Integrate the new router and models in  and , then proceed with testing.
-  - **What will be achieved with this?** The last major backend feature will be functionally complete.
-  - **Status:** IN PROGRESS
-  - **Should Test frontend/backend/both after fix?** backend
-  - **Blocked on something:** None
+-   **Task 1: (P0) Implement Backend Phases 9-15**
+    -   **Description:** Sequentially implement the full scope of backend features from Phase 9 (Messaging V2) to Phase 15 (Deployment Prep) as per the user's detailed plan.
+    -   **Where to resume:** Begin the implementation of **Phase 9: Realtime Messaging V2**. The first step is to create the new  model v2 and the corresponding .
+    -   **What will be achieved with this?** A feature-complete, production-ready backend for the Pairly application, with all core systems in place (though still in mock mode).
+    -   **Status:** IN PROGRESS (The overall task has started, but the first step of Phase 9 has not).
+    -   **Should Test frontend/backend/both after fix?** Backend
+    -   **Blocked on something:** Nothing. All work can proceed in mock mode as requested.
 
 **Upcoming and Future Tasks**
-- **Upcoming Tasks:**
-  - **(P0) Full Frontend Implementation:** Once all backend features are verified, this is the largest and most critical remaining piece of work. It involves building the entire React UI and connecting it to the now-extensive backend API.
-- **Future Tasks:**
-  - **(P1) Personalize Discovery Feed:** Enhance the existing discovery feed with personalization from the new matchmaking engine.
-  - **(P2) WebSocket Enhancements:** Add voice/video call signaling (partially done with WebRTC backend), message reactions, and message editing.
-  - **(P3) AI-based content moderation:** Replace the local heuristic classifier stub with a real AI moderation service.
+**Upcoming Tasks (P0 - Current Directive):**
+*   **Phase 9: Realtime Messaging V2:** Implement  model v2, , WebSocket typing/status indicators, and admin tools.
+*   **Phase 10: Realtime Calling V2:** Implement  model, WebRTC signaling routes,  with per-minute billing.
+*   **Phase 11: Presence Engine Finalization:** Implement  model v2,  with WebSocket broadcasts and inactivity tracking.
+*   **Phase 12: System Analytics & Insights:** Implement  model, an ingest endpoint, and a mock aggregator for DAU/WAU/retention.
+*   **Phase 13: Notification Engine:** Implement a mock  for email, push, and in-app notifications.
+*   **Phase 14: Backend QA + Hardening:** Implement a system-wide error handling framework, stricter validation, and performance/security enhancements.
+*   **Phase 15: Final Deployment Prep:** Create environment audits, monitoring dashboards, deployment checklists, and final documentation.
+
+**Future Tasks (P1 - Post-Mock Development):**
+*   Transition all mocked systems (Phases 8-13) to production by configuring real infrastructure (Redis, Celery, MongoDB Replica Set) and integrating real 3rd-party API keys (Stripe, Razorpay, email providers, etc.).
+*   Execute load testing scripts developed in Phase 14.
 
 **Completed work in this session**
-- **Security Hardening (JWT Revocation):** Implemented a full JWT access token revocation and refresh token rotation flow using Redis.
-- **Content Moderation System:** Built a multi-layered content moderation system with middleware, a Celery worker, reporting APIs, and admin review capabilities.
-- **Credits & Ledger System:** Implemented a comprehensive credits transaction service with a full ledger, purchase flows, and admin APIs.
-- **WebRTC Calling Backend:** Created the complete backend for WebRTC calls, including signaling, per-minute billing via a Celery worker, and call state management.
-- **Documentation:** Created extensive documentation for all newly implemented systems (, , , , ).
-
-- **Recently completed:**
-  - Matchmaking Engine file creation (DONE)
-  - WebRTC Calling Backend implementation (DONE)
-  - Credits System implementation (DONE)
-  - Content Moderation System implementation (DONE)
-  - JWT Revocation & Refresh Token Flow (DONE)
+-   **Phase 8: Payments, Credits, and Financial Ledger System (DONE & TESTED in Mock Mode)**
+    -   **Phase 8.1: Foundation:**  model, , idempotency layer.
+    -   **Phase 8.2: Admin Dashboard & Intent Expansion:** Full admin payment dashboard APIs and expanded  lifecycle.
+    -   **Phase 8.3: Webhook Processing:** Secure webhook ingestion, mock signature verification, event handlers, and a DLQ with manual retry APIs.
+    -   **Phase 8.4: Financial Ledger:** Immutable, hash-chained double-entry ledger system integrated into payment/refund flows.
+    -   **Phase 8.5: Reconciliation System:** Service and admin APIs to detect and report discrepancies.
+    -   **Phase 8.6: Fraud Detection:** A risk-scoring engine to block high-risk payments.
+    -   **Phase 8.7: Monitoring & Alerts:** Admin endpoints for key metrics and system health alerts.
+-   **Documentation:** Created .
 
 **Earlier issues found/mentioned but not fixed**
-- **Issue 1:  attribute error on  endpoint.** The agent applied a fix but did not verify it. Status: TESTING PENDING.
-- **Issue 2: Dependency vulnerabilities found by Name      Version ID                  Fix Versions
---------- ------- ------------------- ------------
-ecdsa     0.19.1  GHSA-wj6h-64fc-37mp
-mcp       1.16.0  GHSA-9h52-p55h-vw2f 1.23.0
-pymongo   4.5.0   GHSA-m87m-mmvp-v9qm 4.6.3
-starlette 0.37.2  GHSA-f96h-pmfr-66vw 0.40.0
-starlette 0.37.2  GHSA-2c2j-9gv5-cj73 0.47.2
-urllib3   2.5.0   GHSA-gm62-xv2j-4w53 2.6.0
-urllib3   2.5.0   GHSA-2xpw-w6gg-jr37 2.6.0.** The agent noted the vulnerabilities but did not attempt to fix them. Status: NOT STARTED.
+-   None.
 
 **Known issue recurrence from previous fork**
-- N/A
+-   None.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Backend:** FastAPI, Beanie (MongoDB ODM), Pydantic
-- **Frontend:** React, Shadcn UI
-- **Real-time:** Socket.IO, WebSockets, WebRTC
-- **Async Workers:** Celery, Redis
-- **Search:** Meilisearch
-- **Payments:** Stripe, Razorpay
-- **DevOps:** Docker, Kubernetes, Nginx, GitHub Actions
-- **Observability:** Prometheus, Grafana
-- **Security:** JWT (Access/Refresh), OAuth2, Rate Limiting, Content Moderation
+*   **Mock-First Development:** Building full-featured systems decoupled from live infrastructure, using mock providers and in-memory fallbacks.
+*   **Financial Primitives:** Implemented a double-entry, hash-chained ledger, idempotency controls, and reconciliation services.
+*   **Provider Abstraction:** Created a base provider class to build a payment system that can work with Stripe, Razorpay, or others interchangeably.
+*   **Dead Letter Queue (DLQ):** Implemented a pattern for handling failed asynchronous events (webhooks) with a mechanism for manual admin retry.
 
 **key DB schema**
-- **User:** 
-- **Post:**  (new fields)
-- **Report:** 
-- **CreditsTransaction:** 
-- **CallSession:** 
-- **UserPreferences:** 
+-   : 
+-   : 
+-   : 
 
 **changes in tech stack**
-- No new technologies were added, but the application now heavily relies on Celery for multiple asynchronous tasks (media, search, moderation, billing) and Redis for caching, JWT revocation, and task brokering.
+-   None. The core stack remains FastAPI, React, and MongoDB.
 
 **All files of reference**
-- **New Feature Files:** All files created under , , , and  for moderation, credits, calling, and matchmaking.
-- **Core Integrations:**  (middleware/router registration),  (model registration).
-- **Authentication:** , , , .
-- **Documentation:** All new  files under  and .
-
-**Areas that need refactoring**:
-- **:** The credit handling logic in this file should be updated to use the new  for consistency and proper transaction logging.
-
-**key api endpoints**
-- **Moderation:** , , 
-- **Credits:** , , , 
-- **Calling:** , , , , , 
-- **Matchmaking:** , , 
+-   **/app/docs/PHASE8_ARCHITECTURE.md**: The master plan for the completed payments system. A similar implicit architecture is expected for Phases 9-15.
+-   **/app/docs/PHASE8_IMPLEMENTATION_SUMMARY.md**: Summary of all work completed in the last session.
+-   All newly created files under , , and  related to Phase 8.
 
 **Critical Info for New Agent**
-- **User-Driven Prompts:** The development process is strictly dictated by the user through a series of large, detailed, paste-ready prompts for each feature. Wait for the user's prompt before starting new major work.
-- **Matchmaking Instruction Violation:** For the last task (Matchmaking), the user explicitly said Do NOT output any code. The previous agent ignored this and created the files anyway. Be aware of this discrepancy and clarify with the user if necessary before proceeding.
-- **Graceful Degradation:** The application is designed to function in a degraded mode if Redis is not available. Features like caching and JWT revocation will be skipped. This is important for local testing.
-- **Pending Work:** There are several pending items: completing the Matchmaking integration, verifying the content moderation reporting fix, and refactoring the credit logic in the messaging route. These should be addressed before moving to the frontend.
+-   You are starting a large, multi-phase implementation (Phases 9-15). The user provides detailed, condensed prompts for each block of work.
+-   Your immediate task is to begin **Phase 9: Realtime Messaging V2**.
+-   **ALL** implementation must continue in **mock mode**. Do not attempt to connect to or configure real Redis, Celery, or a transaction-enabled MongoDB. All new services requiring external dependencies should be built with mock fallbacks, following the patterns established in Phase 8.
+-   Maintain consistency with the existing architecture: structured logging, RBAC, and clean integration with  and the new ledger system.
 
 **documents created in this job**
-- 
-- 
-- 
-- 
-- 
-- 
-- 
-- 
+-   /app/docs/PHASE8_INFRA_STATUS_REPORT.md
+-   /app/docs/PHASE8_1_IMPLEMENTATION_SUMMARY.md
+-   /app/docs/PHASE8_IMPLEMENTATION_SUMMARY.md
 
 **Last 10 User Messages and any pending user messages**
-1.  **Credits System Prompt:** User requested the implementation of a full credits and ledger system. (Completed)
-2.  **WebRTC Calling Prompt:** User requested the backend for a WebRTC calling feature with signaling and billing. (Completed)
-3.  **Agent Syntax Error:** Agent made a syntax error while implementing the calling feature. (Resolved)
-4.  **Matchmaking Prompt:** User requested a backend matchmaking engine, with the specific instruction *not* to output any code, only descriptions. (Partially Completed, Instruction Violated)
+-   The user has provided a series of prompts detailing the implementation of Phase 8 in subsections (8.1, 8.2, 8.3, 8.4-8.7), all of which have been **COMPLETED**.
+-   The final and currently active user message is a large prompt detailing the requirements for **Phases 9 through 15**, which is the **PENDING** task to be started.
 
 **Project Health Check:**
-- **Backend:** **Partially Functional.** Numerous new, complex features have been added. However, the latest feature (Matchmaking) is incomplete, a bug fix for content moderation is unverified, and a minor refactor is pending.
-- **Frontend:** **Broken.** Remains a non-interactive skeleton.
-- **Infrastructure:** **Mocked.** Infrastructure-as-code files have been added for new components, but they are not actively deployed.
+-   **Broken:** None. The backend is stable.
+-   **Mocked:** The entire payments, credits, and financial ledger system (Phase 8) is mocked by design. Future work in Phases 9-15 that relies on external services should also be mocked.
 
 **3rd Party Integrations**
-- **Stripe:** For global subscription/credit payments.
-- **Razorpay:** For India-based subscription/credit payments.
-- **boto3 (AWS S3):** For media storage.
-- **aioredis (Redis):** For caching, rate limiting, pub/sub, JWT revocation, and Celery broker.
-- **Meilisearch:** For full-text search.
-- **Celery:** For background task processing (media, search, moderation, billing).
-- **Google Vision:** A stub/adapter has been created in the  for future integration.
+-   **Stripe (Payments):** Mocked.
+-   **Razorpay (Payments):** Mocked.
+-   **Redis:** Mocked (uses in-memory fallback).
+-   **Celery:** Mocked (logic exists for manual triggers via API, but no workers are configured).
 
 **Testing status**
-- **Testing agent used after significant changes:** NO
-- **Troubleshoot agent used after agent stuck in loop:** NO
-- **Test files created:**
-    - 
-    - 
-    - 
-- **Known regressions:** None identified.
-
-**Credentials to test flow:**
-- Mock data should be used for testing. For payment flows, test API keys for Stripe/Razorpay will be required, set as environment variables.
+-   **Test files created:** , , , .
+-   **Known regressions:** None.
 
 **What agent forgot to execute**
-- **Do NOT output any code instruction:** The agent completely missed this critical constraint for the matchmaking feature request and created all the files as usual.
-- **Re-test  endpoint:** After applying a fix for a failure on the content moderation reporting endpoint, the agent did not re-run the test to confirm the fix was successful.
-- **Refactor :** The agent identified that the messaging route should be refactored to use the new  but deferred the task and did not return to it.</analysis>
+-   Nothing. The agent successfully completed the entire scope of Phase 8 as requested and is correctly positioned to begin Phase 9.</analysis>
