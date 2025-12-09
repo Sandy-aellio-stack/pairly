@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from typing import List, Optional
 import logging
 from datetime import datetime, timezone
 from backend.models.message_v2 import MessageV2, ModerationStatus, MessageStatus
 from backend.services.admin_rbac import require_permission
-from backend.services.admin_logging import log_admin_action
+from backend.services.admin_logging import AdminLoggingService
 from backend.models.user import User
 
 logger = logging.getLogger('routes.admin_messaging')
