@@ -61,6 +61,8 @@ async def init_db():
             AdminAuditLog,
             AdminSession,
             AnalyticsSnapshot,
-            PaymentIntent  # Phase 8.1: Payment Intent model
+            PaymentIntent,  # Phase 8.1: Payment Intent model
+            WebhookEvent,  # Phase 8.3: Webhook Event model
+            WebhookDLQ  # Phase 8.3: Webhook Dead Letter Queue model
         ]
     )
