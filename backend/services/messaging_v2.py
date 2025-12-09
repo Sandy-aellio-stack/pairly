@@ -134,11 +134,13 @@ class MessagingServiceV2:
         """List all conversations for a user with metadata"""
         # Get all messages involving the user
         messages = await MessageV2.find(
-            MessageV2.is_deleted == False,
-            (
-                (MessageV2.sender_id == user_id) |
-                (MessageV2.receiver_id == user_id)
-            )
+            {
+                "is_deleted": False,
+                "$or": [
+                    {"sender_id": user_id},
+                    {"receiver_id": user_id}
+                ]
+            }
         ).to_list()
         
         # Group by conversation partner
