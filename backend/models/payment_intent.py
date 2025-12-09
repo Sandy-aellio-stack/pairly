@@ -19,6 +19,8 @@ class PaymentIntentStatus(str, Enum):
     FAILED = "failed"  # Payment failed
     CANCELED = "canceled"  # Intent canceled before payment
     REQUIRES_ACTION = "requires_action"  # Requires user action (3DS, etc.)
+    EXPIRED = "expired"  # Payment intent expired (timeout)
+    REFUNDED = "refunded"  # Payment refunded (full or partial)
 
 
 class PaymentIntentMetadata(BaseModel):
