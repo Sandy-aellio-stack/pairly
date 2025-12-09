@@ -48,6 +48,7 @@ async def init_db():
             OTP,
             Profile,
             Message,
+            MessageV2,  # Phase 9: Messaging V2 model
             CreditsTransaction,
             Payout,
             Post,
