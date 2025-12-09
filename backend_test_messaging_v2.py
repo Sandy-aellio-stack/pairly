@@ -150,7 +150,7 @@ class MessagingV2Tester:
             
             # Get initial balance
             balance_response = self.session.get(f"{BACKEND_URL}/credits/balance", headers=headers)
-            initial_balance = balance_response.json().get("balance", 0) if balance_response.status_code == 200 else 0
+            initial_balance = balance_response.json().get("credits_balance", 0) if balance_response.status_code == 200 else 0
             
             message_data = {
                 "receiver_id": self.receiver_user_id,
