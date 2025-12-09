@@ -251,7 +251,7 @@ class LedgerService:
         
         # Verify first entry
         if not entries[0].verify_hash():
-            return False, f\"Hash mismatch at sequence {entries[0].sequence_number}\"
+            return False, f"Hash mismatch at sequence {entries[0].sequence_number}"
         
         # Verify chain
         for i in range(1, len(entries)):
@@ -260,18 +260,18 @@ class LedgerService:
             
             # Check hash
             if not current.verify_hash():
-                return False, f\"Hash mismatch at sequence {current.sequence_number}\"
+                return False, f"Hash mismatch at sequence {current.sequence_number}"
             
             # Check chain
             if current.previous_hash != previous.entry_hash:
-                return False, f\"Chain broken at sequence {current.sequence_number}\"
+                return False, f"Chain broken at sequence {current.sequence_number}"
         
         logger.info(
-            f\"Ledger chain verified\",
+            f"Ledger chain verified",
             extra={
-                \"entries_checked\": len(entries),
-                \"start_sequence\": start_sequence,
-                \"end_sequence\": end_sequence or \"latest\"
+                "entries_checked": len(entries),
+                "start_sequence": start_sequence,
+                "end_sequence": end_sequence or "latest"
             }
         )
         
@@ -298,7 +298,7 @@ class LedgerService:
         balance = credits - debits
         
         # Get currency (assume all entries have same currency)
-        currency = credit_entries[0].currency if credit_entries else \"credits\"
+        currency = credit_entries[0].currency if credit_entries else "credits"
         
         # Get last update time
         all_entries = credit_entries + debit_entries
