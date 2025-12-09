@@ -277,9 +277,9 @@ class PaymentManager:
                     credits_amount=payment_intent.credits_amount,
                     provider=payment_intent.provider
                 )
-                logger.info(f\"Ledger entry created: {ledger_entry.id}\")
+                logger.info(f"Ledger entry created: {ledger_entry.id}")
             except Exception as ledger_error:
-                logger.error(f\"Failed to create ledger entry: {ledger_error}\", exc_info=True)
+                logger.error(f"Failed to create ledger entry: {ledger_error}", exc_info=True)
                 # Continue even if ledger fails (can be reconciled later)
             
             # Update payment intent
@@ -401,9 +401,9 @@ class PaymentManager:
                     user_id=payment_intent.user_id,
                     credits_amount=payment_intent.credits_amount
                 )
-                logger.info(f\"Refund ledger entry created: {ledger_entry.id}\")
+                logger.info(f"Refund ledger entry created: {ledger_entry.id}")
             except Exception as ledger_error:
-                logger.error(f\"Failed to create refund ledger entry: {ledger_error}\", exc_info=True)
+                logger.error(f"Failed to create refund ledger entry: {ledger_error}", exc_info=True)
             
             # Update payment intent
             payment_intent.credits_refunded = True
