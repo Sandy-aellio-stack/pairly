@@ -123,6 +123,7 @@ app.include_router(discovery.router)
 app.include_router(messaging.router)
 app.include_router(credits.router)
 app.include_router(payments.router)
+app.include_router(payments_enhanced.router)  # Phase 8.1: Enhanced payments
 app.include_router(payouts.router)
 app.include_router(media.router)
 app.include_router(posts.router)
