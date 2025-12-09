@@ -291,7 +291,7 @@ async def simulate_payment_completion(
                 f"MOCK: Payment simulated successfully",
                 extra={
                     "payment_intent_id": payment_intent.id,
-                    "user_id": user.id,
+                    "user_id": str(user.id),
                     "credits_added": payment_intent.credits_amount
                 }
             )
@@ -299,7 +299,7 @@ async def simulate_payment_completion(
                 "success": True,
                 "message": "Payment simulated successfully",
                 "credits_added": payment_intent.credits_amount,
-                "new_balance": (await User.find_one(User.id == user.id)).credits_balance
+                "new_balance": (await User.get(user.id)).credits_balance
             }
         else:
             raise HTTPException(500, "Payment fulfillment failed")
