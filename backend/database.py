@@ -64,6 +64,7 @@ async def init_db():
             AnalyticsSnapshot,
             PaymentIntent,  # Phase 8.1: Payment Intent model
             WebhookEvent,  # Phase 8.3: Webhook Event model
-            WebhookDLQ  # Phase 8.3: Webhook Dead Letter Queue model
+            WebhookDLQ,  # Phase 8.3: Webhook Dead Letter Queue model
+            FinancialLedgerEntry  # Phase 8.4: Financial Ledger model
         ]
     )
