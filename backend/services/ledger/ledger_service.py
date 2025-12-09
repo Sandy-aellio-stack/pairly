@@ -321,7 +321,7 @@ class LedgerService:
         if reference_type:
             query = query & (FinancialLedgerEntry.reference_type == reference_type)
         
-        return await FinancialLedgerEntry.find(query).sort(\"created_at\").to_list()
+        return await FinancialLedgerEntry.find(query).sort("created_at").to_list()
     
     async def _get_next_sequence_number(self) -> int:
         """Get next sequence number for ledger entry"""
