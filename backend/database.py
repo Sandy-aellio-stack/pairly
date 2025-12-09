@@ -10,6 +10,7 @@ from backend.models.notification import Notification
 from backend.models.otp import OTP
 from backend.models.profile import Profile
 from backend.models.message import Message
+from backend.models.message_v2 import MessageV2
 from backend.models.credits_transaction import CreditsTransaction
 from backend.models.payout import Payout
 from backend.models.post import Post
