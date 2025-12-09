@@ -99,12 +99,11 @@ async def search_messages(
     }
 
 @router.get("/conversation/{user1_id}/{user2_id}")
-@require_permission("moderation.view")
 async def view_conversation(
     user1_id: str,
     user2_id: str,
     limit: int = Query(100, le=500),
-    admin: User = Depends(require_permission("moderation.view"))
+    admin: User = Depends(AdminRBACService.require_permission("moderation.view"))
 ):
     """
     View full conversation between two users (admin only)
