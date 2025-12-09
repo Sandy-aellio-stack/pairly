@@ -220,11 +220,13 @@ async def get_messaging_stats(
     
     deleted = await MessageV2.find(MessageV2.is_deleted == True).count()
     
-    await log_admin_action(
-        admin_id=str(admin.id),
+    await AdminLoggingService.log_action(
+        admin_user_id=str(admin.id),
+        admin_email=admin.email,
+        admin_role=admin.role,
         action="view_messaging_stats",
-        resource_type="analytics",
-        details={"total_messages": total_messages}
+        target_type="analytics",
+        metadata={"total_messages": total_messages}
     )
     
     return {
