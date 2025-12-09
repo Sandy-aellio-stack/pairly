@@ -144,7 +144,7 @@ async def create_payment_intent(
                 "client_ip": client_ip,
                 "user_agent": user_agent
             },
-            fingerprint_id=fingerprint.id if fingerprint else None,
+            fingerprint_id=str(fingerprint.id) if fingerprint else None,
             risk_score=risk_score
         )
         
