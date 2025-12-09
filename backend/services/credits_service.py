@@ -9,6 +9,17 @@ from beanie import PydanticObjectId
 logger = logging.getLogger('service.credits')
 
 
+# Custom exceptions
+class InsufficientCreditsError(Exception):
+    """Raised when user has insufficient credits"""
+    pass
+
+
+class DuplicateTransactionError(Exception):
+    """Raised when a duplicate transaction is detected"""
+    pass
+
+
 class CreditsService:
     """Centralized credits management service"""
     
