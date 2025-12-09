@@ -35,6 +35,7 @@ class PaymentManager:
         self.providers: Dict[str, PaymentProviderBase] = {}
         self.idempotency_service = get_idempotency_service()
         self.credits_service = CreditsServiceV2()
+        self.ledger_service = get_ledger_service()
         
         # Initialize providers
         self._initialize_providers()
