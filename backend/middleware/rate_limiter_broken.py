@@ -69,7 +69,7 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
         if self.redis_limiter is None and redis_client.redis:
             self.redis_limiter = RedisRateLimiter(redis_client, self.config)
             self.using_redis = True
-            logger.info("Rate limiter using Redis backend")
+            logger.info(\"Rate limiter using Redis backend\")
         
         # Use Redis limiter if available, otherwise fallback to memory
         if self.using_redis and self.redis_limiter:
@@ -78,10 +78,7 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
             allowed, info = await self.memory_limiter.check_rate_limit(client)
         
         if not allowed:
-            return JSONResponse(
-                {"detail": info.get("reason", "rate_limited"), "retry_after": info.get("retry_after", 60)},
-                status_code=429
-            )
+            return JSONResponse(\n                {\"detail\": info.get(\"reason\", \"rate_limited\"), \"retry_after\": info.get(\"retry_after\", 60)},\n                status_code=429\n            )
         
         response = await call_next(request)
         
@@ -106,7 +103,7 @@ def get_global_limiter():
 
 
 async def get_banned_ips():
-    """Get list of banned IPs"""
+    \"\"\"Get list of banned IPs\"\"\"
     limiter = get_global_limiter()
     if limiter:
         return await limiter.get_banned_ips()
@@ -114,7 +111,7 @@ async def get_banned_ips():
 
 
 async def unban_ip(ip: str):
-    """Unban an IP address"""
+    \"\"\"Unban an IP address\"\"\"
     limiter = get_global_limiter()
     if limiter:
         return await limiter.unban_ip(ip)
