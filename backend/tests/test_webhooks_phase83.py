@@ -96,8 +96,6 @@ class TestWebhookModels:
     
     def test_webhook_event_model(self):
         """Test WebhookEvent model structure"""
-        from backend.models.webhook_event import PaymentIntentMetadata
-        
         try:
             event = WebhookEvent(
                 id="wh_test_123",
