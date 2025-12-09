@@ -67,7 +67,7 @@ class CreditsServiceV2:
                 return str(existing_transaction.id)
         
         # Get user
-        user = await User.find_one(User.id == user_id)
+        user = await User.get(PydanticObjectId(user_id))
         if not user:
             raise ValueError(f"User not found: {user_id}")
         
@@ -123,7 +123,7 @@ class CreditsServiceV2:
             # In a real transaction, this would rollback automatically
             # For now, we'll attempt manual rollback
             try:
-                user = await User.find_one(User.id == user_id)
+                user = await User.get(PydanticObjectId(user_id))
                 if user:
                     user.credits_balance -= amount
                     await user.save()
@@ -178,7 +178,7 @@ class CreditsServiceV2:
                 return str(existing_transaction.id)
         
         # Get user
-        user = await User.find_one(User.id == user_id)
+        user = await User.get(PydanticObjectId(user_id))
         if not user:
             raise ValueError(f"User not found: {user_id}")
         
@@ -239,7 +239,7 @@ class CreditsServiceV2:
             
             # Attempt rollback
             try:
-                user = await User.find_one(User.id == user_id)
+                user = await User.get(PydanticObjectId(user_id))
                 if user:
                     user.credits_balance += amount
                     await user.save()
@@ -251,7 +251,7 @@ class CreditsServiceV2:
     
     async def get_balance(self, user_id: str) -> int:
         """Get user's current credit balance"""
-        user = await User.find_one(User.id == user_id)
+        user = await User.get(PydanticObjectId(user_id))
         if not user:
             raise ValueError(f"User not found: {user_id}")
         return user.credits_balance
