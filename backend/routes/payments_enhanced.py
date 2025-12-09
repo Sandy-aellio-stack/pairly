@@ -133,7 +133,7 @@ async def create_payment_intent(
         payment_manager = get_payment_manager(mock_mode=True)  # MOCK MODE enabled
         
         payment_intent = await payment_manager.create_payment_intent(
-            user_id=user.id,
+            user_id=str(user.id),
             user_email=user.email,
             provider=req.provider,
             amount_cents=package["amount_cents"],
