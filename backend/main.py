@@ -139,6 +139,10 @@ app.include_router(admin_analytics_enhanced.router)
 app.include_router(admin_users.router)
 app.include_router(admin_payments.router)  # Phase 8.2: Admin payments dashboard
 app.include_router(admin_webhooks.router)  # Phase 8.3: Admin webhooks dashboard
+app.include_router(admin_ledger.router)  # Phase 8.4: Financial ledger
+app.include_router(admin_reconciliation.router)  # Phase 8.5: Reconciliation
+app.include_router(admin_fraud.router)  # Phase 8.6: Fraud detection
+app.include_router(admin_monitoring.router)  # Phase 8.7: Monitoring & alerts
 app.include_router(compliance.router)
 app.include_router(calls.router)
 app.include_router(matchmaking.router)
