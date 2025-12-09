@@ -243,13 +243,12 @@ async def get_messaging_stats(
     }
 
 @router.get("/export")
-@require_permission("analytics.export")
 async def export_messages(
     user_id: Optional[str] = Query(None),
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
     limit: int = Query(1000, le=5000),
-    admin: User = Depends(require_permission("analytics.export"))
+    admin: User = Depends(AdminRBACService.require_permission("analytics.export"))
 ):
     """
     Export message data for analysis (admin only)
