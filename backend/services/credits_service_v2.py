@@ -275,3 +275,128 @@ class CreditsServiceV2:
         transactions = await CreditsTransaction.find(query).sort("-created_at").limit(limit).to_list()
         
         return transactions
+    
+    async def refund_credits(
+        self,
+        user_id: str,
+        amount: int,
+        description: str,
+        payment_intent_id: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        idempotency_key: Optional[str] = None
+    ) -> str:
+        """
+        Refund credits (deduct from user balance).
+        
+        Mock Mode: Simulate refund by deducting credits
+        Production Mode: Would coordinate with payment provider refund
+        
+        Args:
+            user_id: User ID
+            amount: Credits to refund (deduct)
+            description: Refund description
+            payment_intent_id: Original payment intent ID
+            metadata: Additional metadata
+            idempotency_key: Prevent duplicate refunds
+        
+        Returns:
+            Refund transaction ID
+        """
+        if amount <= 0:
+            raise ValueError(f"Refund amount must be positive, got {amount}")
+        
+        # Check idempotency
+        if idempotency_key:
+            existing_transaction = await CreditsTransaction.find_one(
+                {"metadata.idempotency_key": idempotency_key}
+            )
+            if existing_transaction:
+                logger.info(
+                    f"Duplicate refund request detected",
+                    extra={
+                        "idempotency_key": idempotency_key,
+                        "existing_transaction_id": str(existing_transaction.id)
+                    }
+                )
+                return str(existing_transaction.id)
+        
+        # Get user
+        user = await User.get(PydanticObjectId(user_id))
+        if not user:
+            raise ValueError(f"User not found: {user_id}")
+        
+        # Check sufficient balance
+        if user.credits_balance < amount:
+            logger.warning(
+                f"Insufficient balance for refund",
+                extra={
+                    "user_id": user_id,
+                    "refund_amount": amount,
+                    "current_balance": user.credits_balance
+                }
+            )
+            # In mock mode, we might allow negative balance for refunds
+            # In production, this would be handled by payment provider
+        
+        try:
+            # Deduct credits (refund)
+            old_balance = user.credits_balance
+            user.credits_balance -= amount
+            await user.save()
+            
+            # Create refund transaction record
+            refund_metadata = metadata or {}
+            if idempotency_key:
+                refund_metadata['idempotency_key'] = idempotency_key
+            if payment_intent_id:
+                refund_metadata['payment_intent_id'] = payment_intent_id
+            
+            transaction = CreditsTransaction(
+                user_id=PydanticObjectId(user_id),
+                amount=-amount,  # Negative for refund
+                transaction_type="refund",
+                balance_before=old_balance,
+                balance_after=user.credits_balance,
+                description=description,
+                metadata=refund_metadata,
+                created_at=datetime.now(timezone.utc)
+            )
+            await transaction.insert()
+            
+            logger.info(
+                "Credits refunded successfully",
+                extra={
+                    "event": "credits_refunded",
+                    "user_id": user_id,
+                    "amount": amount,
+                    "old_balance": old_balance,
+                    "new_balance": user.credits_balance,
+                    "payment_intent_id": payment_intent_id,
+                    "transaction_id": str(transaction.id),
+                    "idempotency_key": idempotency_key
+                }
+            )
+            
+            return str(transaction.id)
+        
+        except Exception as e:
+            logger.error(
+                f"Error refunding credits: {e}",
+                extra={
+                    "user_id": user_id,
+                    "amount": amount
+                },
+                exc_info=True
+            )
+            
+            # Attempt rollback
+            try:
+                user = await User.get(PydanticObjectId(user_id))
+                if user:
+                    user.credits_balance += amount
+                    await user.save()
+                    logger.info(f"Rolled back refund for user {user_id}")
+            except:
+                logger.error(f"Failed to rollback refund for user {user_id}")
+            
+            raise
