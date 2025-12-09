@@ -314,10 +314,9 @@ async def export_messages(
     }
 
 @router.delete("/{message_id}/hard-delete")
-@require_permission("super_admin")
 async def hard_delete_message(
     message_id: str,
-    admin: User = Depends(require_permission("super_admin"))
+    admin: User = Depends(AdminRBACService.require_permission("super_admin"))
 ):
     """
     Permanently delete a message (super admin only)
