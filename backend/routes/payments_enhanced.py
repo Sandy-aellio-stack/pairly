@@ -186,7 +186,7 @@ async def get_payment_intent(
     """Get payment intent details"""
     payment_intent = await PaymentIntent.find_one(
         PaymentIntent.id == payment_intent_id,
-        PaymentIntent.user_id == user.id
+        PaymentIntent.user_id == str(user.id)
     )
     
     if not payment_intent:
