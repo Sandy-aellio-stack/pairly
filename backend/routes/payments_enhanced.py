@@ -245,7 +245,7 @@ async def get_payment_history(
 ):
     """Get user's payment history"""
     payments = await PaymentIntent.find(
-        PaymentIntent.user_id == user.id
+        PaymentIntent.user_id == str(user.id)
     ).sort("-created_at").limit(limit).to_list()
     
     return {
