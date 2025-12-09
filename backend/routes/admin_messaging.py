@@ -150,11 +150,10 @@ async def view_conversation(
     }
 
 @router.post("/{message_id}/moderate")
-@require_permission("moderation.action")
 async def moderate_message(
     message_id: str,
     request: ModerateMessageRequest,
-    admin: User = Depends(require_permission("moderation.action"))
+    admin: User = Depends(AdminRBACService.require_permission("moderation.action"))
 ):
     """
     Moderate a message (flag, block, or approve)
