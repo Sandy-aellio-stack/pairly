@@ -39,7 +39,7 @@ class MessagingServiceV2:
                 message_type=message_type,
                 attachments=attachments or [],
                 credits_cost=self.message_cost,
-                credits_transaction_id=transaction.id if transaction else None,
+                credits_transaction_id=transaction if transaction else None,
                 moderation_status=ModerationStatus.APPROVED  # Auto-approve in mock mode
             )
             await message.insert()
