@@ -79,7 +79,7 @@ Total: 10/10 tests passed (100% success rate)
 **Result:** PASS
 
 **Test Cases:**
-1. ✅ Allowed origin (https://pairly-fortress.preview.emergentagent.com): Accepted
+1. ✅ Allowed origin (https://ledger-upgrade.preview.emergentagent.com): Accepted
 2. ✅ Unauthorized origin (https://malicious-site.com): Rejected
 
 **Configuration:**
