@@ -118,6 +118,33 @@ class PaymentIntent(Document):
         self.add_status_change(new_status, reason)
         self.completed_at = datetime.now(timezone.utc)
     
+    def mark_processing(self, reason: Optional[str] = None):
+        """Mark payment as processing"""
+        self.add_status_change(PaymentIntentStatus.PROCESSING, reason)
+        self.processed_at = datetime.now(timezone.utc)
+    
+    def mark_expired(self, reason: Optional[str] = None):
+        """Mark payment intent as expired"""
+        self.add_status_change(PaymentIntentStatus.EXPIRED, reason)
+        self.expired_at = datetime.now(timezone.utc)
+    
+    def mark_refunded(self, reason: Optional[str] = None):
+        """Mark payment as refunded"""
+        self.add_status_change(PaymentIntentStatus.REFUNDED, reason)
+        self.refunded_at = datetime.now(timezone.utc)
+    
+    def is_expired(self) -> bool:
+        """Check if payment intent has expired"""
+        if self.status in [PaymentIntentStatus.SUCCEEDED, PaymentIntentStatus.FAILED, PaymentIntentStatus.CANCELED, PaymentIntentStatus.EXPIRED]:
+            return False
+        return datetime.now(timezone.utc) > self.expires_at
+    
+    def increment_retry(self, error: Optional[str] = None):
+        """Increment retry counter and store error"""
+        self.retry_count += 1
+        self.last_error = error
+        self.updated_at = datetime.now(timezone.utc)
+    
     def to_dict(self) -> dict:
         """Convert to dictionary for API responses"""
         return {
