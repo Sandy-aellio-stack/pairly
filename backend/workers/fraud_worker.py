@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from backend.database import init_db
 from backend.models.fraud_alert import FraudAlert
 from backend.models.device_fingerprint import DeviceFingerprint
@@ -7,11 +7,11 @@ from backend.services.audit import log_event
 
 
 async def scan_suspicious_patterns():
-    print(f"[{datetime.utcnow().isoformat()}] Running fraud pattern scan...")
+    print(f"[{datetime.now(timezone.utc).isoformat()}] Running fraud pattern scan...")
     
     await init_db()
     
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     one_hour_ago = now - timedelta(hours=1)
     
     try:
@@ -70,7 +70,7 @@ async def scan_suspicious_patterns():
     except Exception as e:
         print(f"  ✗ Error in high-velocity scan: {e}")
     
-    print(f"[{datetime.utcnow().isoformat()}] Fraud scan complete")
+    print(f"[{datetime.now(timezone.utc).isoformat()}] Fraud scan complete")
 
 
 async def main():

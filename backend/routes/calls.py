@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Depends, Request, WebSocket, WebSo
 from pydantic import BaseModel
 from typing import Optional
 from beanie import PydanticObjectId
-from datetime import datetime
+from datetime import datetime, timezone
 
 from backend.models.user import User, Role
 from backend.models.call_session import CallSession, CallStatus
@@ -340,7 +340,7 @@ async def call_signaling_websocket(websocket: WebSocket, user_id: str):
         await websocket.send_json({
             "type": "connected",
             "user_id": user_id,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
         
         # Listen for messages
@@ -365,7 +365,7 @@ async def call_signaling_websocket(websocket: WebSocket, user_id: str):
                 # Keep-alive
                 await websocket.send_json({
                     "type": "pong",
-                    "timestamp": datetime.utcnow().isoformat()
+                    "timestamp": datetime.now(timezone.utc).isoformat()
                 })
     
     except WebSocketDisconnect:

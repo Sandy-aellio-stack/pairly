@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Script to identify and fix datetime.utcnow() usage across the codebase.
+Script to identify and fix datetime.now(timezone.utc) usage across the codebase.
 Replaces with timezone-aware datetime.now(timezone.utc)
 """
 
@@ -9,7 +9,7 @@ import re
 from pathlib import Path
 
 def find_utcnow_usage(directory: str = "/app/backend"):
-    """Find all files with datetime.utcnow() usage"""
+    """Find all files with datetime.now(timezone.utc) usage"""
     issues = []
     
     for root, dirs, files in os.walk(directory):
@@ -22,9 +22,9 @@ def find_utcnow_usage(directory: str = "/app/backend"):
                 try:
                     with open(filepath, 'r') as f:
                         content = f.read()
-                        if 'datetime.utcnow()' in content or 'utcnow()' in content:
+                        if 'datetime.now(timezone.utc)' in content or 'utcnow()' in content:
                             # Count occurrences
-                            count = content.count('datetime.utcnow()') + content.count('utcnow()')
+                            count = content.count('datetime.now(timezone.utc)') + content.count('utcnow()')
                             issues.append((filepath, count))
                 except:
                     pass
@@ -33,7 +33,7 @@ def find_utcnow_usage(directory: str = "/app/backend"):
 
 
 def fix_file(filepath: str):
-    """Fix datetime.utcnow() in a file"""
+    """Fix datetime.now(timezone.utc) in a file"""
     try:
         with open(filepath, 'r') as f:
             content = f.read()
@@ -41,9 +41,9 @@ def fix_file(filepath: str):
         # Check if timezone import exists
         has_timezone_import = 'from datetime import' in content and 'timezone' in content
         
-        # Replace datetime.utcnow() with datetime.now(timezone.utc)
-        new_content = content.replace('datetime.utcnow()', 'datetime.now(timezone.utc)')
-        new_content = new_content.replace('.utcnow()', '.now(timezone.utc)')
+        # Replace datetime.now(timezone.utc) with datetime.now(timezone.utc)
+        new_content = content.replace('datetime.now(timezone.utc)', 'datetime.now(timezone.utc)')
+        new_content = new_content.replace('.now(timezone.utc)', '.now(timezone.utc)')
         
         # Add timezone import if needed
         if not has_timezone_import and new_content != content:
@@ -68,13 +68,13 @@ def fix_file(filepath: str):
 
 
 if __name__ == "__main__":
-    print("Scanning for datetime.utcnow() usage...")
+    print("Scanning for datetime.now(timezone.utc) usage...")
     issues = find_utcnow_usage()
     
     if not issues:
-        print("No datetime.utcnow() usage found!")
+        print("No datetime.now(timezone.utc) usage found!")
     else:
-        print(f"\nFound {len(issues)} files with datetime.utcnow():")
+        print(f"\nFound {len(issues)} files with datetime.now(timezone.utc):")
         for filepath, count in issues:
             print(f"  {filepath}: {count} occurrences")
         

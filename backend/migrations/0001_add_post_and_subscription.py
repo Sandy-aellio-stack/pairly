@@ -129,7 +129,7 @@ async def run_migration():
         """
         print("\nCreating default subscription tier...")
         from bson import ObjectId
-        from datetime import datetime
+        from datetime import datetime, timezone
         
         default_tier = {
             "_id": ObjectId(),
@@ -146,8 +146,8 @@ async def run_migration():
             ],
             "active": True,
             "is_default": True,
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow()
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc)
         }
         
         await tiers_collection.insert_one(default_tier)

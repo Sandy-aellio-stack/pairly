@@ -7,7 +7,7 @@ from backend.services.ws_rate_limiter import WSRateLimiter
 from backend.services.audit import log_event
 from typing import Dict
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from beanie import PydanticObjectId
 
 router = APIRouter(prefix="/api/messages")
@@ -84,7 +84,7 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
                     sender_id=PydanticObjectId(user_id),
                     recipient_id=PydanticObjectId(recipient_id),
                     content=content,
-                    sent_at=datetime.utcnow()
+                    sent_at=datetime.now(timezone.utc)
                 )
                 await message.insert()
                 

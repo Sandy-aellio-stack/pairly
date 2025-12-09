@@ -8,7 +8,7 @@ from backend.config import settings
 from backend.models.otp import OTP
 from backend.models.user import User
 from beanie import PydanticObjectId
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 redis_client = None
@@ -49,7 +49,7 @@ def verify_totp(secret: str, code: str) -> bool:
 async def send_email_otp(user_id: PydanticObjectId, email: str) -> str:
     code = str(secrets.randbelow(900000) + 100000)
     
-    expires_at = datetime.utcnow() + timedelta(minutes=10)
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
     
     otp = OTP(
         user_id=user_id,
@@ -75,7 +75,7 @@ async def verify_email_otp(user_id: PydanticObjectId, code: str) -> bool:
     if not otp:
         return False
     
-    if datetime.utcnow() > otp.expires_at:
+    if datetime.now(timezone.utc) > otp.expires_at:
         return False
     
     otp.verified = True

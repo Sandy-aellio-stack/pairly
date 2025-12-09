@@ -1,7 +1,7 @@
 """Call Signaling Service - Manages WebRTC signaling state."""
 
 from typing import Dict, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from beanie import PydanticObjectId
 from fastapi import HTTPException, WebSocket
 import json
@@ -76,7 +76,7 @@ class CallSignalingService:
             status=CallStatus.RINGING,
             offer_sdp=offer_sdp,
             caller_ip=caller_ip,
-            initiated_at=datetime.utcnow()
+            initiated_at=datetime.now(timezone.utc)
         )
         await call.insert()
         
@@ -88,7 +88,7 @@ class CallSignalingService:
             "call_id": str(call.id),
             "caller_id": str(caller_id),
             "offer_sdp": offer_sdp,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
         
         # Audit log
@@ -127,9 +127,9 @@ class CallSignalingService:
         # Update call
         call.status = CallStatus.ACCEPTED
         call.answer_sdp = answer_sdp
-        call.accepted_at = datetime.utcnow()
+        call.accepted_at = datetime.now(timezone.utc)
         call.receiver_ip = receiver_ip
-        call.updated_at = datetime.utcnow()
+        call.updated_at = datetime.now(timezone.utc)
         await call.save()
         
         cls.active_calls[call_id] = call
@@ -139,7 +139,7 @@ class CallSignalingService:
             "type": "call_accepted",
             "call_id": call_id,
             "answer_sdp": answer_sdp,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
         
         # Audit log
@@ -173,9 +173,9 @@ class CallSignalingService:
         
         # Update call
         call.status = CallStatus.REJECTED
-        call.ended_at = datetime.utcnow()
+        call.ended_at = datetime.now(timezone.utc)
         call.end_reason = reason or "Receiver rejected"
-        call.updated_at = datetime.utcnow()
+        call.updated_at = datetime.now(timezone.utc)
         await call.save()
         
         # Remove from active calls
@@ -187,7 +187,7 @@ class CallSignalingService:
             "type": "call_rejected",
             "call_id": call_id,
             "reason": call.end_reason,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
         
         # Audit log
@@ -212,8 +212,8 @@ class CallSignalingService:
             raise HTTPException(400, "Call not accepted yet")
         
         call.status = CallStatus.ACTIVE
-        call.started_at = datetime.utcnow()
-        call.updated_at = datetime.utcnow()
+        call.started_at = datetime.now(timezone.utc)
+        call.updated_at = datetime.now(timezone.utc)
         await call.save()
         
         cls.active_calls[call_id] = call
@@ -241,14 +241,14 @@ class CallSignalingService:
         
         # Calculate duration
         if call.started_at:
-            duration = (datetime.utcnow() - call.started_at).total_seconds()
+            duration = (datetime.now(timezone.utc) - call.started_at).total_seconds()
             call.duration_seconds = int(duration)
         
         # Update call
         call.status = CallStatus.ENDED
-        call.ended_at = datetime.utcnow()
+        call.ended_at = datetime.now(timezone.utc)
         call.end_reason = reason or "User ended call"
-        call.updated_at = datetime.utcnow()
+        call.updated_at = datetime.now(timezone.utc)
         await call.save()
         
         # Remove from active calls
@@ -262,7 +262,7 @@ class CallSignalingService:
             "call_id": call_id,
             "reason": call.end_reason,
             "duration": call.duration_seconds,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
         
         # Audit log
@@ -300,7 +300,7 @@ class CallSignalingService:
         call.ice_candidates.append({
             "from_user_id": str(user_id),
             "candidate": candidate,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
         await call.save()
         
@@ -310,7 +310,7 @@ class CallSignalingService:
             "type": "ice_candidate",
             "call_id": call_id,
             "candidate": candidate,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
     
     @classmethod
@@ -327,7 +327,7 @@ class CallSignalingService:
         
         call.flagged_for_moderation = True
         call.moderation_notes = reason
-        call.updated_at = datetime.utcnow()
+        call.updated_at = datetime.now(timezone.utc)
         await call.save()
         
         # Audit log

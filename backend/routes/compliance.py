@@ -6,7 +6,7 @@ User reporting system and admin moderation panel.
 
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 from enum import Enum
 from backend.models.user import User, Role
@@ -101,7 +101,7 @@ async def submit_report(
             reason=req.reason,
             details=req.details,
             status=ReportStatus.PENDING,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         
         await report.insert()
@@ -217,7 +217,7 @@ async def take_moderation_action(
         
         # Update report status
         report.status = ReportStatus.RESOLVED if req.action != ModerationAction.DISMISS else ReportStatus.DISMISSED
-        report.reviewed_at = datetime.utcnow()
+        report.reviewed_at = datetime.now(timezone.utc)
         report.reviewed_by = user.id
         report.moderator_notes = req.moderator_notes
         report.action_taken = req.action
@@ -300,7 +300,7 @@ async def remove_content(content_id: str, content_type: ContentType):
                 {"$set": {
                     "visibility": "removed",
                     "removed_reason": "policy_violation",
-                    "removed_at": datetime.utcnow()
+                    "removed_at": datetime.now(timezone.utc)
                 }}
             )
         

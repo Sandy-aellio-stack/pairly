@@ -1,6 +1,6 @@
 from backend.models.audit_log import AuditLog
 from beanie import PydanticObjectId
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 async def log_event(
@@ -16,6 +16,6 @@ async def log_event(
         action=action,
         details=details,
         severity=severity,
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
     await log.insert()

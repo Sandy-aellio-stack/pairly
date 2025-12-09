@@ -12,7 +12,7 @@ Tests:
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from beanie import PydanticObjectId
-from datetime import datetime
+from datetime import datetime, timezone
 
 from backend.models.call_session import CallSession, CallStatus
 from backend.models.user import User, Role
@@ -57,7 +57,7 @@ def mock_call(mock_caller, mock_receiver):
         receiver_id=mock_receiver.id,
         status=CallStatus.RINGING,
         offer_sdp="mock_offer_sdp",
-        initiated_at=datetime.utcnow()
+        initiated_at=datetime.now(timezone.utc)
     )
 
 
@@ -217,7 +217,7 @@ async def test_start_call_not_accepted(mock_call):
 async def test_end_call_success(mock_call, mock_caller):
     """Test successfully ending a call."""
     mock_call.status = CallStatus.ACTIVE
-    mock_call.started_at = datetime.utcnow()
+    mock_call.started_at = datetime.now(timezone.utc)
     
     with patch.object(CallSession, 'get', return_value=mock_call), \
          patch.object(CallSession, 'save'), \
@@ -254,7 +254,7 @@ async def test_end_call_not_participant(mock_call):
 async def test_billing_tick_success(mock_call, mock_caller):
     """Test successful billing tick."""
     mock_call.status = CallStatus.ACTIVE
-    mock_call.started_at = datetime.utcnow()
+    mock_call.started_at = datetime.now(timezone.utc)
     
     mock_session = AsyncMock()
     
@@ -292,7 +292,7 @@ async def test_billing_tick_success(mock_call, mock_caller):
 async def test_billing_tick_insufficient_credits(mock_call, mock_caller):
     """Test billing tick when user has insufficient credits."""
     mock_call.status = CallStatus.ACTIVE
-    mock_call.started_at = datetime.utcnow()
+    mock_call.started_at = datetime.now(timezone.utc)
     mock_caller.credits_balance = 2  # Not enough for 5 credit charge
     
     with patch.object(CallSession, 'get', return_value=mock_call), \
@@ -358,7 +358,7 @@ async def test_flag_for_moderation(mock_call):
 async def test_finalize_call_with_partial_billing(mock_call, mock_caller):
     """Test finalizing call with unbilled seconds."""
     mock_call.status = CallStatus.ENDED
-    mock_call.started_at = datetime.utcnow()
+    mock_call.started_at = datetime.now(timezone.utc)
     mock_call.duration_seconds = 75  # 1 minute 15 seconds
     mock_call.billed_seconds = 60  # Only 1 minute billed
     mock_call.cost_per_minute = 5
@@ -416,17 +416,17 @@ async def test_call_state_machine_full_flow(mock_caller, mock_receiver):
     
     # State 2: RINGING -> ACCEPTED
     call.status = CallStatus.ACCEPTED
-    call.accepted_at = datetime.utcnow()
+    call.accepted_at = datetime.now(timezone.utc)
     assert call.status == CallStatus.ACCEPTED
     
     # State 3: ACCEPTED -> ACTIVE
     call.status = CallStatus.ACTIVE
-    call.started_at = datetime.utcnow()
+    call.started_at = datetime.now(timezone.utc)
     assert call.status == CallStatus.ACTIVE
     
     # State 4: ACTIVE -> ENDED
     call.status = CallStatus.ENDED
-    call.ended_at = datetime.utcnow()
+    call.ended_at = datetime.now(timezone.utc)
     assert call.status == CallStatus.ENDED
 
 

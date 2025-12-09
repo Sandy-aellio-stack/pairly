@@ -5,7 +5,7 @@ from backend.models.payout import Payout, PayoutStatus
 from backend.models.profile import Profile
 from backend.routes.profiles import get_current_user
 from backend.services.audit import log_event
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 router = APIRouter(prefix="/api/payouts")
@@ -141,17 +141,17 @@ async def review_payout(
     if approval.approved:
         payout.status = PayoutStatus.APPROVED
         payout.approved_by = user.id
-        payout.approved_at = datetime.utcnow()
+        payout.approved_at = datetime.now(timezone.utc)
         payout.admin_notes = approval.admin_notes
         
         # In production, integrate with payment processor here
         # For now, mark as completed immediately
         payout.status = PayoutStatus.COMPLETED
-        payout.completed_at = datetime.utcnow()
+        payout.completed_at = datetime.now(timezone.utc)
     else:
         payout.status = PayoutStatus.REJECTED
         payout.approved_by = user.id
-        payout.approved_at = datetime.utcnow()
+        payout.approved_at = datetime.now(timezone.utc)
         payout.admin_notes = approval.admin_notes
         
         # Refund credits to creator

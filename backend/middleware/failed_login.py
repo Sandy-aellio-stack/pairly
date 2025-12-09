@@ -3,7 +3,7 @@ from backend.models.failed_login import FailedLogin
 from backend.models.user import User
 from backend.services.audit import log_event
 from beanie import PydanticObjectId
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 LOCK_THRESHOLD = 3
@@ -11,7 +11,7 @@ LOCK_MINUTES = 30
 
 async def check_login_lock(ip: str, email: str):
     user = await User.find_one(User.email == email)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     ip_doc = await FailedLogin.find_one(FailedLogin.ip == ip)
     if ip_doc and ip_doc.locked_until and ip_doc.locked_until > now:
@@ -23,7 +23,7 @@ async def check_login_lock(ip: str, email: str):
             raise HTTPException(403, "Account temporarily locked due to repeated failures")
 
 async def register_failed_attempt(ip: str, user_id: Optional[PydanticObjectId]):
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     ip_doc = await FailedLogin.find_one(FailedLogin.ip == ip)
     if not ip_doc:

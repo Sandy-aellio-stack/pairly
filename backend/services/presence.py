@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from backend.models.profile import Profile
 from beanie import PydanticObjectId
 from typing import Dict, Optional
@@ -17,7 +17,7 @@ async def set_online(user_id: str):
         profile = await Profile.find_one(Profile.user_id == PydanticObjectId(user_id))
         if profile:
             profile.is_online = True
-            profile.last_seen = datetime.utcnow()
+            profile.last_seen = datetime.now(timezone.utc)
             await profile.save()
     except:
         pass
@@ -32,7 +32,7 @@ async def set_offline(user_id: str):
         profile = await Profile.find_one(Profile.user_id == PydanticObjectId(user_id))
         if profile:
             profile.is_online = False
-            profile.last_seen = datetime.utcnow()
+            profile.last_seen = datetime.now(timezone.utc)
             await profile.save()
     except:
         pass

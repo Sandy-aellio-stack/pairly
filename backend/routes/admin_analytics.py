@@ -5,7 +5,7 @@ from backend.models.fraud_alert import FraudAlert
 from backend.models.device_fingerprint import DeviceFingerprint
 from backend.models.audit_log import AuditLog
 from backend.models.failed_login import FailedLogin
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from beanie import PydanticObjectId
 
@@ -20,7 +20,7 @@ async def require_admin(user: User = Depends(lambda: None)):
 
 @router.get("/analytics")
 async def get_security_analytics(admin: User = Depends(require_admin)):
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     thirty_days_ago = now - timedelta(days=30)
     seven_days_ago = now - timedelta(days=7)
     one_day_ago = now - timedelta(days=1)
@@ -143,7 +143,7 @@ async def resolve_fraud_alert(
         alert.status = "banned"
     
     alert.resolved_by = admin.id
-    alert.updated_at = datetime.utcnow()
+    alert.updated_at = datetime.now(timezone.utc)
     await alert.save()
     
     return {"status": "resolved", "action": action}

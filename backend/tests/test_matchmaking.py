@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from beanie import PydanticObjectId
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from backend.models.user import User, Role
 from backend.models.user_preferences import UserPreferences, Gender, RelationshipGoal
@@ -126,8 +126,8 @@ async def test_interest_overlap_none():
 @pytest.mark.asyncio
 async def test_behavioral_compatibility_active_users(mock_prefs1, mock_prefs2):
     """Test behavioral scoring for active users."""
-    mock_prefs1.last_active_at = datetime.utcnow() - timedelta(hours=2)
-    mock_prefs2.last_active_at = datetime.utcnow() - timedelta(hours=5)
+    mock_prefs1.last_active_at = datetime.now(timezone.utc) - timedelta(hours=2)
+    mock_prefs2.last_active_at = datetime.now(timezone.utc) - timedelta(hours=5)
     
     score = MatchScoringEngine._behavioral_compatibility(
         mock_prefs1, mock_prefs2
@@ -139,7 +139,7 @@ async def test_behavioral_compatibility_active_users(mock_prefs1, mock_prefs2):
 @pytest.mark.asyncio
 async def test_behavioral_compatibility_inactive_user(mock_prefs1, mock_prefs2):
     """Test behavioral scoring with inactive user."""
-    mock_prefs2.last_active_at = datetime.utcnow() - timedelta(days=30)
+    mock_prefs2.last_active_at = datetime.now(timezone.utc) - timedelta(days=30)
     
     score = MatchScoringEngine._behavioral_compatibility(
         mock_prefs1, mock_prefs2

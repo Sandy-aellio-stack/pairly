@@ -9,7 +9,7 @@ Endpoints:
 from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from backend.models.post import Post, Visibility
 from backend.models.user import User
@@ -104,8 +104,8 @@ async def create_post(
         text=post_data.text,
         media=post_data.media,
         visibility=post_data.visibility,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc)
     )
     
     # Add moderation fields if they exist
@@ -195,7 +195,7 @@ async def update_post(
     if post_data.visibility is not None:
         post.visibility = post_data.visibility
     
-    post.updated_at = datetime.utcnow()
+    post.updated_at = datetime.now(timezone.utc)
     await post.save()
     
     return PostResponse(
@@ -240,7 +240,7 @@ async def delete_post(
     
     # Soft delete
     post.is_archived = True
-    post.updated_at = datetime.utcnow()
+    post.updated_at = datetime.now(timezone.utc)
     await post.save()
     
     return None

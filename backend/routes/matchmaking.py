@@ -88,7 +88,7 @@ async def update_preferences(
     if req.location_city is not None:
         prefs.location_city = req.location_city
     
-    prefs.updated_at = datetime.utcnow()
+    prefs.updated_at = datetime.now(timezone.utc)
     
     if prefs.id:
         await prefs.save()
@@ -171,7 +171,7 @@ async def submit_feedback(
         
         # Update engagement score (simple formula)
         prefs.engagement_score = (prefs.total_likes * 2) + (prefs.total_messages_sent * 3)
-        prefs.last_active_at = datetime.utcnow()
+        prefs.last_active_at = datetime.now(timezone.utc)
         await prefs.save()
     
     return {
@@ -296,4 +296,4 @@ async def admin_debug_recommendations(
     }
 
 
-from datetime import datetime
+from datetime import datetime, timezone

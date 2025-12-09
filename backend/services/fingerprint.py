@@ -1,7 +1,7 @@
 import hashlib
 import hmac
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from fastapi import Request
 from backend.models.device_fingerprint import DeviceFingerprint
@@ -98,7 +98,7 @@ async def register_fingerprint(
     )
     
     if existing:
-        existing.last_seen = datetime.utcnow()
+        existing.last_seen = datetime.now(timezone.utc)
         existing.usage_count += 1
         if user_id and not existing.user_id:
             existing.user_id = user_id
@@ -115,8 +115,8 @@ async def register_fingerprint(
         accept_lang=accept_lang,
         device_info=device_info,
         fingerprint_hash=fingerprint_hash,
-        created_at=datetime.utcnow(),
-        last_seen=datetime.utcnow()
+        created_at=datetime.now(timezone.utc),
+        last_seen=datetime.now(timezone.utc)
     )
     
     await fingerprint.insert()
@@ -130,7 +130,7 @@ async def get_fingerprint_history(fingerprint_hash: str) -> Optional[DeviceFinge
 
 
 async def get_user_fingerprints(user_id: PydanticObjectId, days: int = 7) -> list:
-    cutoff = datetime.utcnow() - timedelta(days=days)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
     return await DeviceFingerprint.find(
         DeviceFingerprint.user_id == user_id,
         DeviceFingerprint.last_seen >= cutoff

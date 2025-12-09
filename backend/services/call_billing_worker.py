@@ -75,7 +75,7 @@ async def _billing_tick(call_id: str):
             # Update call billing info
             call.billed_seconds += 60
             call.total_cost += cost
-            call.updated_at = datetime.utcnow()
+            call.updated_at = datetime.now(timezone.utc)
             await call.save()
             
             print(f"✅ Billed {cost} credits for call {call_id} (total: {call.total_cost})")
@@ -89,15 +89,15 @@ async def _billing_tick(call_id: str):
             
             # Update call status
             call.status = CallStatus.INSUFFICIENT_CREDITS
-            call.ended_at = datetime.utcnow()
+            call.ended_at = datetime.now(timezone.utc)
             call.end_reason = "Insufficient credits"
             
             # Calculate final duration
             if call.started_at:
-                duration = (datetime.utcnow() - call.started_at).total_seconds()
+                duration = (datetime.now(timezone.utc) - call.started_at).total_seconds()
                 call.duration_seconds = int(duration)
             
-            call.updated_at = datetime.utcnow()
+            call.updated_at = datetime.now(timezone.utc)
             await call.save()
             
             # Notify both participants

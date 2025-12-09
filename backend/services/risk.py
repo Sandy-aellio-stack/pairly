@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from backend.models.device_fingerprint import DeviceFingerprint
 from backend.models.fraud_alert import FraudAlert
@@ -43,7 +43,7 @@ async def score_action(
             score += 25
             reasons.append(f"High-value purchase (${amount_cents/100:.2f}) with new device")
     
-    velocity_cutoff = datetime.utcnow() - timedelta(hours=24)
+    velocity_cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
     recent_same_fp = await DeviceFingerprint.find(
         DeviceFingerprint.fingerprint_hash == fingerprint.fingerprint_hash,
         DeviceFingerprint.last_seen >= velocity_cutoff
@@ -65,7 +65,7 @@ async def score_action(
         "reasons": reasons,
         "action": action,
         "action_type": action_type,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
     
     fingerprint.risk_history.append(risk_entry)
@@ -84,7 +84,7 @@ async def score_action(
                 "action_type": action_type,
                 "all_reasons": reasons
             },
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         await alert.insert()
         

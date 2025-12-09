@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
 from passlib.context import CryptContext
-from datetime import datetime
+from datetime import datetime, timezone
 from backend.models.user import User, Role, TwoFAMethod
 from backend.models.session import Session
 from backend.services.token_utils import create_access_token, create_refresh_token, verify_token
@@ -106,8 +106,8 @@ async def signup(req: SignupRequest, request: Request):
         device_info="signup_device",
         ip=client_ip,
         refresh_token_id=rtid,
-        created_at=datetime.utcnow(),
-        last_active_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc),
+        last_active_at=datetime.now(timezone.utc)
     )
     await session.insert()
 
@@ -208,8 +208,8 @@ async def login(req: LoginRequest, request: Request):
         device_info=req.device_info or "unknown",
         ip=client_ip,
         refresh_token_id=rtid,
-        created_at=datetime.utcnow(),
-        last_active_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc),
+        last_active_at=datetime.now(timezone.utc)
     )
     await session.insert()
 
@@ -313,8 +313,8 @@ async def login_2fa_verify(req: Login2FARequest, request: Request):
         device_info="unknown",
         ip=client_ip,
         refresh_token_id=rtid,
-        created_at=datetime.utcnow(),
-        last_active_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc),
+        last_active_at=datetime.now(timezone.utc)
     )
     await session.insert()
 
@@ -409,7 +409,7 @@ async def refresh(req: RefreshRequest):
     old_rtid = rtid
     new_rtid = str(uuid.uuid4())
     session.refresh_token_id = new_rtid
-    session.last_active_at = datetime.utcnow()
+    session.last_active_at = datetime.now(timezone.utc)
     await session.save()
 
     await log_event(
