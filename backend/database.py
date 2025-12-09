@@ -55,6 +55,9 @@ async def init_db():
             CallSession,
             UserPreferences,
             MatchFeedback,
-            MatchRecommendation
+            MatchRecommendation,
+            AdminAuditLog,
+            AdminSession,
+            AnalyticsSnapshot
         ]
     )
