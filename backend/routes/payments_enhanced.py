@@ -135,7 +135,7 @@ async def create_payment_intent(
                 "user_agent": user_agent
             },
             fingerprint_id=str(fingerprint.id) if fingerprint else None,
-            risk_score=risk_score
+            risk_score=fraud_score
         )
         
         # Log event
