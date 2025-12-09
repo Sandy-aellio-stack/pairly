@@ -84,11 +84,35 @@ app.add_middleware(ContentModerationMiddleware)
 
 @app.on_event("startup")
 async def startup_event():
-    logger.info(f\"Starting Pairly API - Environment: {settings.ENVIRONMENT}\")\n    \n    # Run security validation\n    try:\n        SecurityValidator.validate_all()\n    except Exception as e:\n        logger.error(f\"Security validation failed: {str(e)}\")\n        if settings.ENVIRONMENT == 'production':\n            raise\n    \n    # Initialize database\n    logger.info(\"Initializing database connection\")\n    await init_db()\n    \n    # Connect to Redis\n    logger.info(\"Connecting to Redis\")\n    await redis_client.connect()\n    \n    # Start presence monitor\n    logger.info(\"Starting presence monitor\")\n    await start_presence_monitor()\n    \n    logger.info(\"Pairly API startup completed successfully\")
+    logger.info(f"Starting Pairly API - Environment: {settings.ENVIRONMENT}")
+    
+    # Run security validation
+    try:
+        SecurityValidator.validate_all()
+    except Exception as e:
+        logger.error(f"Security validation failed: {str(e)}")
+        if settings.ENVIRONMENT == 'production':
+            raise
+    
+    # Initialize database
+    logger.info("Initializing database connection")
+    await init_db()
+    
+    # Connect to Redis
+    logger.info("Connecting to Redis")
+    await redis_client.connect()
+    
+    # Start presence monitor
+    logger.info("Starting presence monitor")
+    await start_presence_monitor()
+    
+    logger.info("Pairly API startup completed successfully")
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    logger.info(\"Shutting down Pairly API\")\n    await redis_client.disconnect()\n    logger.info(\"Shutdown complete\")
+    logger.info("Shutting down Pairly API")
+    await redis_client.disconnect()
+    logger.info("Shutdown complete")
 
 app.include_router(auth.router)
 app.include_router(twofa.router)
