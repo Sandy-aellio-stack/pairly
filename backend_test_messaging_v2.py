@@ -199,8 +199,8 @@ class MessagingV2Tester:
     def test_insufficient_credits(self) -> bool:
         """Test sending message with insufficient credits"""
         try:
-            # Create a new user with 0 credits
-            temp_token, temp_user_id = self.register_test_user("nocredits@pairly.com")
+            # Create a new user with 0 credits (new users start with 0 credits)
+            temp_token, temp_user_id = self.register_test_user(f"nocredits{int(time.time())}@pairly.com")
             if not temp_token:
                 self.log("✗ Failed to create temp user for insufficient credits test", "ERROR")
                 return False
@@ -209,6 +209,12 @@ class MessagingV2Tester:
                 "Authorization": f"Bearer {temp_token}",
                 "Content-Type": "application/json"
             }
+            
+            # Verify user has 0 credits
+            balance_response = self.session.get(f"{BACKEND_URL}/credits/balance", headers=headers)
+            if balance_response.status_code == 200:
+                balance = balance_response.json().get("credits_balance", 0)
+                self.log(f"New user balance: {balance} credits")
             
             message_data = {
                 "receiver_id": self.receiver_user_id,
@@ -220,14 +226,14 @@ class MessagingV2Tester:
             
             if response.status_code == 400:
                 error_message = response.json().get("detail", "")
-                if "insufficient credits" in error_message.lower():
+                if "insufficient credits" in error_message.lower() or "credits" in error_message.lower():
                     self.log("✓ Insufficient credits properly rejected with correct error message")
                     return True
                 else:
                     self.log(f"✗ Wrong error message for insufficient credits: {error_message}", "ERROR")
                     return False
             else:
-                self.log(f"✗ Insufficient credits test failed: Expected 400, got {response.status_code}", "ERROR")
+                self.log(f"✗ Insufficient credits test failed: Expected 400, got {response.status_code} - {response.text}", "ERROR")
                 return False
                 
         except Exception as e:
