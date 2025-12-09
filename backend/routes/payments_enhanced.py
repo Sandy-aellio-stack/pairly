@@ -97,7 +97,7 @@ async def create_payment_intent(
         
         if risk_result["action"] == "block":
             logger.warning(
-                f"Payment blocked by fraud detection",
+                "Payment blocked by fraud detection",
                 extra={
                     "user_id": user.id,
                     "risk_score": risk_score,
@@ -111,7 +111,7 @@ async def create_payment_intent(
         
         if risk_result["action"] == "verify":
             logger.warning(
-                f"Payment requires additional verification",
+                "Payment requires additional verification",
                 extra={
                     "user_id": user.id,
                     "risk_score": risk_score
@@ -288,7 +288,7 @@ async def simulate_payment_completion(
         
         if success:
             logger.info(
-                f"MOCK: Payment simulated successfully",
+                "MOCK: Payment simulated successfully",
                 extra={
                     "payment_intent_id": payment_intent.id,
                     "user_id": str(user.id),
