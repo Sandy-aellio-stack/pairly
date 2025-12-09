@@ -326,6 +326,88 @@ class PaymentManager:
         
         logger.info(f"Payment intent canceled: {payment_intent_id}")
         return True
+    
+    async def refund_payment(
+        self,
+        payment_intent_id: str,
+        reason: str = "Refund requested",
+        mock_mode: bool = True
+    ) -> bool:
+        """
+        Refund a completed payment (mock mode only in Phase 8.2).
+        
+        Steps:
+        1. Verify payment was successful
+        2. Check not already refunded
+        3. Deduct credits from user (refund)
+        4. Update payment intent status
+        """
+        payment_intent = await PaymentIntent.find_one(PaymentIntent.id == payment_intent_id)
+        
+        if not payment_intent:
+            logger.error(f"Payment intent not found: {payment_intent_id}")
+            return False
+        
+        if payment_intent.status != PaymentIntentStatus.SUCCEEDED:
+            logger.error(f"Cannot refund payment in status: {payment_intent.status}")
+            return False
+        
+        if payment_intent.credits_refunded:
+            logger.warning(f"Payment already refunded: {payment_intent_id}")
+            return True
+        
+        if not payment_intent.credits_added:
+            logger.error(f"Credits were not added, cannot refund: {payment_intent_id}")
+            return False
+        
+        try:
+            # Refund credits (deduct from user)
+            refund_transaction_id = await self.credits_service.refund_credits(
+                user_id=payment_intent.user_id,
+                amount=payment_intent.credits_amount,
+                description=f"Refund for payment {payment_intent.id} - {reason}",
+                payment_intent_id=payment_intent.id,
+                metadata={
+                    "payment_intent_id": payment_intent.id,
+                    "provider": payment_intent.provider,
+                    "provider_intent_id": payment_intent.provider_intent_id,
+                    "original_transaction_id": payment_intent.credits_transaction_id,
+                    "reason": reason
+                },
+                idempotency_key=f"payment_refund_{payment_intent.id}"
+            )
+            
+            # Update payment intent
+            payment_intent.credits_refunded = True
+            payment_intent.refund_transaction_id = refund_transaction_id
+            payment_intent.mark_refunded(reason=reason)
+            await payment_intent.save()
+            
+            logger.info(
+                f"Payment refunded successfully",
+                extra={
+                    "event": "payment_refunded",
+                    "payment_intent_id": payment_intent.id,
+                    "user_id": payment_intent.user_id,
+                    "credits_amount": payment_intent.credits_amount,
+                    "refund_transaction_id": refund_transaction_id,
+                    "reason": reason,
+                    "mock_mode": mock_mode
+                }
+            )
+            
+            return True
+        
+        except Exception as e:
+            logger.error(
+                f"Payment refund failed: {e}",
+                extra={
+                    "payment_intent_id": payment_intent.id,
+                    "user_id": payment_intent.user_id
+                },
+                exc_info=True
+            )
+            return False
 
 
 # Global instance
