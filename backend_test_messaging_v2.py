@@ -174,7 +174,7 @@ class MessagingV2Tester:
                     # Verify sender's credits were deducted
                     new_balance_response = self.session.get(f"{BACKEND_URL}/credits/balance", headers=headers)
                     if new_balance_response.status_code == 200:
-                        new_balance = new_balance_response.json().get("balance", 0)
+                        new_balance = new_balance_response.json().get("credits_balance", 0)
                         if new_balance == initial_balance - 1:
                             self.log("✓ Credits correctly deducted (1 credit)")
                             return True
