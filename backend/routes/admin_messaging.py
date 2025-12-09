@@ -63,11 +63,13 @@ async def search_messages(
     messages = await MessageV2.find(query).sort("-created_at").skip(skip).limit(limit).to_list()
     total = await MessageV2.find(query).count()
     
-    await log_admin_action(
-        admin_id=str(admin.id),
+    await AdminLoggingService.log_action(
+        admin_user_id=str(admin.id),
+        admin_email=admin.email,
+        admin_role=admin.role,
         action="search_messages",
-        resource_type="message",
-        details={
+        target_type="message",
+        metadata={
             "filters": {
                 "user_id": user_id,
                 "sender_id": sender_id,
