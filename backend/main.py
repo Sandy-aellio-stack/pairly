@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import logging
+import os
 from backend.database import init_db
 from backend.services.presence import start_presence_monitor
 from backend.routes import (
@@ -25,27 +27,59 @@ from backend.routes import (
 from backend.admin.routes import admin_payouts
 from backend.middleware.rate_limiter import RateLimiterMiddleware
 from backend.middleware.content_moderation import ContentModerationMiddleware
+from backend.middleware.request_logger import RequestLoggerMiddleware
+from backend.middleware.security_headers import SecurityHeadersMiddleware
 from backend.core.redis_client import redis_client
-import os
+from backend.core.logging_config import LoggingConfig
+from backend.core.security_validator import SecurityValidator
+from backend.config import settings
+
+# Initialize logging
+logger = logging.getLogger('main')
 
 app = FastAPI(title="Pairly Dating SaaS API", version="1.0.0")
 
+# Get CORS origins
+def get_cors_origins():
+    cors_str = settings.CORS_ORIGINS
+    if cors_str:
+        return [origin.strip() for origin in cors_str.split(',')]
+    
+    # Default origins by environment
+    env = settings.ENVIRONMENT
+    if env == 'production':
+        return [settings.FRONTEND_URL]
+    else:
+        return [
+            "http://localhost:3000",
+            "http://localhost:3001",
+            "http://127.0.0.1:3000",
+            settings.FRONTEND_URL
+        ]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=get_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Security headers
+app.add_middleware(SecurityHeadersMiddleware)
+
+# Request logging
+app.add_middleware(RequestLoggerMiddleware)
+
+# Rate limiting
 app.add_middleware(
     RateLimiterMiddleware,
-    requests_per_minute=60,
-    ban_threshold_per_minute=150,
-    ban_seconds=3600
+    requests_per_minute=settings.RATE_LIMIT_REQUESTS_PER_MINUTE,
+    ban_threshold_per_minute=settings.RATE_LIMIT_BAN_THRESHOLD,
+    ban_seconds=settings.RATE_LIMIT_BAN_DURATION
 )
 
-# Content Moderation Middleware (pre-screens content)
+# Content Moderation Middleware
 app.add_middleware(ContentModerationMiddleware)
 
 @app.on_event("startup")
