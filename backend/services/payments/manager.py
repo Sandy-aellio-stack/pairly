@@ -12,6 +12,8 @@ from backend.services.payments.providers import (
 )
 from backend.services.payments.idempotency import get_idempotency_service
 from backend.services.credits_service_v2 import CreditsServiceV2
+from backend.services.ledger import get_ledger_service
+from backend.models.financial_ledger import LedgerEntryType
 import os
 
 logger = logging.getLogger('payment.manager')
