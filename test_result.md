@@ -354,10 +354,70 @@ backend:
         agent: "testing"
         comment: "✓ WebSocket security framework implemented. WSRateLimiter with user and IP-based rate limiting (30 messages per 5 seconds). Redis-based rate limiting with fallback to in-memory. Mute/unmute functionality for user management. Note: Requires WebSocket client for full end-to-end testing."
 
+  - task: "Phase 9 - MessageV2 Model with Delivery/Read Receipts"
+    implemented: true
+    working: true
+    file: "/app/backend/models/message_v2.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✓ MessageV2 model working correctly. Enhanced model with delivery/read receipts, moderation status, credit integration, and soft delete functionality. All enums validated (MessageType: text/image/video/audio/file, MessageStatus: sent/delivered/read/failed, ModerationStatus: pending/approved/flagged/blocked). Database indexes properly configured."
+
+  - task: "Phase 9 - MessagingServiceV2 with Credit Integration"
+    implemented: true
+    working: true
+    file: "/app/backend/services/messaging_v2.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✓ MessagingServiceV2 working correctly. Credit deduction integration functional (1 credit per message). All core methods tested: send_message(), fetch_conversation(), mark_delivered(), mark_read(), mark_multiple_as_read(), get_unread_count(), list_conversations(), delete_message(), get_message_stats(). MongoDB queries fixed and working properly."
+
+  - task: "Phase 9 - Messaging V2 API Routes"
+    implemented: true
+    working: true
+    file: "/app/backend/routes/messaging_v2.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✓ All messaging V2 API routes working correctly. Fixed authentication import issue. Endpoints tested: POST /api/v2/messages/send, GET /api/v2/messages/conversation/{partner_id}, GET /api/v2/messages/conversations, POST /api/v2/messages/mark-delivered/{message_id}, POST /api/v2/messages/mark-read, GET /api/v2/messages/unread-count, DELETE /api/v2/messages/{message_id}, GET /api/v2/messages/stats. WebSocket endpoint implemented for real-time features."
+
+  - task: "Phase 9 - Admin Messaging Management Routes"
+    implemented: true
+    working: true
+    file: "/app/backend/routes/admin_messaging.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✓ Admin messaging routes working correctly. Fixed MongoDB query syntax issues. All admin endpoints tested: GET /api/admin/messages/search, GET /api/admin/messages/conversation/{user1_id}/{user2_id}, POST /api/admin/messages/{message_id}/moderate, GET /api/admin/messages/stats/overview. Admin audit logging functional. Proper permission checks implemented."
+
+  - task: "Phase 9 - Credits Service V2 Integration"
+    implemented: true
+    working: true
+    file: "/app/backend/services/credits_service_v2.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✓ Credits Service V2 working correctly. Enhanced service with idempotency support, transaction simulation, and audit logging. Methods tested: add_credits(), deduct_credits(), get_balance(), get_transaction_history(), refund_credits(). Proper error handling for insufficient credits. Transaction logging functional."
+
 metadata:
   created_by: "main_agent"
   version: "1.0"
-  test_sequence: 3
+  test_sequence: 4
   run_ui: false
 
 test_plan:
@@ -373,3 +433,5 @@ agent_communication:
     message: "Comprehensive backend testing completed. All core subscription APIs working correctly. Created backend_test.py with 11 test scenarios covering authentication, subscription endpoints, webhook validation, and admin access control. All tests passing (100%). Unit tests created for subscription logic validation (8/8 passing). Minor issues: webhook routes not accessible via ingress (infrastructure limitation), Redis unavailable (graceful degradation working). Core subscription system is fully functional."
   - agent: "testing"
     message: "Phase 7 Backend Hardening testing completed successfully. All 9 hardening tasks implemented and working correctly: (1) Structured logging with JSON format and request ID tracking ✓ (2) Security headers middleware with all required headers ✓ (3) CORS security configuration ✓ (4) JWT secret security with SecretsManager ✓ (5) Enhanced JWT tokens with iat/nbf claims and timezone-aware timestamps ✓ (6) Redis rate limiting with in-memory fallback (triggered at 118 requests) ✓ (7) Credits service consistency with transaction logging ✓ (8) Datetime UTC fixes throughout codebase ✓ (9) WebSocket security framework ✓. Created backend_test_phase7.py with comprehensive security testing. All tests passing (10/10). System is production-ready with proper security hardening."
+  - agent: "testing"
+    message: "Phase 9 Messaging V2 testing completed successfully. All 5 messaging V2 tasks implemented and working correctly: (1) MessageV2 model with delivery/read receipts ✓ (2) MessagingServiceV2 with credit integration ✓ (3) Messaging V2 API routes ✓ (4) Admin messaging management routes ✓ (5) Credits Service V2 integration ✓. Created backend_test_messaging_v2.py with comprehensive testing covering 16 test scenarios: core messaging flow, delivery & read receipts, conversations & unread count, message management, admin functionality, and security edge cases. All tests passing (16/16 - 100%). Fixed authentication import issues, MongoDB query syntax issues, and credit transaction ID handling. System is fully functional with proper credit deduction, message delivery tracking, and admin moderation capabilities."
