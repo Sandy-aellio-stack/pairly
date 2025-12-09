@@ -23,6 +23,7 @@ from backend.models.match_recommendation import MatchRecommendation
 from backend.models.admin_audit_log import AdminAuditLog
 from backend.models.admin_session import AdminSession
 from backend.models.analytics_snapshot import AnalyticsSnapshot
+from backend.models.payment_intent import PaymentIntent
 from backend.config import settings
 
 
@@ -58,6 +59,7 @@ async def init_db():
             MatchRecommendation,
             AdminAuditLog,
             AdminSession,
-            AnalyticsSnapshot
+            AnalyticsSnapshot,
+            PaymentIntent  # Phase 8.1: Payment Intent model
         ]
     )
