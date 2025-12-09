@@ -11,13 +11,14 @@ from backend.models.otp import OTP
 from backend.models.profile import Profile
 from backend.models.message import Message
 from backend.models.message_v2 import MessageV2
+from backend.models.call_session import CallSession
+from backend.models.call_session_v2 import CallSessionV2
 from backend.models.credits_transaction import CreditsTransaction
 from backend.models.payout import Payout
 from backend.models.post import Post
 from backend.models.subscription import SubscriptionTier, UserSubscription as LegacyUserSubscription
 from backend.models.payment_subscription import UserSubscription, PaymentMethod
 from backend.routes.compliance import Report
-from backend.models.call_session import CallSession
 from backend.models.user_preferences import UserPreferences
 from backend.models.match_feedback import MatchFeedback
 from backend.models.match_recommendation import MatchRecommendation
