@@ -1,6 +1,6 @@
 from beanie import Document
 from datetime import datetime, timezone, date
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from pydantic import Field
 
 class AnalyticsSnapshot(Document):
