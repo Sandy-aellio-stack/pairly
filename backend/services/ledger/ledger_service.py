@@ -325,12 +325,12 @@ class LedgerService:
     
     async def _get_next_sequence_number(self) -> int:
         """Get next sequence number for ledger entry"""
-        latest_entry = await FinancialLedgerEntry.find_all().sort(\"-sequence_number\").first_or_none()
+        latest_entry = await FinancialLedgerEntry.find_all().sort("-sequence_number").first_or_none()
         return (latest_entry.sequence_number + 1) if latest_entry else 1
     
     async def _get_latest_hash(self) -> str:
         """Get hash of latest ledger entry (for chain)"""
-        latest_entry = await FinancialLedgerEntry.find_all().sort(\"-sequence_number\").first_or_none()
+        latest_entry = await FinancialLedgerEntry.find_all().sort("-sequence_number").first_or_none()
         return latest_entry.entry_hash if latest_entry else self.genesis_hash
 
 
