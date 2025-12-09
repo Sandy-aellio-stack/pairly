@@ -150,9 +150,9 @@ async def create_payment_intent(
         
         # Log event
         await log_event(
-            user_id=str(user.id),
-            event_type="payment_intent_created",
-            metadata={
+            actor_user_id=user.id,
+            action="payment_intent_created",
+            details={
                 "payment_intent_id": payment_intent.id,
                 "provider": req.provider,
                 "amount_cents": package["amount_cents"],
