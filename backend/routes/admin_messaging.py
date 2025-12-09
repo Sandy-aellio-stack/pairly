@@ -193,9 +193,8 @@ async def moderate_message(
     }
 
 @router.get("/stats/overview")
-@require_permission("analytics.view")
 async def get_messaging_stats(
-    admin: User = Depends(require_permission("analytics.view"))
+    admin: User = Depends(AdminRBACService.require_permission("analytics.view"))
 ):
     """
     Get overall messaging statistics (admin only)
