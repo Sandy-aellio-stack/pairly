@@ -119,11 +119,13 @@ async def view_conversation(
         )
     ).sort("-created_at").limit(limit).to_list()
     
-    await log_admin_action(
-        admin_id=str(admin.id),
+    await AdminLoggingService.log_action(
+        admin_user_id=str(admin.id),
+        admin_email=admin.email,
+        admin_role=admin.role,
         action="view_conversation",
-        resource_type="message",
-        details={
+        target_type="message",
+        metadata={
             "user1_id": user1_id,
             "user2_id": user2_id,
             "message_count": len(messages)
