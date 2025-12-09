@@ -203,7 +203,7 @@ async def cancel_payment_intent(
     """Cancel a payment intent"""
     payment_intent = await PaymentIntent.find_one(
         PaymentIntent.id == payment_intent_id,
-        PaymentIntent.user_id == user.id
+        PaymentIntent.user_id == str(user.id)
     )
     
     if not payment_intent:
