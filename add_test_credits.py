@@ -45,7 +45,7 @@ async def add_credits_to_users():
                         user_id=str(user.id),
                         amount=credits_to_add,
                         description="Test credits for messaging V2",
-                        transaction_type="test_grant"
+                        transaction_type="admin_grant"
                     )
                     print(f"  Added {credits_to_add} credits (Transaction: {transaction_id})")
                     
