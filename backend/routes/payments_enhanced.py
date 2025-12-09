@@ -321,13 +321,77 @@ async def simulate_payment_completion(
 
 @router.post("/webhook/stripe")
 async def stripe_webhook(request: Request):
-    """Stripe webhook endpoint (Phase 3 implementation pending)"""
-    logger.info("Stripe webhook received (not yet implemented)")
-    return {"received": True, "note": "Webhook processing will be implemented in Phase 8.3"}
+    """
+    Stripe webhook endpoint.
+    
+    Phase 8.3: Full webhook processing with signature verification.
+    """
+    from backend.services.webhooks import get_webhook_processor
+    import os
+    
+    # Get signature header
+    signature = request.headers.get("stripe-signature", "")
+    
+    if not signature:
+        raise HTTPException(400, "Missing Stripe-Signature header")
+    
+    # Get raw body
+    body = await request.body()
+    
+    # Get webhook secret (or use mock)
+    webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET", "whsec_mock_stripe_secret")
+    
+    # Process webhook
+    processor = get_webhook_processor(mock_mode=True)
+    success, message, webhook_id = await processor.process_stripe_webhook(
+        body, signature, webhook_secret
+    )
+    
+    if success:
+        logger.info(f"Stripe webhook processed: {webhook_id}")
+        return {"received": True, "webhook_id": webhook_id}
+    else:
+        logger.error(f"Stripe webhook failed: {message}")
+        # Return 200 to prevent retries for invalid signatures
+        if "signature" in message.lower():
+            raise HTTPException(401, message)
+        return {"received": True, "error": message, "webhook_id": webhook_id}
 
 
 @router.post("/webhook/razorpay")
 async def razorpay_webhook(request: Request):
-    """Razorpay webhook endpoint (Phase 3 implementation pending)"""
-    logger.info("Razorpay webhook received (not yet implemented)")
-    return {"received": True, "note": "Webhook processing will be implemented in Phase 8.3"}
+    """
+    Razorpay webhook endpoint.
+    
+    Phase 8.3: Full webhook processing with signature verification.
+    """
+    from backend.services.webhooks import get_webhook_processor
+    import os
+    
+    # Get signature header
+    signature = request.headers.get("x-razorpay-signature", "")
+    
+    if not signature:
+        raise HTTPException(400, "Missing X-Razorpay-Signature header")
+    
+    # Get raw body
+    body = await request.body()
+    
+    # Get webhook secret (or use mock)
+    webhook_secret = os.getenv("RAZORPAY_WEBHOOK_SECRET", "rzp_mock_webhook_secret")
+    
+    # Process webhook
+    processor = get_webhook_processor(mock_mode=True)
+    success, message, webhook_id = await processor.process_razorpay_webhook(
+        body, signature, webhook_secret
+    )
+    
+    if success:
+        logger.info(f"Razorpay webhook processed: {webhook_id}")
+        return {"received": True, "webhook_id": webhook_id}
+    else:
+        logger.error(f"Razorpay webhook failed: {message}")
+        # Return 200 to prevent retries for invalid signatures
+        if "signature" in message.lower():
+            raise HTTPException(401, message)
+        return {"received": True, "error": message, "webhook_id": webhook_id}
