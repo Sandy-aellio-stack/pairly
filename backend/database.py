@@ -25,6 +25,7 @@ from backend.models.admin_session import AdminSession
 from backend.models.analytics_snapshot import AnalyticsSnapshot
 from backend.models.payment_intent import PaymentIntent
 from backend.models.webhook_event import WebhookEvent, WebhookDLQ
+from backend.models.financial_ledger import FinancialLedgerEntry
 from backend.config import settings
 
 
