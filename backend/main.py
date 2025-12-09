@@ -127,6 +127,7 @@ app.include_router(profiles.router)
 app.include_router(discovery.router)
 app.include_router(messaging.router)
 app.include_router(messaging_v2.router)  # Phase 9: Messaging V2
+app.include_router(calling_v2.router)  # Phase 10: Calling V2
 app.include_router(credits.router)
 app.include_router(payments.router)
 app.include_router(payments_enhanced.router)  # Phase 8.1: Enhanced payments
@@ -149,6 +150,7 @@ app.include_router(admin_reconciliation.router)  # Phase 8.5: Reconciliation
 app.include_router(admin_fraud.router)  # Phase 8.6: Fraud detection
 app.include_router(admin_monitoring.router)  # Phase 8.7: Monitoring & alerts
 app.include_router(admin_messaging.router)  # Phase 9: Admin messaging tools
+app.include_router(admin_calling.router)  # Phase 10: Admin calling tools
 app.include_router(compliance.router)
 app.include_router(calls.router)
 app.include_router(matchmaking.router)
