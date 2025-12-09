@@ -171,15 +171,17 @@ async def moderate_message(
     message.updated_at = datetime.now(timezone.utc)
     await message.save()
     
-    await log_admin_action(
-        admin_id=str(admin.id),
+    await AdminLoggingService.log_action(
+        admin_user_id=str(admin.id),
+        admin_email=admin.email,
+        admin_role=admin.role,
         action="moderate_message",
-        resource_type="message",
-        resource_id=message_id,
-        details={
-            "old_status": old_status.value,
-            "new_status": request.moderation_status.value,
-            "reason": request.reason,
+        target_type="message",
+        target_id=message_id,
+        before_state={"moderation_status": old_status.value},
+        after_state={"moderation_status": request.moderation_status.value},
+        reason=request.reason,
+        metadata={
             "sender_id": message.sender_id,
             "receiver_id": message.receiver_id
         },
