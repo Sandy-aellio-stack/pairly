@@ -279,11 +279,13 @@ async def export_messages(
     
     messages = await MessageV2.find(query).limit(limit).to_list()
     
-    await log_admin_action(
-        admin_id=str(admin.id),
+    await AdminLoggingService.log_action(
+        admin_user_id=str(admin.id),
+        admin_email=admin.email,
+        admin_role=admin.role,
         action="export_messages",
-        resource_type="message",
-        details={
+        target_type="message",
+        metadata={
             "filters": {
                 "user_id": user_id,
                 "start_date": start_date,
