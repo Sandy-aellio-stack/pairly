@@ -60,7 +60,10 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
         # Store connection
         active_connections[user_id] = websocket
         
-        logger.info(\n            \"WebSocket authenticated successfully\",\n            extra={\"event\": \"ws_authenticated\", \"user_id\": user_id, \"connection_id\": connection_id}\n        )
+        logger.info(
+            "WebSocket authenticated successfully",
+            extra={"event": "ws_authenticated", "user_id": user_id, "connection_id": connection_id}
+        )
         
         # Send confirmation
         await websocket.send_json({\"type\": \"connected\", \"user_id\": user_id})
