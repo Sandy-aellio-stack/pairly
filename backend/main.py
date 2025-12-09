@@ -137,6 +137,7 @@ app.include_router(admin_security_enhanced.router)
 app.include_router(admin_analytics_enhanced.router)
 app.include_router(admin_users.router)
 app.include_router(admin_payments.router)  # Phase 8.2: Admin payments dashboard
+app.include_router(admin_webhooks.router)  # Phase 8.3: Admin webhooks dashboard
 app.include_router(compliance.router)
 app.include_router(calls.router)
 app.include_router(matchmaking.router)
