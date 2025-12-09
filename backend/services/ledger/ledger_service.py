@@ -244,7 +244,7 @@ class LedgerService:
         if end_sequence:
             query = query & (FinancialLedgerEntry.sequence_number <= end_sequence)
         
-        entries = await FinancialLedgerEntry.find(query).sort(\"sequence_number\").to_list()
+        entries = await FinancialLedgerEntry.find(query).sort("sequence_number").to_list()
         
         if not entries:
             return True, None
