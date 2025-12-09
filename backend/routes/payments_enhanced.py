@@ -270,7 +270,7 @@ async def simulate_payment_completion(
     """
     payment_intent = await PaymentIntent.find_one(
         PaymentIntent.id == req.payment_intent_id,
-        PaymentIntent.user_id == user.id
+        PaymentIntent.user_id == str(user.id)
     )
     
     if not payment_intent:
