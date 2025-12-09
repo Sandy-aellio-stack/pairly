@@ -20,6 +20,9 @@ from backend.models.call_session import CallSession
 from backend.models.user_preferences import UserPreferences
 from backend.models.match_feedback import MatchFeedback
 from backend.models.match_recommendation import MatchRecommendation
+from backend.models.admin_audit_log import AdminAuditLog
+from backend.models.admin_session import AdminSession
+from backend.models.analytics_snapshot import AnalyticsSnapshot
 from backend.config import settings
 
 
