@@ -53,8 +53,9 @@ class CreditsServiceV2:
         
         # Check idempotency
         if idempotency_key:
+            # Query by metadata field (MongoDB notation)
             existing_transaction = await CreditsTransaction.find_one(
-                CreditsTransaction.metadata.get('idempotency_key') == idempotency_key
+                {"metadata.idempotency_key": idempotency_key}
             )
             if existing_transaction:
                 logger.info(
@@ -164,8 +165,9 @@ class CreditsServiceV2:
         
         # Check idempotency
         if idempotency_key:
+            # Query by metadata field (MongoDB notation)
             existing_transaction = await CreditsTransaction.find_one(
-                CreditsTransaction.metadata.get('idempotency_key') == idempotency_key
+                {"metadata.idempotency_key": idempotency_key}
             )
             if existing_transaction:
                 logger.info(
