@@ -268,6 +268,20 @@ class PaymentManager:
                 idempotency_key=f"payment_fulfillment_{payment_intent.id}"
             )
             
+            # Record in financial ledger (Phase 8.4)
+            try:
+                ledger_entry = await self.ledger_service.record_payment(
+                    payment_intent_id=payment_intent.id,
+                    user_id=payment_intent.user_id,
+                    amount_cents=payment_intent.amount_cents,
+                    credits_amount=payment_intent.credits_amount,
+                    provider=payment_intent.provider
+                )
+                logger.info(f\"Ledger entry created: {ledger_entry.id}\")
+            except Exception as ledger_error:
+                logger.error(f\"Failed to create ledger entry: {ledger_error}\", exc_info=True)
+                # Continue even if ledger fails (can be reconciled later)
+            
             # Update payment intent
             payment_intent.credits_added = True
             payment_intent.credits_transaction_id = transaction_id
