@@ -26,7 +26,7 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
     await websocket.accept()
     connection_id = f\"ws_{user_id}_{int(datetime.now(timezone.utc).timestamp())}\"
     
-    logger.info(\n        \"WebSocket connection initiated\",\n        extra={\"event\": \"ws_connect\", \"user_id\": user_id, \"connection_id\": connection_id}\n    )
+    logger.info(        \"WebSocket connection initiated\",\n        extra={\"event\": \"ws_connect\", \"user_id\": user_id, \"connection_id\": connection_id}\n    )
     
     try:
         # Authenticate via first message
@@ -45,7 +45,7 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
             
             # Match token user_id to websocket user_id
             if token_user_id != user_id:
-                logger.warning(\n                    \"WebSocket auth failed: user_id mismatch\",\n                    extra={\"token_user_id\": token_user_id, \"ws_user_id\": user_id}\n                )\n                await websocket.close(code=1008)
+                logger.warning(                    \"WebSocket auth failed: user_id mismatch\",\n                    extra={\"token_user_id\": token_user_id, \"ws_user_id\": user_id}\n                )\n                await websocket.close(code=1008)
                 return
         except HTTPException as e:
             logger.warning(f\"WebSocket auth failed: {e.detail}\", extra={\"user_id\": user_id})\n            await websocket.close(code=1008)
