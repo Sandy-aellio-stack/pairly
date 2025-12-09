@@ -24,6 +24,7 @@ from backend.models.admin_audit_log import AdminAuditLog
 from backend.models.admin_session import AdminSession
 from backend.models.analytics_snapshot import AnalyticsSnapshot
 from backend.models.payment_intent import PaymentIntent
+from backend.models.webhook_event import WebhookEvent, WebhookDLQ
 from backend.config import settings
 
 
