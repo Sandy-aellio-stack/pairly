@@ -50,6 +50,8 @@ async def init_db():
             Profile,
             Message,
             MessageV2,  # Phase 9: Messaging V2 model
+            CallSession,
+            CallSessionV2,  # Phase 10: Call Session V2 model
             CreditsTransaction,
             Payout,
             Post,
@@ -58,7 +60,6 @@ async def init_db():
             UserSubscription,
             PaymentMethod,
             Report,
-            CallSession,
             UserPreferences,
             MatchFeedback,
             MatchRecommendation,
