@@ -90,7 +90,7 @@ async def create_payment_intent(
         
         if fraud_result["action"] == "block":
             logger.warning(
-                f"Payment blocked by fraud detection",
+                "Payment blocked by fraud detection",
                 extra={
                     "user_id": str(user.id),
                     "fraud_score": fraud_score,
@@ -104,7 +104,7 @@ async def create_payment_intent(
         
         if fraud_result["action"] == "verify":
             logger.warning(
-                f"Payment requires verification",
+                "Payment requires verification",
                 extra={
                     "user_id": str(user.id),
                     "fraud_score": fraud_score
