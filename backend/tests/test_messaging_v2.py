@@ -7,15 +7,16 @@ import sys
 import os
 from datetime import datetime, timezone
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# Add parent directory to path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from motor.motor_asyncio import AsyncIOMotorClient
 from beanie import init_beanie
-from backend.models.user import User
-from backend.models.message_v2 import MessageV2, MessageType, MessageStatus, ModerationStatus
-from backend.models.credits_transaction import CreditsTransaction
-from backend.services.messaging_v2 import MessagingServiceV2
-from backend.config import settings
+from models.user import User
+from models.message_v2 import MessageV2, MessageType, MessageStatus, ModerationStatus
+from models.credits_transaction import CreditsTransaction
+from services.messaging_v2 import MessagingServiceV2
+from config import settings
 
 @pytest.fixture
 async def db():
