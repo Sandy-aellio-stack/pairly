@@ -88,6 +88,7 @@ class CreditsServiceV2:
                 user_id=PydanticObjectId(user_id),
                 amount=amount,
                 transaction_type=transaction_type,
+                balance_before=old_balance,
                 balance_after=user.credits_balance,
                 description=description,
                 metadata=transaction_metadata,
