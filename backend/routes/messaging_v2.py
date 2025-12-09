@@ -8,7 +8,7 @@ from backend.models.user import User
 from backend.models.message_v2 import MessageV2, MessageType, MessageStatus
 from backend.services.messaging_v2 import get_messaging_service_v2, MessagingServiceV2
 from backend.services.token_utils import verify_token
-from backend.routes.profiles import get_current_user
+from backend.routes.auth import get_current_user
 
 logger = logging.getLogger('routes.messaging_v2')
 
