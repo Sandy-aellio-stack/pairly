@@ -1,309 +1,217 @@
-"""Credits Service - All credit operations with transaction safety."""
-
-from typing import Optional, Dict, Any
-from datetime import datetime
-from beanie import PydanticObjectId
-from motor.motor_asyncio import AsyncIOMotorClient
-from fastapi import HTTPException
-
+import logging
+from datetime import datetime, timezone
+from typing import Optional
 from backend.models.user import User
-from backend.models.credits_transaction import (
-    CreditsTransaction,
-    TransactionType,
-    TransactionStatus
-)
+from backend.models.credits_transaction import CreditsTransaction
+from backend.models.profile import Profile
+from beanie import PydanticObjectId
 
-
-class InsufficientCreditsError(Exception):
-    """Raised when user doesn't have enough credits."""
-    pass
-
-
-class DuplicateTransactionError(Exception):
-    """Raised when idempotency key already exists."""
-    pass
+logger = logging.getLogger('service.credits')
 
 
 class CreditsService:
-    """Service for managing credit transactions with ACID guarantees."""
+    """Centralized credits management service"""
     
     @staticmethod
     async def add_credits(
         user_id: PydanticObjectId,
         amount: int,
-        transaction_type: TransactionType,
         description: str,
-        idempotency_key: Optional[str] = None,
-        payment_provider: Optional[str] = None,
-        payment_id: Optional[str] = None,
-        payment_amount_cents: Optional[int] = None,
-        payment_currency: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
-    ) -> CreditsTransaction:
-        """
-        Add credits to user account.
-        
-        Args:
-            user_id: User ID
-            amount: Number of credits to add (must be positive)
-            transaction_type: Type of transaction
-            description: Human-readable description
-            idempotency_key: Optional key to prevent duplicate transactions
-            payment_provider: Payment provider (stripe, razorpay)
-            payment_id: Payment transaction ID from provider
-            payment_amount_cents: Amount paid in cents
-            payment_currency: Currency code (USD, INR)
-            metadata: Additional metadata
-        
-        Returns:
-            CreditsTransaction object
-        
-        Raises:
-            DuplicateTransactionError: If idempotency_key already exists
-        """
-        if amount <= 0:
-            raise ValueError("Amount must be positive")
-        
-        # Check idempotency
-        if idempotency_key:
-            existing = await CreditsTransaction.find_one(
-                CreditsTransaction.idempotency_key == idempotency_key
+        transaction_type: str = "purchase",
+        metadata: Optional[dict] = None
+    ) -> bool:
+        """Add credits to user account with transaction logging"""
+        try:
+            user = await User.get(user_id)
+            if not user:
+                logger.error(f"User not found: {user_id}")
+                return False
+            
+            # Update balance
+            old_balance = user.credits_balance
+            user.credits_balance += amount
+            await user.save()
+            
+            # Log transaction
+            transaction = CreditsTransaction(
+                user_id=user_id,
+                amount=amount,
+                transaction_type=transaction_type,
+                balance_after=user.credits_balance,
+                description=description,
+                metadata=metadata or {},
+                created_at=datetime.now(timezone.utc)
             )
-            if existing:
-                raise DuplicateTransactionError(f"Transaction with key {idempotency_key} already exists")
-        
-        # Use MongoDB transaction for atomicity
-        client: AsyncIOMotorClient = User.get_motor_client()
-        async with await client.start_session() as session:
-            async with session.start_transaction():
-                # Get user with lock
-                user = await User.get(user_id, session=session)
-                if not user:
-                    raise HTTPException(404, "User not found")
-                
-                balance_before = user.credits_balance
-                balance_after = balance_before + amount
-                
-                # Update user balance
-                user.credits_balance = balance_after
-                user.updated_at = datetime.utcnow()
-                await user.save(session=session)
-                
-                # Create transaction record
-                tx = CreditsTransaction(
-                    user_id=user_id,
-                    amount=amount,
-                    transaction_type=transaction_type,
-                    status=TransactionStatus.COMPLETED,
-                    balance_before=balance_before,
-                    balance_after=balance_after,
-                    description=description,
-                    idempotency_key=idempotency_key,
-                    payment_provider=payment_provider,
-                    payment_id=payment_id,
-                    payment_amount_cents=payment_amount_cents,
-                    payment_currency=payment_currency,
-                    metadata=metadata,
-                    created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow()
-                )
-                await tx.insert(session=session)
-                
-                return tx
+            await transaction.insert()
+            
+            logger.info(
+                f"Credits added",
+                extra={
+                    "event": "credits_added",
+                    "user_id": str(user_id),
+                    "amount": amount,
+                    "old_balance": old_balance,
+                    "new_balance": user.credits_balance,
+                    "transaction_type": transaction_type
+                }
+            )
+            
+            return True
+        except Exception as e:
+            logger.error(f"Error adding credits: {e}", exc_info=True)
+            return False
     
     @staticmethod
-    async def spend_credits(
+    async def deduct_credits(
         user_id: PydanticObjectId,
         amount: int,
-        transaction_type: TransactionType,
         description: str,
-        idempotency_key: Optional[str] = None,
-        related_user_id: Optional[PydanticObjectId] = None,
-        related_entity_type: Optional[str] = None,
-        related_entity_id: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
-    ) -> CreditsTransaction:
-        """
-        Spend credits from user account.
-        
-        Args:
-            user_id: User ID
-            amount: Number of credits to spend (must be positive)
-            transaction_type: Type of transaction
-            description: Human-readable description
-            idempotency_key: Optional key to prevent duplicate transactions
-            related_user_id: User receiving credits (e.g., creator)
-            related_entity_type: Type of entity (message, post, call)
-            related_entity_id: ID of related entity
-            metadata: Additional metadata
-        
-        Returns:
-            CreditsTransaction object
-        
-        Raises:
-            InsufficientCreditsError: If user doesn't have enough credits
-            DuplicateTransactionError: If idempotency_key already exists
-        """
-        if amount <= 0:
-            raise ValueError("Amount must be positive")
-        
-        # Check idempotency
-        if idempotency_key:
-            existing = await CreditsTransaction.find_one(
-                CreditsTransaction.idempotency_key == idempotency_key
-            )
-            if existing:
-                raise DuplicateTransactionError(f"Transaction with key {idempotency_key} already exists")
-        
-        # Use MongoDB transaction for atomicity
-        client: AsyncIOMotorClient = User.get_motor_client()
-        async with await client.start_session() as session:
-            async with session.start_transaction():
-                # Get user with lock
-                user = await User.get(user_id, session=session)
-                if not user:
-                    raise HTTPException(404, "User not found")
-                
-                balance_before = user.credits_balance
-                balance_after = balance_before - amount
-                
-                # Check sufficient balance
-                if balance_after < 0:
-                    raise InsufficientCreditsError(f"Insufficient credits. Required: {amount}, Available: {balance_before}")
-                
-                # Update user balance
-                user.credits_balance = balance_after
-                user.updated_at = datetime.utcnow()
-                await user.save(session=session)
-                
-                # Create transaction record (negative amount)
-                tx = CreditsTransaction(
-                    user_id=user_id,
-                    amount=-amount,  # Negative for spending
-                    transaction_type=transaction_type,
-                    status=TransactionStatus.COMPLETED,
-                    balance_before=balance_before,
-                    balance_after=balance_after,
-                    description=description,
-                    idempotency_key=idempotency_key,
-                    related_user_id=related_user_id,
-                    related_entity_type=related_entity_type,
-                    related_entity_id=related_entity_id,
-                    metadata=metadata,
-                    created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow()
+        transaction_type: str = "spend",
+        metadata: Optional[dict] = None
+    ) -> bool:
+        """Deduct credits from user account with transaction logging"""
+        try:
+            user = await User.get(user_id)
+            if not user:
+                logger.error(f"User not found: {user_id}")
+                return False
+            
+            # Check sufficient balance
+            if user.credits_balance < amount:
+                logger.warning(
+                    "Insufficient credits",
+                    extra={
+                        "event": "insufficient_credits",
+                        "user_id": str(user_id),
+                        "required": amount,
+                        "available": user.credits_balance
+                    }
                 )
-                await tx.insert(session=session)
-                
-                return tx
+                return False
+            
+            # Update balance
+            old_balance = user.credits_balance
+            user.credits_balance -= amount
+            await user.save()
+            
+            # Log transaction
+            transaction = CreditsTransaction(
+                user_id=user_id,
+                amount=-amount,
+                transaction_type=transaction_type,
+                balance_after=user.credits_balance,
+                description=description,
+                metadata=metadata or {},
+                created_at=datetime.now(timezone.utc)
+            )
+            await transaction.insert()
+            
+            logger.info(
+                "Credits deducted",
+                extra={
+                    "event": "credits_deducted",
+                    "user_id": str(user_id),
+                    "amount": amount,
+                    "old_balance": old_balance,
+                    "new_balance": user.credits_balance,
+                    "transaction_type": transaction_type
+                }
+            )
+            
+            return True
+        except Exception as e:
+            logger.error(f"Error deducting credits: {e}", exc_info=True)
+            return False
     
     @staticmethod
-    async def refund_credits(
-        original_transaction_id: str,
-        reason: str,
-        idempotency_key: Optional[str] = None
-    ) -> CreditsTransaction:
-        """
-        Refund a previous transaction.
+    async def transfer_credits(
+        from_user_id: PydanticObjectId,
+        to_user_id: PydanticObjectId,
+        amount: int,
+        description: str
+    ) -> bool:
+        """Transfer credits between users"""
+        # Deduct from sender
+        success = await CreditsService.deduct_credits(
+            from_user_id,
+            amount,
+            f"Transfer to {to_user_id}: {description}",
+            "transfer_out",
+            {"to_user_id": str(to_user_id)}
+        )
         
-        Args:
-            original_transaction_id: ID of transaction to refund
-            reason: Reason for refund
-            idempotency_key: Optional key to prevent duplicate refunds
+        if not success:
+            return False
         
-        Returns:
-            CreditsTransaction object (refund)
+        # Add to recipient
+        success = await CreditsService.add_credits(
+            to_user_id,
+            amount,
+            f"Transfer from {from_user_id}: {description}",
+            "transfer_in",
+            {"from_user_id": str(from_user_id)}
+        )
         
-        Raises:
-            HTTPException: If original transaction not found or already refunded
-        """
-        # Check idempotency
-        if idempotency_key:
-            existing = await CreditsTransaction.find_one(
-                CreditsTransaction.idempotency_key == idempotency_key
+        if not success:
+            # Rollback - add back to sender
+            await CreditsService.add_credits(
+                from_user_id,
+                amount,
+                "Transfer rollback",
+                "refund"
             )
-            if existing:
-                raise DuplicateTransactionError(f"Refund with key {idempotency_key} already exists")
+            return False
         
-        # Get original transaction
-        original_tx = await CreditsTransaction.get(original_transaction_id)
-        if not original_tx:
-            raise HTTPException(404, "Original transaction not found")
+        return True
+    
+    @staticmethod
+    async def charge_for_message(
+        sender_id: PydanticObjectId,
+        recipient_id: PydanticObjectId
+    ) -> bool:
+        """Charge credits for sending a message"""
+        # Get recipient's profile to check pricing
+        recipient_profile = await Profile.find_one(Profile.user_id == recipient_id)
         
-        if original_tx.status == TransactionStatus.REVERSED:
-            raise HTTPException(400, "Transaction already refunded")
+        if not recipient_profile or recipient_profile.price_per_message == 0:
+            return True  # Free message
         
-        # Calculate refund amount (reverse the original)
-        refund_amount = -original_tx.amount
+        price = recipient_profile.price_per_message
         
-        # Use MongoDB transaction
-        client: AsyncIOMotorClient = User.get_motor_client()
-        async with await client.start_session() as session:
-            async with session.start_transaction():
-                # Get user with lock
-                user = await User.get(original_tx.user_id, session=session)
-                if not user:
-                    raise HTTPException(404, "User not found")
-                
-                balance_before = user.credits_balance
-                balance_after = balance_before + refund_amount
-                
-                # Update user balance
-                user.credits_balance = balance_after
-                user.updated_at = datetime.utcnow()
-                await user.save(session=session)
-                
-                # Mark original transaction as reversed
-                original_tx.status = TransactionStatus.REVERSED
-                original_tx.updated_at = datetime.utcnow()
-                await original_tx.save(session=session)
-                
-                # Create refund transaction
-                refund_tx = CreditsTransaction(
-                    user_id=original_tx.user_id,
-                    amount=refund_amount,
-                    transaction_type=TransactionType.REFUND,
-                    status=TransactionStatus.COMPLETED,
-                    balance_before=balance_before,
-                    balance_after=balance_after,
-                    description=f"Refund: {reason}",
-                    idempotency_key=idempotency_key,
-                    related_entity_type="transaction",
-                    related_entity_id=str(original_tx.id),
-                    metadata={"original_tx_id": str(original_tx.id), "reason": reason},
-                    created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow()
-                )
-                await refund_tx.insert(session=session)
-                
-                return refund_tx
+        # Deduct from sender
+        success = await CreditsService.deduct_credits(
+            sender_id,
+            price,
+            f"Message to {recipient_id}",
+            "message",
+            {"recipient_id": str(recipient_id)}
+        )
+        
+        if not success:
+            return False
+        
+        # Add to recipient
+        await CreditsService.add_credits(
+            recipient_id,
+            price,
+            f"Message earnings from {sender_id}",
+            "message_earnings",
+            {"sender_id": str(sender_id)}
+        )
+        
+        return True
     
     @staticmethod
     async def get_balance(user_id: PydanticObjectId) -> int:
-        """Get current credit balance for user."""
+        """Get user's credit balance"""
         user = await User.get(user_id)
-        if not user:
-            raise HTTPException(404, "User not found")
-        return user.credits_balance
+        return user.credits_balance if user else 0
     
     @staticmethod
-    async def get_transaction_history(
-        user_id: PydanticObjectId,
-        limit: int = 50,
-        skip: int = 0,
-        transaction_type: Optional[TransactionType] = None
-    ):
-        """Get credit transaction history for user."""
-        query = {"user_id": user_id}
-        if transaction_type:
-            query["transaction_type"] = transaction_type
+    async def get_transactions(user_id: PydanticObjectId, limit: int = 50):
+        """Get user's transaction history"""
+        transactions = await CreditsTransaction.find(
+            CreditsTransaction.user_id == user_id
+        ).sort("-created_at").limit(limit).to_list()
         
-        transactions = await CreditsTransaction.find(query).sort("-created_at").skip(skip).limit(limit).to_list()
-        total = await CreditsTransaction.find(query).count()
-        
-        return {
-            "transactions": transactions,
-            "total": total,
-            "limit": limit,
-            "skip": skip
-        }
+        return transactions
