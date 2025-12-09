@@ -394,6 +394,17 @@ class PaymentManager:
                 idempotency_key=f"payment_refund_{payment_intent.id}"
             )
             
+            # Record refund in financial ledger (Phase 8.4)
+            try:
+                ledger_entry = await self.ledger_service.record_refund(
+                    payment_intent_id=payment_intent.id,
+                    user_id=payment_intent.user_id,
+                    credits_amount=payment_intent.credits_amount
+                )
+                logger.info(f\"Refund ledger entry created: {ledger_entry.id}\")
+            except Exception as ledger_error:
+                logger.error(f\"Failed to create refund ledger entry: {ledger_error}\", exc_info=True)
+            
             # Update payment intent
             payment_intent.credits_refunded = True
             payment_intent.refund_transaction_id = refund_transaction_id
