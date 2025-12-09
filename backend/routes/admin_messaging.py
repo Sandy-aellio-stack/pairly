@@ -27,7 +27,6 @@ class MessageSearchResponse(BaseModel):
     created_at: str
 
 @router.get("/search")
-@require_permission("moderation.view")
 async def search_messages(
     user_id: Optional[str] = Query(None, description="Filter by user (sender or receiver)"),
     sender_id: Optional[str] = Query(None, description="Filter by sender"),
@@ -35,7 +34,7 @@ async def search_messages(
     moderation_status: Optional[ModerationStatus] = Query(None),
     limit: int = Query(50, le=200),
     skip: int = Query(0, ge=0),
-    admin: User = Depends(require_permission("moderation.view"))
+    admin: User = Depends(AdminRBACService.require_permission("moderation.view"))
 ):
     """
     Search and filter messages (admin only)
