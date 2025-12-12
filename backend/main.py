@@ -39,6 +39,8 @@ from backend.middleware.rate_limiter import RateLimiterMiddleware
 from backend.middleware.content_moderation import ContentModerationMiddleware
 from backend.middleware.request_logger import RequestLoggerMiddleware
 from backend.middleware.security_headers import SecurityHeadersMiddleware
+from backend.middleware.error_handler import http_error_handler
+from backend.middleware.validation_middleware import validation_middleware
 from backend.core.redis_client import redis_client
 from backend.core.logging_config import LoggingConfig
 from backend.core.security_validator import SecurityValidator
