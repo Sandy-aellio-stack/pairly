@@ -12,7 +12,7 @@ from typing import Dict, Any, Optional, List
 import secrets
 
 # Configuration
-BACKEND_URL = "https://pairly-comms.preview.emergentagent.com/api"
+BACKEND_URL = "https://pairly-intro.preview.emergentagent.com/api"
 
 class MessagingV2Tester:
     def __init__(self):

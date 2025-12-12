@@ -14,7 +14,7 @@ from typing import Dict, Any, Optional
 import uuid
 
 # Configuration
-BACKEND_URL = "https://pairly-comms.preview.emergentagent.com/api"
+BACKEND_URL = "https://pairly-intro.preview.emergentagent.com/api"
 
 class Phase7Tester:
     def __init__(self):
@@ -129,7 +129,7 @@ class Phase7Tester:
         """Test CORS configuration"""
         try:
             # Test with allowed origin
-            headers = {"Origin": "https://pairly-comms.preview.emergentagent.com"}
+            headers = {"Origin": "https://pairly-intro.preview.emergentagent.com"}
             response = self.session.options(f"{BACKEND_URL}/health", headers=headers)
             
             if 'Access-Control-Allow-Origin' in response.headers:
