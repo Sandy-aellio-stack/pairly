@@ -28,7 +28,8 @@ from backend.routes import (
     calls,
     matchmaking,
     presence,  # Phase 11: Presence Engine V2
-    analytics  # Phase 12: Analytics & Insights
+    analytics,  # Phase 12: Analytics & Insights
+    notifications  # Phase 13: Notification Engine
 )
 from backend.admin.routes import admin_payouts
 from backend.routes import admin_security_enhanced, admin_analytics_enhanced, admin_users
@@ -158,6 +159,7 @@ app.include_router(calls.router)
 app.include_router(matchmaking.router)
 app.include_router(presence.router)  # Phase 11: Presence Engine V2
 app.include_router(analytics.router)  # Phase 12: Analytics & Insights
+app.include_router(notifications.router)  # Phase 13: Notification Engine
 
 @app.get("/api")
 async def root():
