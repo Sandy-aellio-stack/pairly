@@ -155,6 +155,7 @@ app.include_router(admin_calling.router)  # Phase 10: Admin calling tools
 app.include_router(compliance.router)
 app.include_router(calls.router)
 app.include_router(matchmaking.router)
+app.include_router(presence.router)  # Phase 11: Presence Engine V2
 
 @app.get("/api")
 async def root():
