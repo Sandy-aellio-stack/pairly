@@ -13,8 +13,8 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
 
 # Configuration
-BACKEND_URL = "https://pairly-comms.preview.emergentagent.com/api"
-WEBHOOK_BASE_URL = "https://pairly-comms.preview.emergentagent.com/api/webhooks"
+BACKEND_URL = "https://creator-platform-46.preview.emergentagent.com/api"
+WEBHOOK_BASE_URL = "https://creator-platform-46.preview.emergentagent.com/api/webhooks"
 
 class SubscriptionTester:
     def __init__(self):

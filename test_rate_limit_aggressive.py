@@ -7,7 +7,7 @@ import requests
 import time
 from datetime import datetime
 
-BACKEND_URL = "https://pairly-comms.preview.emergentagent.com/api"
+BACKEND_URL = "https://creator-platform-46.preview.emergentagent.com/api"
 
 def test_aggressive_rate_limiting():
     """Test rate limiting with rapid requests"""

@@ -41,7 +41,7 @@
 ## Comprehensive Frontend Testing Results (December 12, 2024)
 
 ### Test Environment
-- **URL**: https://pairly-comms.preview.emergentagent.com
+- **URL**: https://creator-platform-46.preview.emergentagent.com
 - **Testing Agent**: Testing Agent
 - **Browser**: Playwright (Desktop: 1920x1080, Mobile: 390x844)
 - **Test Date**: December 12, 2024
