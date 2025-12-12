@@ -14,6 +14,7 @@ import Creators from '@/pages/Creators';
 import Login from '@/pages/auth/Login';
 import Signup from '@/pages/auth/Signup';
 import TwoFA from '@/pages/auth/TwoFA';
+import IntroSlides from '@/pages/auth/IntroSlides';
 
 // User Pages
 import Home from '@/pages/Home';
