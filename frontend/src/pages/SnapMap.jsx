@@ -245,7 +245,7 @@ const SnapMap = () => {
                 <Circle
                   center={[userLocation.lat, userLocation.lng]}
                   radius={100}
-                  pathOptions={{ color: '#f59e0b', fillColor: '#fef3c7', fillOpacity: 0.3 }}
+                  pathOptions={{ color: '#7c3aed', fillColor: '#ede9fe', fillOpacity: 0.3 }}
                 />
                 <Marker
                   position={[userLocation.lat, userLocation.lng]}
