@@ -1,0 +1,29 @@
+version: "3.8"
+services:
+  web:
+    build: .
+    env_file: .env
+    ports:
+      - "8001:8000"
+    depends_on:
+      - mongo
+      - redis
+  mongo:
+    image: mongo:6.0
+    command: ["--replSet", "rs0"]
+    volumes:
+      - mongo_data:/data/db
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+  celery:
+    build: .
+    command: ["celery","-A","backend.celery_app","worker","-l","info"]
+    env_file: .env
+    depends_on:
+      - redis
+      - web
+
+volumes:
+  mongo_data:
