@@ -94,6 +94,12 @@ app.add_middleware(
 # Content Moderation Middleware
 app.add_middleware(ContentModerationMiddleware)
 
+# Validation Middleware (Phase 14)
+app.middleware("http")(validation_middleware)
+
+# Global Exception Handler (Phase 14)
+app.add_exception_handler(Exception, http_error_handler)
+
 @app.on_event("startup")
 async def startup_event():
     logger.info(f"Starting Pairly API - Environment: {settings.ENVIRONMENT}")
