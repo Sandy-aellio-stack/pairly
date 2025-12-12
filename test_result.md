@@ -83,6 +83,20 @@
 - **Form Fields**: Email and password fields with proper icons
 - **Social Login**: Google and GitHub buttons present
 - **Design**: Consistent with overall app theme
+- **Animated Background**: ✅ NEW - 5 images cycling with cross-fade transitions
+- **Parallax Effect**: ✅ NEW - Background moves with mouse cursor
+- **Gradient Overlay**: ✅ NEW - Keeps form readable
+
+#### 4a. Intro Slides (/intro) - NEW FEATURE
+- **Status**: ✅ FULLY WORKING
+- **5 Full-Screen Images**: Each displayed with fade-in and slide-up effects
+- **Background Gradients**: Match dominant colors of each image
+- **Soft Glow Effect**: Shadow behind artwork
+- **Navigation**: Scroll/swipe/keyboard navigation working
+- **Skip Button**: Allows users to skip to login
+- **Progress Indicators**: Show current slide position
+- **Auto Transition**: After 5th slide, automatically navigates to login
+- **Mobile Responsive**: ✅ Works on mobile devices
 
 #### 5. General UI & Responsiveness
 - **Desktop View**: ✅ WORKING (1920x1080)
