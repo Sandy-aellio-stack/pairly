@@ -6,9 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import {
   Heart, MessageSquare, Share2, Bookmark, MoreHorizontal,
@@ -22,10 +19,7 @@ const Home = () => {
   const navigate = useNavigate();
   const [posts, setPosts] = useState([]);
   const [stories, setStories] = useState([]);
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [newPost, setNewPost] = useState({ content: '', media: null });
-  const [loading, setLoading] = useState(false);
-  const fileInputRef = useRef(null);
+  const [loading, setLoading] = useState(true);
 
   // Mock data for demonstration
   useEffect(() => {
@@ -75,6 +69,7 @@ const Home = () => {
         saved: true,
       },
     ]);
+    setLoading(false);
   }, [user]);
 
   const handleLike = (postId) => {
@@ -91,58 +86,34 @@ const Home = () => {
         ? { ...post, saved: !post.saved }
         : post
     ));
+    toast.success('Post saved!');
   };
 
-  const handleCreatePost = async () => {
-    if (!newPost.content.trim()) {
-      toast.error('Please add some content');
-      return;
-    }
-    
-    setLoading(true);
-    try {
-      // Mock post creation
-      const newPostData = {
-        id: Date.now(),
-        author: { name: user?.name || 'You', username: user?.email?.split('@')[0] || 'user', avatar: 'https://i.pravatar.cc/100?img=1', isCreator: user?.role === 'creator', verified: false },
-        content: newPost.content,
-        media: newPost.media,
-        likes: 0,
-        comments: 0,
-        timestamp: 'Just now',
-        liked: false,
-        saved: false,
-      };
-      setPosts([newPostData, ...posts]);
-      setNewPost({ content: '', media: null });
-      setIsCreateOpen(false);
-      toast.success('Post created!');
-    } catch (error) {
-      toast.error('Failed to create post');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      const type = file.type.startsWith('video/') ? 'video' : 'image';
-      setNewPost({ ...newPost, media: { type, url } });
-    }
-  };
+  if (loading) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center h-[70vh]">
+          <div className="text-center">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center mx-auto mb-4 animate-pulse">
+              <Heart className="h-8 w-8 text-white" />
+            </div>
+            <p className="text-slate-600">Loading your feed...</p>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Stories Section */}
-        <Card className="overflow-hidden">
+        <Card className="overflow-hidden border-slate-200">
           <CardContent className="p-4">
             <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
               {stories.map((story) => (
                 <div key={story.id} className="flex flex-col items-center gap-1 flex-shrink-0 cursor-pointer">
-                  <div className={`relative p-0.5 rounded-full ${story.hasNew ? 'bg-gradient-to-br from-amber-500 via-pink-500 to-purple-500' : story.isOwn ? 'bg-gray-200' : 'bg-gray-300'}`}>
+                  <div className={`relative p-0.5 rounded-full ${story.hasNew ? 'bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-500' : story.isOwn ? 'bg-slate-200' : 'bg-slate-300'}`}>
                     <div className="bg-white p-0.5 rounded-full">
                       <Avatar className="h-16 w-16">
                         <AvatarImage src={story.image} />
@@ -150,126 +121,42 @@ const Home = () => {
                       </Avatar>
                     </div>
                     {story.isOwn && (
-                      <div className="absolute bottom-0 right-0 bg-gradient-to-r from-amber-500 to-pink-500 rounded-full p-1">
+                      <div className="absolute bottom-0 right-0 bg-gradient-to-r from-violet-600 to-fuchsia-600 rounded-full p-1">
                         <Plus className="h-3 w-3 text-white" />
                       </div>
                     )}
                   </div>
-                  <span className="text-xs font-medium truncate w-16 text-center">{story.name}</span>
+                  <span className="text-xs font-medium truncate w-16 text-center text-slate-700">{story.name}</span>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
 
-        {/* Create Post (Creators Only) */}
-        {user?.role === 'creator' && (
-          <Card className="bg-gradient-to-r from-amber-50 to-pink-50">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-4">
-                <Avatar>
-                  <AvatarImage src="https://i.pravatar.cc/100?img=1" />
-                  <AvatarFallback>{user?.name?.[0] || 'U'}</AvatarFallback>
-                </Avatar>
-                <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" className="flex-1 justify-start text-gray-500 rounded-full">
-                      What's on your mind?
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-lg">
-                    <DialogHeader>
-                      <DialogTitle>Create Post</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <Textarea
-                        placeholder="Share something with your fans..."
-                        value={newPost.content}
-                        onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
-                        className="min-h-32 resize-none"
-                      />
-                      {newPost.media && (
-                        <div className="relative">
-                          {newPost.media.type === 'image' ? (
-                            <img src={newPost.media.url} alt="Preview" className="w-full rounded-lg" />
-                          ) : (
-                            <video src={newPost.media.url} controls className="w-full rounded-lg" />
-                          )}
-                          <Button
-                            variant="destructive"
-                            size="icon"
-                            className="absolute top-2 right-2 h-8 w-8 rounded-full"
-                            onClick={() => setNewPost({ ...newPost, media: null })}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      )}
-                      <div className="flex items-center justify-between">
-                        <div className="flex gap-2">
-                          <input
-                            type="file"
-                            ref={fileInputRef}
-                            onChange={handleFileSelect}
-                            accept="image/*,video/*"
-                            className="hidden"
-                          />
-                          <Button variant="ghost" size="sm" onClick={() => fileInputRef.current?.click()}>
-                            <Image className="h-5 w-5 mr-1" />
-                            Photo
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => fileInputRef.current?.click()}>
-                            <Video className="h-5 w-5 mr-1" />
-                            Video
-                          </Button>
-                        </div>
-                        <Button
-                          onClick={handleCreatePost}
-                          disabled={loading || !newPost.content.trim()}
-                          className="bg-gradient-to-r from-amber-500 to-pink-500 hover:from-amber-600 hover:to-pink-600"
-                        >
-                          {loading ? 'Posting...' : 'Post'}
-                        </Button>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-                <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="icon" className="bg-gradient-to-r from-amber-500 to-pink-500 hover:from-amber-600 hover:to-pink-600 rounded-full">
-                      <Camera className="h-5 w-5" />
-                    </Button>
-                  </DialogTrigger>
-                </Dialog>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         {/* Quick Actions */}
         <div className="flex gap-3">
           <Button
             variant="outline"
-            className="flex-1 rounded-full"
+            className="flex-1 rounded-full border-slate-300 text-slate-700 hover:bg-violet-50 hover:border-violet-300"
             onClick={() => navigate('/map')}
           >
-            <Globe className="h-4 w-4 mr-2" />
+            <Globe className="h-4 w-4 mr-2 text-violet-600" />
             Snap Map
           </Button>
           <Button
             variant="outline"
-            className="flex-1 rounded-full"
+            className="flex-1 rounded-full border-slate-300 text-slate-700 hover:bg-fuchsia-50 hover:border-fuchsia-300"
             onClick={() => navigate('/discovery')}
           >
-            <Users className="h-4 w-4 mr-2" />
+            <Users className="h-4 w-4 mr-2 text-fuchsia-600" />
             Discover
           </Button>
           <Button
             variant="outline"
-            className="flex-1 rounded-full"
+            className="flex-1 rounded-full border-slate-300 text-slate-700 hover:bg-pink-50 hover:border-pink-300"
             onClick={() => navigate('/messages')}
           >
-            <MessageSquare className="h-4 w-4 mr-2" />
+            <MessageSquare className="h-4 w-4 mr-2 text-pink-600" />
             Messages
           </Button>
         </div>
@@ -277,39 +164,39 @@ const Home = () => {
         {/* Feed */}
         <div className="space-y-6">
           {posts.map((post) => (
-            <Card key={post.id} className="overflow-hidden">
+            <Card key={post.id} className="overflow-hidden border-slate-200">
               <CardContent className="p-0">
                 {/* Post Header */}
                 <div className="flex items-center justify-between p-4">
                   <div className="flex items-center gap-3">
-                    <Avatar>
+                    <Avatar className="border-2 border-violet-100">
                       <AvatarImage src={post.author.avatar} />
                       <AvatarFallback>{post.author.name[0]}</AvatarFallback>
                     </Avatar>
                     <div>
                       <div className="flex items-center gap-1">
-                        <span className="font-semibold">{post.author.name}</span>
+                        <span className="font-semibold text-slate-900">{post.author.name}</span>
                         {post.author.verified && (
                           <svg className="h-4 w-4 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
                           </svg>
                         )}
                         {post.author.isCreator && (
-                          <Badge className="ml-1 bg-gradient-to-r from-amber-500 to-pink-500 text-xs py-0">
+                          <Badge className="ml-1 bg-gradient-to-r from-fuchsia-500 to-pink-500 text-xs py-0">
                             Creator
                           </Badge>
                         )}
                       </div>
-                      <span className="text-xs text-gray-500">{post.timestamp}</span>
+                      <span className="text-xs text-slate-500">{post.timestamp}</span>
                     </div>
                   </div>
-                  <Button variant="ghost" size="icon">
+                  <Button variant="ghost" size="icon" className="text-slate-500">
                     <MoreHorizontal className="h-5 w-5" />
                   </Button>
                 </div>
 
                 {/* Post Content */}
-                <p className="px-4 pb-3">{post.content}</p>
+                <p className="px-4 pb-3 text-slate-800">{post.content}</p>
 
                 {/* Post Media */}
                 {post.media && (
@@ -324,7 +211,7 @@ const Home = () => {
                       <div className="relative">
                         <video src={post.media.url} className="w-full aspect-video object-cover" />
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="bg-black/50 rounded-full p-4">
+                          <div className="bg-slate-900/50 rounded-full p-4">
                             <Play className="h-8 w-8 text-white" />
                           </div>
                         </div>
@@ -340,23 +227,24 @@ const Home = () => {
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className={`gap-1 ${post.liked ? 'text-red-500' : ''}`}
+                        className={`gap-1 ${post.liked ? 'text-fuchsia-600' : 'text-slate-600'}`}
                         onClick={() => handleLike(post.id)}
                       >
                         <Heart className={`h-5 w-5 ${post.liked ? 'fill-current' : ''}`} />
                         {post.likes}
                       </Button>
-                      <Button variant="ghost" size="sm" className="gap-1">
+                      <Button variant="ghost" size="sm" className="gap-1 text-slate-600">
                         <MessageSquare className="h-5 w-5" />
                         {post.comments}
                       </Button>
-                      <Button variant="ghost" size="sm">
+                      <Button variant="ghost" size="sm" className="text-slate-600">
                         <Share2 className="h-5 w-5" />
                       </Button>
                     </div>
                     <Button 
                       variant="ghost" 
                       size="sm"
+                      className={post.saved ? 'text-violet-600' : 'text-slate-600'}
                       onClick={() => handleSave(post.id)}
                     >
                       <Bookmark className={`h-5 w-5 ${post.saved ? 'fill-current' : ''}`} />
@@ -366,6 +254,13 @@ const Home = () => {
               </CardContent>
             </Card>
           ))}
+        </div>
+
+        {/* Load More */}
+        <div className="text-center pb-20 md:pb-8">
+          <Button variant="outline" className="rounded-full border-slate-300">
+            Load more posts
+          </Button>
         </div>
       </div>
     </MainLayout>
