@@ -94,6 +94,7 @@ const AppRoutes = () => {
       <Route path="/creators" element={<Creators />} />
 
       {/* Auth Routes */}
+      <Route path="/intro" element={<IntroSlides />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/2fa" element={<TwoFA />} />
