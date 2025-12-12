@@ -14,7 +14,6 @@ import Creators from '@/pages/Creators';
 import Login from '@/pages/auth/Login';
 import Signup from '@/pages/auth/Signup';
 import TwoFA from '@/pages/auth/TwoFA';
-import IntroSlides from '@/pages/auth/IntroSlides';
 
 // User Pages
 import Home from '@/pages/Home';
@@ -94,7 +93,6 @@ const AppRoutes = () => {
       <Route path="/creators" element={<Creators />} />
 
       {/* Auth Routes */}
-      <Route path="/intro" element={<IntroSlides />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/2fa" element={<TwoFA />} />
