@@ -211,13 +211,13 @@ const SnapMap = () => {
     <MainLayout>
       <div className="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6">
         {/* Header */}
-        <div className="bg-white border-b px-4 py-3 flex items-center justify-between sticky top-0 z-[1001]">
+        <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-[1001]">
           <div className="flex items-center gap-2">
-            <Globe className="h-6 w-6 text-amber-500" />
-            <h1 className="text-xl font-bold">Snap Map</h1>
+            <Globe className="h-6 w-6 text-violet-600" />
+            <h1 className="text-xl font-bold text-slate-900">Snap Map</h1>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="gap-1">
+            <Badge variant="outline" className="gap-1 border-slate-300">
               <Users className="h-3 w-3" />
               {nearbyUsers.filter(u => u.isOnline).length} nearby
             </Badge>
