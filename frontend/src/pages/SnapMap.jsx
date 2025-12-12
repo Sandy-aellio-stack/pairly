@@ -351,13 +351,13 @@ const SnapMap = () => {
                 <p className="text-gray-600 mt-2">{selectedUser.bio}</p>
                 <div className="flex gap-3 mt-4">
                   <Button
-                    className="flex-1 bg-gradient-to-r from-amber-500 to-pink-500 hover:from-amber-600 hover:to-pink-600"
+                    className="flex-1 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700"
                     onClick={handleInteract}
                   >
                     <MessageSquare className="h-4 w-4 mr-2" />
                     Message
                   </Button>
-                  <Button variant="outline" className="flex-1" onClick={() => navigate(`/profile/${selectedUser.id}`)}>
+                  <Button variant="outline" className="flex-1 border-slate-300" onClick={() => navigate(`/profile/${selectedUser.id}`)}>
                     View Profile
                   </Button>
                 </div>
