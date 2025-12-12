@@ -26,7 +26,8 @@ from backend.routes import (
     webhooks,
     compliance,
     calls,
-    matchmaking
+    matchmaking,
+    presence  # Phase 11: Presence Engine V2
 )
 from backend.admin.routes import admin_payouts
 from backend.routes import admin_security_enhanced, admin_analytics_enhanced, admin_users
