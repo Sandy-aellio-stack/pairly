@@ -181,9 +181,9 @@ const Discovery = () => {
       <div className="max-w-lg mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold">Discover</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Discover</h1>
           <div className="flex gap-2">
-            <Button variant="outline" size="icon" className="rounded-full">
+            <Button variant="outline" size="icon" className="rounded-full border-slate-300">
               <Filter className="h-4 w-4" />
             </Button>
           </div>
@@ -192,13 +192,13 @@ const Discovery = () => {
         {/* Card */}
         <div className="relative">
           <Card 
-            className={`overflow-hidden shadow-2xl transition-transform duration-300 ${
+            className={`overflow-hidden shadow-2xl transition-transform duration-300 border-slate-200 ${
               swipeDirection === 'left' ? '-translate-x-full rotate-[-20deg] opacity-0' :
               swipeDirection === 'right' ? 'translate-x-full rotate-[20deg] opacity-0' : ''
             }`}
           >
             {/* Profile Image */}
-            <div className="relative h-[500px] bg-gradient-to-br from-amber-100 to-pink-100">
+            <div className="relative h-[500px] bg-gradient-to-br from-violet-100 to-fuchsia-100">
               {currentProfile.profile_picture_url ? (
                 <img
                   src={currentProfile.profile_picture_url}
@@ -208,7 +208,7 @@ const Discovery = () => {
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <Avatar className="h-48 w-48">
-                    <AvatarFallback className="text-6xl bg-gradient-to-br from-amber-400 to-pink-500 text-white">
+                    <AvatarFallback className="text-6xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white">
                       {currentProfile.display_name?.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
@@ -216,7 +216,7 @@ const Discovery = () => {
               )}
               
               {/* Gradient Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent" />
               
               {/* Profile Info Overlay */}
               <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
@@ -231,7 +231,7 @@ const Discovery = () => {
                 </div>
                 
                 {currentProfile.isCreator && (
-                  <Badge className="mb-3 bg-gradient-to-r from-amber-500 to-pink-500 border-0">
+                  <Badge className="mb-3 bg-gradient-to-r from-fuchsia-500 to-pink-500 border-0">
                     <Sparkles className="h-3 w-3 mr-1" />
                     Creator
                   </Badge>
@@ -262,8 +262,8 @@ const Discovery = () => {
               {/* Price Badge */}
               {currentProfile.price_per_message > 0 && (
                 <div className="absolute top-4 right-4">
-                  <Badge className="bg-white/90 text-gray-800 shadow-lg">
-                    <Crown className="h-3 w-3 mr-1 text-amber-500" />
+                  <Badge className="bg-white/90 text-slate-800 shadow-lg">
+                    <Crown className="h-3 w-3 mr-1 text-violet-600" />
                     {currentProfile.price_per_message} credits/msg
                   </Badge>
                 </div>
@@ -277,7 +277,7 @@ const Discovery = () => {
               swipeDirection === 'left' ? 'left-8' : 'right-8'
             }`}>
               <div className={`text-6xl font-bold ${
-                swipeDirection === 'left' ? 'text-red-500' : 'text-green-500'
+                swipeDirection === 'left' ? 'text-red-500' : 'text-emerald-500'
               }`}>
                 {swipeDirection === 'left' ? 'NOPE' : 'LIKE'}
               </div>
@@ -307,7 +307,7 @@ const Discovery = () => {
           
           <Button
             size="lg"
-            className="rounded-full h-16 w-16 bg-gradient-to-r from-amber-500 to-pink-500 hover:from-amber-600 hover:to-pink-600 shadow-lg"
+            className="rounded-full h-16 w-16 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 shadow-lg shadow-fuchsia-500/25"
             onClick={handleLike}
           >
             <Heart className="h-8 w-8 text-white" />
@@ -316,33 +316,33 @@ const Discovery = () => {
           <Button
             size="lg"
             variant="outline"
-            className="rounded-full h-12 w-12 border-2 border-purple-200 hover:border-purple-400 hover:bg-purple-50"
+            className="rounded-full h-12 w-12 border-2 border-violet-200 hover:border-violet-400 hover:bg-violet-50"
             onClick={() => navigate('/buy-credits')}
           >
-            <Zap className="h-5 w-5 text-purple-500" />
+            <Zap className="h-5 w-5 text-violet-500" />
           </Button>
           
           <Button
             size="lg"
             variant="outline"
-            className="rounded-full h-14 w-14 border-2 border-green-200 hover:border-green-400 hover:bg-green-50"
+            className="rounded-full h-14 w-14 border-2 border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50"
             onClick={handleMessage}
           >
-            <MessageSquare className="h-7 w-7 text-green-500" />
+            <MessageSquare className="h-7 w-7 text-emerald-500" />
           </Button>
         </div>
 
         {/* Progress */}
-        <div className="flex justify-center items-center gap-2 mt-6">
+        <div className="flex justify-center items-center gap-2 mt-6 pb-20 md:pb-8">
           {profiles.map((_, i) => (
             <div 
               key={i} 
               className={`h-1 rounded-full transition-all ${
                 i === currentIndex 
-                  ? 'w-8 bg-gradient-to-r from-amber-500 to-pink-500' 
+                  ? 'w-8 bg-gradient-to-r from-violet-600 to-fuchsia-600' 
                   : i < currentIndex 
-                    ? 'w-4 bg-gray-300' 
-                    : 'w-4 bg-gray-200'
+                    ? 'w-4 bg-slate-300' 
+                    : 'w-4 bg-slate-200'
               }`}
             />
           ))}
