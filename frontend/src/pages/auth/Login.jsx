@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,14 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { Heart, Mail, Lock, ArrowRight } from 'lucide-react';
 
+const backgroundImages = [
+  'https://customer-assets.emergentagent.com/job_pairly-comms/artifacts/szubcfsh_0f9404175493827.64b512011929a.jpg',
+  'https://customer-assets.emergentagent.com/job_pairly-comms/artifacts/i7v9p713_3d3d2a175493827.64b51201182d8.jpg',
+  'https://customer-assets.emergentagent.com/job_pairly-comms/artifacts/m35haapv_21e4fe175493827.64b572b9e145b.jpg',
+  'https://customer-assets.emergentagent.com/job_pairly-comms/artifacts/vvcj2l4m_b99991175493827.64b512011a181.jpg',
+  'https://customer-assets.emergentagent.com/job_pairly-comms/artifacts/r4v2oh1b_ca35f1192469755.Y3JvcCwxNjgzLDEzMTYsMCww.jpg',
+];
+
 const Login = () => {
   const [formData, setFormData] = useState({
     email: '',
@@ -16,8 +24,43 @@ const Login = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [currentBgIndex, setCurrentBgIndex] = useState(0);
+  const [nextBgIndex, setNextBgIndex] = useState(1);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const containerRef = useRef(null);
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  // Background image rotation
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsTransitioning(true);
+      setTimeout(() => {
+        setCurrentBgIndex(nextBgIndex);
+        setNextBgIndex((nextBgIndex + 1) % backgroundImages.length);
+        setIsTransitioning(false);
+      }, 1000);
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [nextBgIndex]);
+
+  // Parallax effect on mouse move
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (containerRef.current) {
+        const { clientX, clientY } = e;
+        const { innerWidth, innerHeight } = window;
+        const x = (clientX / innerWidth - 0.5) * 20;
+        const y = (clientY / innerHeight - 0.5) * 20;
+        setMousePosition({ x, y });
+      }
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -45,22 +88,61 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-violet-50 to-fuchsia-50 flex flex-col">
+    <div ref={containerRef} className="min-h-screen relative overflow-hidden flex flex-col">
+      {/* Animated Background Images */}
+      <div className="absolute inset-0">
+        {/* Current background */}
+        <div
+          className="absolute inset-0 transition-opacity duration-1000"
+          style={{
+            opacity: isTransitioning ? 0 : 1,
+            transform: `translate(${mousePosition.x}px, ${mousePosition.y}px) scale(1.1)`,
+            transition: 'opacity 1s ease-in-out, transform 0.3s ease-out',
+          }}
+        >
+          <img
+            src={backgroundImages[currentBgIndex]}
+            alt="Background"
+            className="w-full h-full object-cover"
+          />
+        </div>
+        
+        {/* Next background (for crossfade) */}
+        <div
+          className="absolute inset-0 transition-opacity duration-1000"
+          style={{
+            opacity: isTransitioning ? 1 : 0,
+            transform: `translate(${mousePosition.x}px, ${mousePosition.y}px) scale(1.1)`,
+            transition: 'opacity 1s ease-in-out, transform 0.3s ease-out',
+          }}
+        >
+          <img
+            src={backgroundImages[nextBgIndex]}
+            alt="Background Next"
+            className="w-full h-full object-cover"
+          />
+        </div>
+
+        {/* Gradient overlay for readability */}
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-900/80 via-violet-900/60 to-fuchsia-900/70" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-transparent to-slate-900/40" />
+      </div>
+
       {/* Header */}
-      <div className="p-4">
+      <div className="relative z-10 p-4">
         <Link to="/" className="flex items-center gap-2 w-fit">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-violet-500/30">
             <Heart className="h-5 w-5 text-white" />
           </div>
-          <span className="text-2xl font-bold bg-gradient-to-r from-violet-600 to-fuchsia-600 bg-clip-text text-transparent">
+          <span className="text-2xl font-bold text-white drop-shadow-lg">
             Pairly
           </span>
         </Link>
       </div>
 
       {/* Login Form */}
-      <div className="flex-1 flex items-center justify-center px-4 py-8">
-        <Card className="w-full max-w-md shadow-xl border-slate-200">
+      <div className="relative z-10 flex-1 flex items-center justify-center px-4 py-8">
+        <Card className="w-full max-w-md shadow-2xl border-white/10 bg-white/95 backdrop-blur-xl">
           <CardHeader className="space-y-1 text-center">
             <CardTitle className="text-3xl font-bold text-slate-900">Welcome back</CardTitle>
             <CardDescription className="text-slate-600">Sign in to continue to Pairly</CardDescription>
@@ -114,7 +196,7 @@ const Login = () => {
 
               <Button 
                 type="submit" 
-                className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 rounded-xl py-6 text-lg" 
+                className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 rounded-xl py-6 text-lg shadow-lg shadow-violet-500/25" 
                 disabled={loading}
               >
                 {loading ? 'Signing in...' : 'Sign In'}
@@ -157,6 +239,20 @@ const Login = () => {
             </form>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Background image indicators */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex gap-2">
+        {backgroundImages.map((_, index) => (
+          <div
+            key={index}
+            className={`h-1.5 rounded-full transition-all duration-300 ${
+              index === currentBgIndex 
+                ? 'w-6 bg-white' 
+                : 'w-1.5 bg-white/40'
+            }`}
+          />
+        ))}
       </div>
     </div>
   );
