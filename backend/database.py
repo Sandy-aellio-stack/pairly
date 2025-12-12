@@ -28,6 +28,7 @@ from backend.models.analytics_snapshot import AnalyticsSnapshot
 from backend.models.payment_intent import PaymentIntent
 from backend.models.webhook_event import WebhookEvent, WebhookDLQ
 from backend.models.financial_ledger import FinancialLedgerEntry
+from backend.models.presence import Presence
 from backend.config import settings
 
 
@@ -69,6 +70,7 @@ async def init_db():
             PaymentIntent,  # Phase 8.1: Payment Intent model
             WebhookEvent,  # Phase 8.3: Webhook Event model
             WebhookDLQ,  # Phase 8.3: Webhook Dead Letter Queue model
-            FinancialLedgerEntry  # Phase 8.4: Financial Ledger model
+            FinancialLedgerEntry,  # Phase 8.4: Financial Ledger model
+            Presence  # Phase 11: Presence Engine
         ]
     )
