@@ -1,67 +1,68 @@
 <analysis>**original_problem_statement:**
-The user has provided a multi-phase plan to build out the remaining backend functionality for the Pairly application, covering Phases 9 through 15. The core task is to implement these features sequentially while maintaining integration with the existing codebase and adhering to a mock mode development approach where external infrastructure is not yet available.
+The user wants to continue the backend development for the Pairly application by implementing Phases 9 through 15. All implementation must be done in mock mode, without reliance on external infrastructure like Redis, Celery, or live payment providers. The new features must integrate seamlessly with existing systems, including structured logging, RBAC, admin tooling, and the recently completed Phase 8 Payments & Ledger system.
 
 **PRODUCT REQUIREMENTS:**
-- **Phase 9: Realtime Messaging V2:** Upgrade the chat system with read/delivered receipts, typing indicators, and credit integration.
-- **Phase 10: Realtime Calling V2:** Implement a full WebRTC signaling layer with call lifecycle management and per-minute billing.
-- **Phase 11: Presence Engine Finalization:** Production-ready presence system with WebSocket broadcasts and inactivity tracking.
-- **Phase 12: System Analytics & Insights:** Build a custom analytics pipeline for key metrics like DAU, retention, and funnels.
-- **Phase 13: Notification Engine:** Create a service for sending email, push, and in-app notifications (mocked).
-- **Phase 14: Backend QA + Hardening:** System-wide improvements to error handling, validation, performance, and security.
-- **Phase 15: Final Deployment Prep:** Create checklists, monitoring dashboards, and final documentation for production readiness.
-- All implementations must be done in **mock mode**, without reliance on production Redis, Celery, or transaction-enabled MongoDB.
-- All new features must integrate with the existing structured logging, RBAC, and the recently completed Phase 8 Payments & Ledger system.
+-   **Phase 9: Realtime Messaging V2:** Upgrade the chat system with read receipts, typing indicators, and credit integration. (COMPLETED)
+-   **Phase 10: Realtime Calling V2:** Implement a mock WebRTC signaling layer, call lifecycle management, and per-minute credit billing.
+-   **Phase 11: Presence Engine V2:** Implement a production-ready presence system with WebSocket broadcasts and inactivity tracking.
+-   **Phase 12: System Analytics & Insights:** Build a custom, mock analytics pipeline for key user metrics.
+-   **Phase 13: Notification Engine:** Create a mock service for sending email, push, and in-app notifications.
+-   **Phase 14: Backend QA + Hardening:** System-wide improvements to error handling, validation, performance, and security.
+-   **Phase 15: Final Deployment Prep:** Create checklists, monitoring dashboards, and final documentation for production readiness.
 
 **User's preferred language**: English
 
 **what currently exists?**
-The Pairly application has a stable FastAPI backend with Phases 1 through 8 completed. The entire **Phase 8 (Payments, Credits, and Financial Ledger System)** was just implemented successfully in **mock mode**. This includes a provider-agnostic payment architecture (Stripe/Razorpay mocks), an idempotency layer with an in-memory fallback, a double-entry financial ledger with hash-chaining, webhook processing with a DLQ, and comprehensive admin dashboards for managing payments, webhooks, the ledger, reconciliation, fraud, and monitoring. The server is running and all Phase 8 features have been tested via  and unit tests.
+The backend is stable with Phases 1-8 completed. **Phase 9 (Realtime Messaging V2)** has been fully implemented, tested by the backend testing agent, and documented. Scaffolding for **Phase 10 (Realtime Calling V2)**—including models, services, and route files—has been created and integrated, and the server is running without errors. A comprehensive audit of the remaining work (Phases 10-15) has been conducted, and a detailed token/credit estimate was provided to the user, breaking the work into P0 (Critical), P1 (Important), and P2 (Optional) priorities.
 
 **Last working item**:
-The agent received the user's directive to begin implementing the next major block of work, covering Phases 9 through 15.
+The agent provided a detailed breakdown of the token/credit cost required to complete the remaining backend work, clarifying that **1 credit ≈ 1,000 tokens**. The agent recommended completing the P0 tasks as they fit within the current session's remaining budget at no extra cost to the user.
 
--   **Last item agent was working:** Acknowledging the user's request and preparing to start the implementation of **Phase 9: Realtime Messaging V2**.
--   **Status:** NOT STARTED
+-   **Last item agent was working:** Awaiting user decision on the proposed plan to implement the P0 tasks (Phase 10 Testing, Phase 14 Implementation, and Phase 15 Implementation).
+-   **Status:** USER VERIFICATION PENDING
 -   **Agent Testing Done:** N
--   **Which testing method agent to use?** backend testing agent. Each phase (9-15) is a significant feature set that will require its own dedicated test suite.
+-   **Which testing method agent to use?** backend testing agent. This will be required to test the implementation of Phase 10, Phase 14, and the final E2E flow in Phase 15.
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   There are no pending issues. All work from Phase 8 was completed and tested successfully in mock mode.
+-   There are no blocking issues. The primary pending item is the large-scale implementation of the remaining backend phases.
 
 **In progress Task List**:
--   **Task 1: (P0) Implement Backend Phases 9-15**
-    -   **Description:** Sequentially implement the full scope of backend features from Phase 9 (Messaging V2) to Phase 15 (Deployment Prep) as per the user's detailed plan.
-    -   **Where to resume:** Begin the implementation of **Phase 9: Realtime Messaging V2**. The first step is to create the new  model v2 and the corresponding .
-    -   **What will be achieved with this?** A feature-complete, production-ready backend for the Pairly application, with all core systems in place (though still in mock mode).
-    -   **Status:** IN PROGRESS (The overall task has started, but the first step of Phase 9 has not).
+-   **Task 1: (P0) Implement Backend Phases 10-15**
+    -   **Description:** Sequentially implement the remaining backend features from Phase 10 to Phase 15. The agent has proposed a prioritized plan (P0, P1, P2) and is awaiting user approval to proceed with P0.
+    -   **Where to resume:** Await user confirmation on the proposed plan. If approved, begin with testing the already-scaffolded Phase 10.
+    -   **What will be achieved with this?** A feature-complete, production-ready backend for the Pairly application, built entirely in mock mode.
+    -   **Status:** IN PROGRESS
     -   **Should Test frontend/backend/both after fix?** Backend
-    -   **Blocked on something:** Nothing. All work can proceed in mock mode as requested.
+    -   **Blocked on something:** User decision on the proposed implementation plan and credit allocation.
 
 **Upcoming and Future Tasks**
-**Upcoming Tasks (P0 - Current Directive):**
-*   **Phase 9: Realtime Messaging V2:** Implement  model v2, , WebSocket typing/status indicators, and admin tools.
-*   **Phase 10: Realtime Calling V2:** Implement  model, WebRTC signaling routes,  with per-minute billing.
-*   **Phase 11: Presence Engine Finalization:** Implement  model v2,  with WebSocket broadcasts and inactivity tracking.
-*   **Phase 12: System Analytics & Insights:** Implement  model, an ingest endpoint, and a mock aggregator for DAU/WAU/retention.
-*   **Phase 13: Notification Engine:** Implement a mock  for email, push, and in-app notifications.
-*   **Phase 14: Backend QA + Hardening:** Implement a system-wide error handling framework, stricter validation, and performance/security enhancements.
-*   **Phase 15: Final Deployment Prep:** Create environment audits, monitoring dashboards, deployment checklists, and final documentation.
+Based on the audit and plan presented to the user:
 
-**Future Tasks (P1 - Post-Mock Development):**
-*   Transition all mocked systems (Phases 8-13) to production by configuring real infrastructure (Redis, Celery, MongoDB Replica Set) and integrating real 3rd-party API keys (Stripe, Razorpay, email providers, etc.).
-*   Execute load testing scripts developed in Phase 14.
+**Upcoming Tasks (P0 - Recommended for This Session, ~102 Credits):**
+*   **Phase 10 Testing & Docs:** Write and execute a comprehensive test suite for the  lifecycle and create the implementation summary document.
+*   **Phase 14: Backend QA + Hardening:** Implement a global error handler, upgrade the validation layer, add security enhancements, and create load testing scripts (all in mock mode).
+*   **Phase 15: Final Deployment Prep:** Create deployment checklists, health check endpoints, monitoring dashboards (mock), and a final E2E system test.
+
+**Future Tasks (P1 - Requires Fork/New Session, ~66 Additional Credits):**
+*   **Phase 11: Presence Engine V2:** Implement the  for heartbeats, inactivity tracking, and WebSocket broadcasts.
+*   **Phase 13: Notification Engine:** Implement the  with triggers for key events (new match, message, payment) and admin tooling.
+
+**Future Tasks (P2 - Requires Fork/New Session, ~24 Additional Credits):**
+*   **Phase 12: System Analytics & Insights:** Implement the  for event ingestion and mock metric aggregation (DAU, WAU, retention).
 
 **Completed work in this session**
--   **Phase 8: Payments, Credits, and Financial Ledger System (DONE & TESTED in Mock Mode)**
-    -   **Phase 8.1: Foundation:**  model, , idempotency layer.
-    -   **Phase 8.2: Admin Dashboard & Intent Expansion:** Full admin payment dashboard APIs and expanded  lifecycle.
-    -   **Phase 8.3: Webhook Processing:** Secure webhook ingestion, mock signature verification, event handlers, and a DLQ with manual retry APIs.
-    -   **Phase 8.4: Financial Ledger:** Immutable, hash-chained double-entry ledger system integrated into payment/refund flows.
-    -   **Phase 8.5: Reconciliation System:** Service and admin APIs to detect and report discrepancies.
-    -   **Phase 8.6: Fraud Detection:** A risk-scoring engine to block high-risk payments.
-    -   **Phase 8.7: Monitoring & Alerts:** Admin endpoints for key metrics and system health alerts.
--   **Documentation:** Created .
+-   List of all completed tasks with file and method name:
+    -   **Phase 9: Realtime Messaging V2 (DONE & TESTED)**
+        -   Enhanced .
+        -   Enhanced .
+        -   Created and implemented  (with WebSocket support) and .
+        -   Registered all components in  and .
+        -   Resolved all  issues during integration.
+        -   Created and passed all tests in  via the backend testing agent.
+-   Recently completed:
+    -   Scaffolding for Phase 10: Realtime Calling V2 (DONE)
+    -   Project Audit & Prioritized Plan for Phases 10-15 (DONE)
 
 **Earlier issues found/mentioned but not fixed**
 -   None.
@@ -73,52 +74,71 @@ The agent received the user's directive to begin implementing the next major blo
 
 
 **Key Technical Concepts**
-*   **Mock-First Development:** Building full-featured systems decoupled from live infrastructure, using mock providers and in-memory fallbacks.
-*   **Financial Primitives:** Implemented a double-entry, hash-chained ledger, idempotency controls, and reconciliation services.
-*   **Provider Abstraction:** Created a base provider class to build a payment system that can work with Stripe, Razorpay, or others interchangeably.
-*   **Dead Letter Queue (DLQ):** Implemented a pattern for handling failed asynchronous events (webhooks) with a mechanism for manual admin retry.
+*   **Mock-First Development:** Building full-featured systems decoupled from live infrastructure.
+*   **WebSocket Management:** Implementing real-time features like typing indicators and signaling events via FastAPI WebSockets.
+*   **Phased Implementation:** Sequentially building, integrating, and testing large feature sets.
+*   **Proactive Planning:** Auditing remaining work and presenting a prioritized, cost-estimated plan to the user before proceeding.
 
 **key DB schema**
 -   : 
 -   : 
--   : 
 
 **changes in tech stack**
--   None. The core stack remains FastAPI, React, and MongoDB.
+-   None.
 
 **All files of reference**
--   **/app/docs/PHASE8_ARCHITECTURE.md**: The master plan for the completed payments system. A similar implicit architecture is expected for Phases 9-15.
--   **/app/docs/PHASE8_IMPLEMENTATION_SUMMARY.md**: Summary of all work completed in the last session.
--   All newly created files under , , and  related to Phase 8.
+-   Created/Updated in this session:
+    -   : Enhanced messaging model.
+    -   : Enhanced call session model.
+    -   : Created presence model stub.
+    -   : New user-facing messaging routes.
+    -   : New admin routes for messaging.
+    -   : New user-facing calling routes.
+    -   : New admin routes for calling.
+    -   : Enhanced messaging service logic.
+    -   : Created calling service stub.
+    -   : Created presence service stub.
+    -   : Unit tests for Phase 9.
+    -   : Summary document for Phase 9.
+    -   : Audit report of remaining work.
+    -    & : Updated to register new components.
 
 **Critical Info for New Agent**
--   You are starting a large, multi-phase implementation (Phases 9-15). The user provides detailed, condensed prompts for each block of work.
--   Your immediate task is to begin **Phase 9: Realtime Messaging V2**.
--   **ALL** implementation must continue in **mock mode**. Do not attempt to connect to or configure real Redis, Celery, or a transaction-enabled MongoDB. All new services requiring external dependencies should be built with mock fallbacks, following the patterns established in Phase 8.
--   Maintain consistency with the existing architecture: structured logging, RBAC, and clean integration with  and the new ledger system.
+-   You are waiting for the user to approve the proposed plan. The last communication was a recommendation to complete the **P0 tasks** (Phase 10 Testing, Phase 14 Hardening, Phase 15 Prep) using the remaining **~102 credits** in this session, which costs the user nothing extra.
+-   **DO NOT** proceed with any implementation until the user confirms which option they want:
+    1.  **Option 1 (P0 Only):** Finish critical tasks in this session. (Recommended)
+    2.  **Option 2 (P0 + P1):** Requires forking for ~66 additional credits.
+    3.  **Option 3 (Complete All):** Requires forking for ~90 additional credits.
+-   Once the user provides a decision, proceed exactly as requested. If they approve Option 1, your first task is to write and run the tests for Phase 10.
 
 **documents created in this job**
--   /app/docs/PHASE8_INFRA_STATUS_REPORT.md
--   /app/docs/PHASE8_1_IMPLEMENTATION_SUMMARY.md
--   /app/docs/PHASE8_IMPLEMENTATION_SUMMARY.md
+-   /app/docs/PHASE9_IMPLEMENTATION_SUMMARY.md
+-   /app/BACKEND_AUDIT_PHASES_9_15.md
 
 **Last 10 User Messages and any pending user messages**
--   The user has provided a series of prompts detailing the implementation of Phase 8 in subsections (8.1, 8.2, 8.3, 8.4-8.7), all of which have been **COMPLETED**.
--   The final and currently active user message is a large prompt detailing the requirements for **Phases 9 through 15**, which is the **PENDING** task to be started.
+1.   - **Completed**. The agent performed a full audit.
+2.   - **Completed**. The agent provided a detailed estimate.
+3.   - **Completed**. The agent clarified the conversion rate (1 credit ≈ 1,000 tokens) and reiterated the plan.
+-   **Pending User Message:** The user needs to respond to the agent's proposal: Should I proceed with P0 implementation now?
 
 **Project Health Check:**
--   **Broken:** None. The backend is stable.
--   **Mocked:** The entire payments, credits, and financial ledger system (Phase 8) is mocked by design. Future work in Phases 9-15 that relies on external services should also be mocked.
+-   **Broken:** None.
+-   **Mocked:** All systems, including the newly implemented Phase 9 messaging and Phase 10 calling stubs, are running in mock mode by design.
 
 **3rd Party Integrations**
 -   **Stripe (Payments):** Mocked.
 -   **Razorpay (Payments):** Mocked.
--   **Redis:** Mocked (uses in-memory fallback).
--   **Celery:** Mocked (logic exists for manual triggers via API, but no workers are configured).
+-   **Redis:** Mocked (in-memory fallback).
+-   **Celery:** Mocked (manual triggers only).
 
 **Testing status**
--   **Test files created:** , , , .
+-   **Testing agent used after significant changes:** YES (for Phase 9).
+-   **Troubleshoot agent used after agent stuck in loop:** NO.
+-   **Test files created:** .
 -   **Known regressions:** None.
 
+**Credentials to test flow:**
+N/A (Application is in mock mode).
+
 **What agent forgot to execute**
--   Nothing. The agent successfully completed the entire scope of Phase 8 as requested and is correctly positioned to begin Phase 9.</analysis>
+-   Nothing. The agent was proactive and correctly paused implementation to align with the user on a strategic plan and budget for the extensive remaining work.</analysis>
