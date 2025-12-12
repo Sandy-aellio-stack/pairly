@@ -5,6 +5,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 import { 
   Heart, HelpCircle, MessageSquare, Mail, Phone,
   ChevronDown, ChevronUp, Search
@@ -49,34 +51,7 @@ const Support = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Navigation */}
-      <nav className="fixed top-0 w-full bg-white/95 backdrop-blur-md border-b z-50 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link to="/" className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-pink-500 flex items-center justify-center">
-                <Heart className="h-5 w-5 text-white" />
-              </div>
-              <span className="text-2xl font-bold bg-gradient-to-r from-amber-600 to-pink-600 bg-clip-text text-transparent">
-                Pairly
-              </span>
-            </Link>
-            <div className="hidden md:flex items-center space-x-6">
-              <Link to="/features" className="text-gray-700 hover:text-amber-600 transition font-medium">Features</Link>
-              <Link to="/safety" className="text-gray-700 hover:text-amber-600 transition font-medium">Safety</Link>
-              <Link to="/support" className="text-amber-600 font-medium">Support</Link>
-              <Link to="/pricing" className="text-gray-700 hover:text-amber-600 transition font-medium">Pricing</Link>
-              <Link to="/creators" className="text-gray-700 hover:text-amber-600 transition font-medium">Creators</Link>
-            </div>
-            <div className="flex items-center space-x-3">
-              <Button variant="ghost" onClick={() => navigate('/login')}>Log In</Button>
-              <Button onClick={() => navigate('/signup')} className="bg-gradient-to-r from-amber-500 to-pink-500 hover:from-amber-600 hover:to-pink-600 rounded-full px-6">
-                Join Now
-              </Button>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <Navbar />
 
       {/* Hero */}
       <section className="pt-32 pb-16 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-blue-50 to-white">
@@ -85,17 +60,17 @@ const Support = () => {
             <HelpCircle className="h-4 w-4 mr-2 inline" />
             Help Center
           </Badge>
-          <h1 className="text-5xl sm:text-6xl font-bold mb-6">
+          <h1 className="text-5xl sm:text-6xl font-bold mb-6 text-slate-900">
             How can we
             <span className="block bg-gradient-to-r from-blue-500 to-cyan-500 bg-clip-text text-transparent">
               help you?
             </span>
           </h1>
           <div className="relative max-w-xl mx-auto">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
             <Input 
               placeholder="Search for answers..." 
-              className="pl-12 py-6 text-lg rounded-full"
+              className="pl-12 py-6 text-lg rounded-full border-slate-300"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -106,24 +81,24 @@ const Support = () => {
       {/* FAQs */}
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12">Frequently Asked Questions</h2>
+          <h2 className="text-3xl font-bold text-center mb-12 text-slate-900">Frequently Asked Questions</h2>
           <div className="space-y-4">
             {filteredFaqs.map((faq, index) => (
-              <Card key={index} className="overflow-hidden">
+              <Card key={index} className="overflow-hidden border-slate-200">
                 <button
-                  className="w-full p-6 text-left flex justify-between items-center"
+                  className="w-full p-6 text-left flex justify-between items-center hover:bg-slate-50 transition"
                   onClick={() => setOpenFaq(openFaq === index ? null : index)}
                 >
-                  <span className="font-semibold text-lg">{faq.question}</span>
+                  <span className="font-semibold text-lg text-slate-900">{faq.question}</span>
                   {openFaq === index ? (
-                    <ChevronUp className="h-5 w-5 text-gray-500" />
+                    <ChevronUp className="h-5 w-5 text-slate-500" />
                   ) : (
-                    <ChevronDown className="h-5 w-5 text-gray-500" />
+                    <ChevronDown className="h-5 w-5 text-slate-500" />
                   )}
                 </button>
                 {openFaq === index && (
                   <CardContent className="pt-0 pb-6 px-6">
-                    <p className="text-gray-600">{faq.answer}</p>
+                    <p className="text-slate-600">{faq.answer}</p>
                   </CardContent>
                 )}
               </Card>
@@ -133,37 +108,37 @@ const Support = () => {
       </section>
 
       {/* Contact */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-slate-50">
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12">Still need help?</h2>
+          <h2 className="text-3xl font-bold text-center mb-12 text-slate-900">Still need help?</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="text-center hover:shadow-lg transition-shadow">
+            <Card className="text-center hover:shadow-lg transition-shadow border-slate-200">
               <CardContent className="p-8">
                 <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-4">
                   <MessageSquare className="h-8 w-8 text-blue-600" />
                 </div>
-                <h3 className="text-xl font-bold mb-2">Live Chat</h3>
-                <p className="text-gray-600 mb-4">Chat with our support team in real-time</p>
-                <Button className="w-full">Start Chat</Button>
+                <h3 className="text-xl font-bold mb-2 text-slate-900">Live Chat</h3>
+                <p className="text-slate-600 mb-4">Chat with our support team in real-time</p>
+                <Button className="w-full bg-blue-600 hover:bg-blue-700">Start Chat</Button>
               </CardContent>
             </Card>
-            <Card className="text-center hover:shadow-lg transition-shadow">
+            <Card className="text-center hover:shadow-lg transition-shadow border-slate-200">
               <CardContent className="p-8">
-                <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-                  <Mail className="h-8 w-8 text-green-600" />
+                <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
+                  <Mail className="h-8 w-8 text-emerald-600" />
                 </div>
-                <h3 className="text-xl font-bold mb-2">Email Us</h3>
-                <p className="text-gray-600 mb-4">We'll respond within 24 hours</p>
+                <h3 className="text-xl font-bold mb-2 text-slate-900">Email Us</h3>
+                <p className="text-slate-600 mb-4">We'll respond within 24 hours</p>
                 <Button variant="outline" className="w-full">support@pairly.com</Button>
               </CardContent>
             </Card>
-            <Card className="text-center hover:shadow-lg transition-shadow">
+            <Card className="text-center hover:shadow-lg transition-shadow border-slate-200">
               <CardContent className="p-8">
-                <div className="w-16 h-16 rounded-full bg-purple-100 flex items-center justify-center mx-auto mb-4">
-                  <Phone className="h-8 w-8 text-purple-600" />
+                <div className="w-16 h-16 rounded-full bg-violet-100 flex items-center justify-center mx-auto mb-4">
+                  <Phone className="h-8 w-8 text-violet-600" />
                 </div>
-                <h3 className="text-xl font-bold mb-2">Call Us</h3>
-                <p className="text-gray-600 mb-4">Mon-Fri, 9am-6pm EST</p>
+                <h3 className="text-xl font-bold mb-2 text-slate-900">Call Us</h3>
+                <p className="text-slate-600 mb-4">Mon-Fri, 9am-6pm EST</p>
                 <Button variant="outline" className="w-full">1-800-PAIRLY</Button>
               </CardContent>
             </Card>
@@ -174,29 +149,29 @@ const Support = () => {
       {/* Contact Form */}
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-8">Send us a message</h2>
-          <Card>
+          <h2 className="text-3xl font-bold text-center mb-8 text-slate-900">Send us a message</h2>
+          <Card className="border-slate-200">
             <CardContent className="p-8">
               <form className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium mb-2">Name</label>
-                    <Input placeholder="Your name" />
+                    <label className="block text-sm font-medium mb-2 text-slate-700">Name</label>
+                    <Input placeholder="Your name" className="border-slate-300" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-2">Email</label>
-                    <Input type="email" placeholder="your@email.com" />
+                    <label className="block text-sm font-medium mb-2 text-slate-700">Email</label>
+                    <Input type="email" placeholder="your@email.com" className="border-slate-300" />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Subject</label>
-                  <Input placeholder="How can we help?" />
+                  <label className="block text-sm font-medium mb-2 text-slate-700">Subject</label>
+                  <Input placeholder="How can we help?" className="border-slate-300" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Message</label>
-                  <Textarea placeholder="Tell us more..." rows={5} />
+                  <label className="block text-sm font-medium mb-2 text-slate-700">Message</label>
+                  <Textarea placeholder="Tell us more..." rows={5} className="border-slate-300" />
                 </div>
-                <Button className="w-full bg-gradient-to-r from-amber-500 to-pink-500 hover:from-amber-600 hover:to-pink-600">
+                <Button className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700">
                   Send Message
                 </Button>
               </form>
@@ -204,6 +179,8 @@ const Support = () => {
           </Card>
         </div>
       </section>
+
+      <Footer />
     </div>
   );
 };

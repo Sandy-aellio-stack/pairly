@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 import { 
   Heart, CheckCircle, Sparkles, Crown, Zap, Star, ArrowRight, X
 } from 'lucide-react';
@@ -31,7 +33,7 @@ const Pricing = () => {
       ],
       cta: 'Get Started',
       popular: false,
-      color: 'gray',
+      gradient: '',
     },
     {
       name: 'Premium',
@@ -53,7 +55,7 @@ const Pricing = () => {
       ],
       cta: 'Start Premium',
       popular: true,
-      color: 'amber',
+      gradient: 'from-violet-600 to-fuchsia-600',
     },
     {
       name: 'VIP',
@@ -73,7 +75,7 @@ const Pricing = () => {
       notIncluded: [],
       cta: 'Go VIP',
       popular: false,
-      color: 'pink',
+      gradient: 'from-slate-800 to-slate-900',
     },
   ];
 
@@ -108,49 +110,22 @@ const Pricing = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Navigation */}
-      <nav className="fixed top-0 w-full bg-white/95 backdrop-blur-md border-b z-50 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link to="/" className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-pink-500 flex items-center justify-center">
-                <Heart className="h-5 w-5 text-white" />
-              </div>
-              <span className="text-2xl font-bold bg-gradient-to-r from-amber-600 to-pink-600 bg-clip-text text-transparent">
-                Pairly
-              </span>
-            </Link>
-            <div className="hidden md:flex items-center space-x-6">
-              <Link to="/features" className="text-gray-700 hover:text-amber-600 transition font-medium">Features</Link>
-              <Link to="/safety" className="text-gray-700 hover:text-amber-600 transition font-medium">Safety</Link>
-              <Link to="/support" className="text-gray-700 hover:text-amber-600 transition font-medium">Support</Link>
-              <Link to="/pricing" className="text-amber-600 font-medium">Pricing</Link>
-              <Link to="/creators" className="text-gray-700 hover:text-amber-600 transition font-medium">Creators</Link>
-            </div>
-            <div className="flex items-center space-x-3">
-              <Button variant="ghost" onClick={() => navigate('/login')}>Log In</Button>
-              <Button onClick={() => navigate('/signup')} className="bg-gradient-to-r from-amber-500 to-pink-500 hover:from-amber-600 hover:to-pink-600 rounded-full px-6">
-                Join Now
-              </Button>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <Navbar />
 
       {/* Hero */}
-      <section className="pt-32 pb-16 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-purple-50 to-white">
+      <section className="pt-32 pb-16 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-violet-50 to-white">
         <div className="max-w-4xl mx-auto text-center">
-          <Badge className="mb-6 bg-purple-100 text-purple-700">
+          <Badge className="mb-6 bg-violet-100 text-violet-700">
             <Crown className="h-4 w-4 mr-2 inline" />
             Simple Pricing
           </Badge>
-          <h1 className="text-5xl sm:text-6xl font-bold mb-6">
+          <h1 className="text-5xl sm:text-6xl font-bold mb-6 text-slate-900">
             Find love at
-            <span className="block bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
+            <span className="block bg-gradient-to-r from-violet-600 to-fuchsia-600 bg-clip-text text-transparent">
               any price
             </span>
           </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          <p className="text-xl text-slate-600 max-w-2xl mx-auto">
             Choose the plan that's right for you. All plans include our core matching features.
           </p>
         </div>
@@ -159,34 +134,34 @@ const Pricing = () => {
       {/* User Plans */}
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-4">For Users</h2>
-          <p className="text-gray-600 text-center mb-12">Find your perfect match</p>
+          <h2 className="text-3xl font-bold text-center mb-4 text-slate-900">For Users</h2>
+          <p className="text-slate-600 text-center mb-12">Find your perfect match</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {plans.map((plan, index) => (
-              <Card key={index} className={`relative overflow-hidden ${plan.popular ? 'border-2 border-amber-500 shadow-xl scale-105' : 'border'}`}>
+              <Card key={index} className={`relative overflow-hidden ${plan.popular ? 'border-2 border-violet-500 shadow-xl scale-105' : 'border border-slate-200'}`}>
                 {plan.popular && (
-                  <div className="absolute top-0 right-0 bg-gradient-to-r from-amber-500 to-pink-500 text-white px-4 py-1 text-sm font-semibold">
+                  <div className="absolute top-0 right-0 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white px-4 py-1 text-sm font-semibold">
                     Most Popular
                   </div>
                 )}
                 <CardContent className="p-8">
                   <div className="mb-6">
-                    <h3 className="text-2xl font-bold">{plan.name}</h3>
-                    <p className="text-gray-600 text-sm">{plan.description}</p>
+                    <h3 className="text-2xl font-bold text-slate-900">{plan.name}</h3>
+                    <p className="text-slate-600 text-sm">{plan.description}</p>
                   </div>
                   <div className="mb-6">
-                    <span className="text-5xl font-bold">{plan.price}</span>
-                    <span className="text-gray-600">{plan.period}</span>
+                    <span className="text-5xl font-bold text-slate-900">{plan.price}</span>
+                    <span className="text-slate-600">{plan.period}</span>
                   </div>
                   <ul className="space-y-3 mb-6">
                     {plan.features.map((feature, i) => (
                       <li key={i} className="flex items-center gap-2">
-                        <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
-                        <span className="text-sm">{feature}</span>
+                        <CheckCircle className="h-5 w-5 text-emerald-500 flex-shrink-0" />
+                        <span className="text-sm text-slate-700">{feature}</span>
                       </li>
                     ))}
                     {plan.notIncluded.map((feature, i) => (
-                      <li key={i} className="flex items-center gap-2 text-gray-400">
+                      <li key={i} className="flex items-center gap-2 text-slate-400">
                         <X className="h-5 w-5 flex-shrink-0" />
                         <span className="text-sm">{feature}</span>
                       </li>
@@ -194,13 +169,11 @@ const Pricing = () => {
                   </ul>
                   <Button 
                     className={`w-full rounded-full ${
-                      plan.popular 
-                        ? 'bg-gradient-to-r from-amber-500 to-pink-500 hover:from-amber-600 hover:to-pink-600' 
-                        : plan.color === 'pink' 
-                          ? 'bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600'
-                          : ''
+                      plan.gradient 
+                        ? `bg-gradient-to-r ${plan.gradient} hover:opacity-90` 
+                        : ''
                     }`}
-                    variant={plan.popular || plan.color === 'pink' ? 'default' : 'outline'}
+                    variant={plan.gradient ? 'default' : 'outline'}
                     onClick={() => navigate('/signup')}
                   >
                     {plan.cta}
@@ -213,36 +186,36 @@ const Pricing = () => {
       </section>
 
       {/* Creator Plans */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-pink-50 to-purple-50">
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-fuchsia-50 to-violet-50">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
-            <Badge className="mb-4 bg-pink-100 text-pink-700">
+            <Badge className="mb-4 bg-fuchsia-100 text-fuchsia-700">
               <Sparkles className="h-4 w-4 mr-2 inline" />
               For Creators
             </Badge>
-            <h2 className="text-3xl font-bold mb-4">Monetize Your Content</h2>
-            <p className="text-gray-600">Turn your passion into profit</p>
+            <h2 className="text-3xl font-bold mb-4 text-slate-900">Monetize Your Content</h2>
+            <p className="text-slate-600">Turn your passion into profit</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {creatorPlans.map((plan, index) => (
-              <Card key={index} className="border-2 hover:border-pink-300 transition-colors">
+              <Card key={index} className="border-2 border-slate-200 hover:border-fuchsia-300 transition-colors">
                 <CardContent className="p-8">
-                  <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
+                  <h3 className="text-2xl font-bold mb-2 text-slate-900">{plan.name}</h3>
                   <div className="mb-4">
-                    <span className="text-4xl font-bold">{plan.price}</span>
-                    <span className="text-gray-600">{plan.period}</span>
+                    <span className="text-4xl font-bold text-slate-900">{plan.price}</span>
+                    <span className="text-slate-600">{plan.period}</span>
                   </div>
-                  <Badge className="mb-6 bg-green-100 text-green-700">{plan.revenue}</Badge>
+                  <Badge className="mb-6 bg-emerald-100 text-emerald-700">{plan.revenue}</Badge>
                   <ul className="space-y-3 mb-6">
                     {plan.features.map((feature, i) => (
                       <li key={i} className="flex items-center gap-2">
-                        <CheckCircle className="h-5 w-5 text-green-500" />
-                        <span>{feature}</span>
+                        <CheckCircle className="h-5 w-5 text-emerald-500" />
+                        <span className="text-slate-700">{feature}</span>
                       </li>
                     ))}
                   </ul>
                   <Button 
-                    className="w-full rounded-full"
+                    className={`w-full rounded-full ${index === 1 ? 'bg-gradient-to-r from-fuchsia-600 to-pink-600 hover:from-fuchsia-700 hover:to-pink-700' : ''}`}
                     variant={index === 1 ? 'default' : 'outline'}
                     onClick={() => navigate('/signup')}
                   >
@@ -258,8 +231,8 @@ const Pricing = () => {
       {/* FAQ */}
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl font-bold mb-8">Questions?</h2>
-          <p className="text-gray-600 mb-8">
+          <h2 className="text-3xl font-bold mb-8 text-slate-900">Questions?</h2>
+          <p className="text-slate-600 mb-8">
             All subscriptions can be cancelled anytime. We offer a 7-day money-back guarantee.
           </p>
           <Button variant="outline" onClick={() => navigate('/support')} className="rounded-full">
@@ -268,6 +241,8 @@ const Pricing = () => {
           </Button>
         </div>
       </section>
+
+      <Footer />
     </div>
   );
 };
