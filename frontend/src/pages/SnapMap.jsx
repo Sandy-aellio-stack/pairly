@@ -370,22 +370,22 @@ const SnapMap = () => {
         <Dialog open={showSubscribeModal} onOpenChange={setShowSubscribeModal}>
           <DialogContent className="sm:max-w-md text-center">
             <div className="py-4">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-r from-amber-500 to-pink-500 flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 flex items-center justify-center mx-auto mb-4">
                 <Lock className="h-8 w-8 text-white" />
               </div>
-              <DialogTitle className="text-2xl mb-2">Unlock Map Interactions</DialogTitle>
-              <DialogDescription className="text-base">
+              <DialogTitle className="text-2xl mb-2 text-slate-900">Unlock Map Interactions</DialogTitle>
+              <DialogDescription className="text-base text-slate-600">
                 Subscribe to message and interact with people you discover on the map.
               </DialogDescription>
               <div className="mt-6 space-y-3">
                 <Button
-                  className="w-full bg-gradient-to-r from-amber-500 to-pink-500 hover:from-amber-600 hover:to-pink-600"
+                  className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700"
                   onClick={() => navigate('/pricing')}
                 >
                   <Crown className="h-4 w-4 mr-2" />
                   Subscribe Now
                 </Button>
-                <Button variant="outline" className="w-full" onClick={() => setShowSubscribeModal(false)}>
+                <Button variant="outline" className="w-full border-slate-300" onClick={() => setShowSubscribeModal(false)}>
                   Maybe Later
                 </Button>
               </div>
