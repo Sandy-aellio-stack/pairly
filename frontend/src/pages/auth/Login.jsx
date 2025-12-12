@@ -9,12 +9,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { Heart, Mail, Lock, ArrowRight } from 'lucide-react';
 
+// Updated images for background animation
 const backgroundImages = [
-  'https://customer-assets.emergentagent.com/job_pairly-comms/artifacts/szubcfsh_0f9404175493827.64b512011929a.jpg',
-  'https://customer-assets.emergentagent.com/job_pairly-comms/artifacts/i7v9p713_3d3d2a175493827.64b51201182d8.jpg',
-  'https://customer-assets.emergentagent.com/job_pairly-comms/artifacts/m35haapv_21e4fe175493827.64b572b9e145b.jpg',
-  'https://customer-assets.emergentagent.com/job_pairly-comms/artifacts/vvcj2l4m_b99991175493827.64b512011a181.jpg',
-  'https://customer-assets.emergentagent.com/job_pairly-comms/artifacts/r4v2oh1b_ca35f1192469755.Y3JvcCwxNjgzLDEzMTYsMCww.jpg',
+  'https://customer-assets.emergentagent.com/job_pairly-intro/artifacts/0sgc62vo_0f9404175493827.64b512011929a.jpg',
+  'https://customer-assets.emergentagent.com/job_pairly-intro/artifacts/ujfxavml_3d3d2a175493827.64b51201182d8.jpg',
+  'https://customer-assets.emergentagent.com/job_pairly-intro/artifacts/u69t8gqm_21e4fe175493827.64b572b9e145b.jpg',
+  'https://customer-assets.emergentagent.com/job_pairly-intro/artifacts/ytk6tqdk_b99991175493827.64b512011a181.jpg',
+  'https://customer-assets.emergentagent.com/job_pairly-intro/artifacts/0nphq1bd_ef2985175493827.64b512011b481.jpg',
 ];
 
 const Login = () => {
