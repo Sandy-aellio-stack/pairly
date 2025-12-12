@@ -280,16 +280,16 @@ const SnapMap = () => {
           {/* Loading Overlay */}
           {isLoading && (
             <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-[1000]">
-              <RefreshCw className="h-8 w-8 text-amber-500 animate-spin" />
+              <RefreshCw className="h-8 w-8 text-violet-600 animate-spin" />
             </div>
           )}
         </div>
 
         {/* Bottom User List */}
-        <div className="bg-white border-t">
+        <div className="bg-white border-t border-slate-200">
           <div className="p-4">
-            <h3 className="font-semibold mb-3 flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-amber-500" />
+            <h3 className="font-semibold mb-3 flex items-center gap-2 text-slate-900">
+              <MapPin className="h-4 w-4 text-violet-600" />
               People Nearby
             </h3>
             <div className="flex gap-3 overflow-x-auto pb-2">
