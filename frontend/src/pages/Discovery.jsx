@@ -148,8 +148,8 @@ const Discovery = () => {
       <MainLayout>
         <div className="flex items-center justify-center h-[70vh]">
           <div className="text-center">
-            <RefreshCw className="h-12 w-12 text-pink-500 mx-auto mb-4 animate-spin" />
-            <p className="text-gray-600">Finding amazing people for you...</p>
+            <RefreshCw className="h-12 w-12 text-fuchsia-500 mx-auto mb-4 animate-spin" />
+            <p className="text-slate-600">Finding amazing people for you...</p>
           </div>
         </div>
       </MainLayout>
@@ -160,14 +160,14 @@ const Discovery = () => {
     return (
       <MainLayout>
         <div className="flex flex-col items-center justify-center h-[70vh] space-y-6">
-          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-amber-400 to-pink-500 flex items-center justify-center">
+          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center">
             <Heart className="h-12 w-12 text-white" />
           </div>
           <div className="text-center">
-            <h2 className="text-2xl font-bold mb-2">No more profiles</h2>
-            <p className="text-gray-600 mb-6">Check back later for new matches!</p>
+            <h2 className="text-2xl font-bold mb-2 text-slate-900">No more profiles</h2>
+            <p className="text-slate-600 mb-6">Check back later for new matches!</p>
           </div>
-          <Button onClick={fetchProfiles} className="rounded-full px-8">
+          <Button onClick={fetchProfiles} className="rounded-full px-8 bg-gradient-to-r from-violet-600 to-fuchsia-600">
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
