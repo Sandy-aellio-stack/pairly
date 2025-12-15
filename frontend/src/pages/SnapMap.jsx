@@ -196,14 +196,25 @@ const SnapMap = () => {
     setIsLoading(false);
   }, []);
 
-  // Get user's location
+  // Get user's location and update backend
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
+        async (position) => {
           const { latitude, longitude } = position.coords;
           setUserLocation({ lat: latitude, lng: longitude });
           setMapCenter([latitude, longitude]);
+          
+          // Update location on backend
+          try {
+            await updateLocation(latitude, longitude);
+            console.log('Location updated on backend');
+          } catch (error) {
+            console.log('Failed to update location on backend:', error);
+          }
+          
+          // Fetch nearby users
+          await loadNearbyUsers(latitude, longitude);
         },
         (error) => {
           console.log('Location error:', error);
