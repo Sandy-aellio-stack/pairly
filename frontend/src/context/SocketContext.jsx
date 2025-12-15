@@ -21,7 +21,7 @@ export const SocketProvider = ({ children }) => {
   useEffect(() => {
     if (!isAuthenticated || !user) return;
 
-    const wsUrl = process.env.REACT_APP_BACKEND_URL.replace('https', 'wss').replace('http', 'ws');
+    const wsUrl = import.meta.env.VITE_BACKEND_URL.replace('https', 'wss').replace('http', 'ws');
     const ws = new WebSocket(`${wsUrl}/api/messages/ws/${user.id}`);
 
     ws.onopen = () => {
