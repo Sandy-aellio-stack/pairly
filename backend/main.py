@@ -1,182 +1,91 @@
-from fastapi import FastAPI
+\"\"\"
+TrueBond - Dating App Backend
+Production-ready FastAPI backend with MongoDB
+\"\"\"
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-import logging
+from fastapi.responses import JSONResponse
+from contextlib import asynccontextmanager
 import os
-from backend.database import init_db
-from backend.services.presence import start_presence_monitor
-from backend.routes import (
-    auth,
-    twofa,
-    profiles,
-    discovery,
-    messaging,
-    messaging_v2,
-    calling_v2,
-    credits,
-    payments,
-    payouts,
-    media,
-    admin_security,
-    admin_analytics,
-    admin_messaging,
-    admin_calling,
-    posts,
-    feed,
-    subscriptions,
-    webhooks,
-    compliance,
-    calls,
-    matchmaking,
-    presence,  # Phase 11: Presence Engine V2
-    analytics,  # Phase 12: Analytics & Insights
-    notifications,  # Phase 13: Notification Engine
-    location,  # Geo-location update
-    nearby  # Nearby users query
+
+from backend.tb_database import init_db, close_db
+
+# Import TrueBond routes
+from backend.routes.tb_auth import router as auth_router
+from backend.routes.tb_users import router as users_router
+from backend.routes.tb_location import router as location_router
+from backend.routes.tb_messages import router as messages_router
+from backend.routes.tb_credits import router as credits_router
+from backend.routes.tb_payments import router as payments_router
+
+# MongoDB client reference
+mongo_client = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    \"\"\"Application lifespan handler\"\"\"
+    global mongo_client
+    # Startup
+    mongo_client = await init_db()
+    print(\"🚀 TrueBond Backend Started\")
+    yield
+    # Shutdown
+    await close_db(mongo_client)
+
+
+app = FastAPI(
+    title=\"TrueBond API\",
+    description=\"Dating App Backend - Credit-based messaging with live location\",
+    version=\"1.0.0\",
+    lifespan=lifespan
 )
-from backend.admin.routes import admin_payouts
-from backend.routes import admin_security_enhanced, admin_analytics_enhanced, admin_users
-from backend.routes import payments_enhanced, admin_payments, admin_webhooks
-from backend.routes import admin_ledger, admin_reconciliation, admin_fraud, admin_monitoring
-from backend.middleware.rate_limiter import RateLimiterMiddleware
-from backend.middleware.content_moderation import ContentModerationMiddleware
-from backend.middleware.request_logger import RequestLoggerMiddleware
-from backend.middleware.security_headers import SecurityHeadersMiddleware
-from backend.middleware.error_handler import http_error_handler
-from backend.middleware.validation_middleware import validation_middleware
-from backend.core.redis_client import redis_client
-from backend.core.logging_config import LoggingConfig
-from backend.core.security_validator import SecurityValidator
-from backend.config import settings
 
-# Initialize logging
-logger = logging.getLogger('main')
-
-app = FastAPI(title="Pairly Dating SaaS API", version="1.0.0")
-
-# Get CORS origins
-def get_cors_origins():
-    cors_str = settings.CORS_ORIGINS
-    if cors_str:
-        return [origin.strip() for origin in cors_str.split(',')]
-    
-    # Default origins by environment
-    env = settings.ENVIRONMENT
-    if env == 'production':
-        return [settings.FRONTEND_URL]
-    else:
-        return [
-            "http://localhost:3000",
-            "http://localhost:3001",
-            "http://127.0.0.1:3000",
-            settings.FRONTEND_URL
-        ]
-
+# CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=get_cors_origins(),
+    allow_origins=[\"*\"],  # Configure for production
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=[\"*\"],
+    allow_headers=[\"*\"],
 )
 
-# Security headers
-app.add_middleware(SecurityHeadersMiddleware)
 
-# Request logging
-app.add_middleware(RequestLoggerMiddleware)
+# Global exception handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={
+            \"error\": \"Internal server error\",
+            \"detail\": str(exc) if os.getenv(\"ENV\") == \"development\" else \"Something went wrong\"
+        }
+    )
 
-# Rate limiting
-app.add_middleware(
-    RateLimiterMiddleware,
-    requests_per_minute=settings.RATE_LIMIT_REQUESTS_PER_MINUTE,
-    ban_threshold_per_minute=settings.RATE_LIMIT_BAN_THRESHOLD,
-    ban_seconds=settings.RATE_LIMIT_BAN_DURATION
-)
 
-# Content Moderation Middleware
-app.add_middleware(ContentModerationMiddleware)
+# Register TrueBond routers
+app.include_router(auth_router)
+app.include_router(users_router)
+app.include_router(location_router)
+app.include_router(messages_router)
+app.include_router(credits_router)
+app.include_router(payments_router)
 
-# Validation Middleware (Phase 14)
-app.middleware("http")(validation_middleware)
 
-# Global Exception Handler (Phase 14)
-app.add_exception_handler(Exception, http_error_handler)
+@app.get(\"/api/health\")
+async def health_check():
+    return {
+        \"status\": \"healthy\",
+        \"service\": \"truebond\",
+        \"version\": \"1.0.0\"
+    }
 
-@app.on_event("startup")
-async def startup_event():
-    logger.info(f"Starting Pairly API - Environment: {settings.ENVIRONMENT}")
-    
-    # Run security validation
-    try:
-        SecurityValidator.validate_all()
-    except Exception as e:
-        logger.error(f"Security validation failed: {str(e)}")
-        if settings.ENVIRONMENT == 'production':
-            raise
-    
-    # Initialize database
-    logger.info("Initializing database connection")
-    await init_db()
-    
-    # Connect to Redis
-    logger.info("Connecting to Redis")
-    await redis_client.connect()
-    
-    # Start presence monitor
-    logger.info("Starting presence monitor")
-    await start_presence_monitor()
-    
-    logger.info("Pairly API startup completed successfully")
 
-@app.on_event("shutdown")
-async def shutdown_event():
-    logger.info("Shutting down Pairly API")
-    await redis_client.disconnect()
-    logger.info("Shutdown complete")
-
-app.include_router(auth.router)
-app.include_router(twofa.router)
-app.include_router(profiles.router)
-app.include_router(discovery.router)
-app.include_router(messaging.router)
-app.include_router(messaging_v2.router)  # Phase 9: Messaging V2
-app.include_router(calling_v2.router)  # Phase 10: Calling V2
-app.include_router(credits.router)
-app.include_router(payments.router)
-app.include_router(payments_enhanced.router)  # Phase 8.1: Enhanced payments
-app.include_router(payouts.router)
-app.include_router(media.router)
-app.include_router(posts.router)
-app.include_router(feed.router)
-app.include_router(subscriptions.router)
-app.include_router(webhooks.router)
-app.include_router(admin_payouts.router)
-app.include_router(admin_security.router)
-app.include_router(admin_analytics.router)
-app.include_router(admin_security_enhanced.router)
-app.include_router(admin_analytics_enhanced.router)
-app.include_router(admin_users.router)
-app.include_router(admin_payments.router)  # Phase 8.2: Admin payments dashboard
-app.include_router(admin_webhooks.router)  # Phase 8.3: Admin webhooks dashboard
-app.include_router(admin_ledger.router)  # Phase 8.4: Financial ledger
-app.include_router(admin_reconciliation.router)  # Phase 8.5: Reconciliation
-app.include_router(admin_fraud.router)  # Phase 8.6: Fraud detection
-app.include_router(admin_monitoring.router)  # Phase 8.7: Monitoring & alerts
-app.include_router(admin_messaging.router)  # Phase 9: Admin messaging tools
-app.include_router(admin_calling.router)  # Phase 10: Admin calling tools
-app.include_router(compliance.router)
-app.include_router(calls.router)
-app.include_router(matchmaking.router)
-app.include_router(presence.router)  # Phase 11: Presence Engine V2
-app.include_router(analytics.router)  # Phase 12: Analytics & Insights
-app.include_router(notifications.router)  # Phase 13: Notification Engine
-app.include_router(location.router)  # Geo-location API
-app.include_router(nearby.router)  # Nearby users API
-
-@app.get("/api")
+@app.get(\"/\")
 async def root():
-    return {"status": "ok", "message": "Pairly Dating SaaS API v1.0", "service": "pairly"}
-
-@app.get("/api/health")
-async def health():
-    return {"status": "healthy", "service": "pairly"}
+    return {
+        \"app\": \"TrueBond\",
+        \"version\": \"1.0.0\",
+        \"docs\": \"/docs\",
+        \"health\": \"/api/health\"
+    }
