@@ -49,7 +49,10 @@ async def create_profile(req: CreateProfileRequest, user: User = Depends(get_cur
     if existing:
         raise HTTPException(400, "Profile already exists")
 
-    geo_location = GeoJSONPoint(coordinates=[req.location.lng, req.location.lat])
+    geo_location = {
+        "type": "Point",
+        "coordinates": [req.location.lng, req.location.lat]
+    }
 
     profile = Profile(
         user_id=user.id,
@@ -57,8 +60,7 @@ async def create_profile(req: CreateProfileRequest, user: User = Depends(get_cur
         bio=req.bio,
         age=req.age,
         price_per_message=req.price_per_message,
-        location=geo_location,
-        gallery=[]
+        location=geo_location
     )
 
     await profile.insert()
