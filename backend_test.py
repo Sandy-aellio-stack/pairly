@@ -720,9 +720,10 @@ class PairlyTester:
     
     def run_all_tests(self) -> Dict[str, bool]:
         """Run all backend tests and return results"""
-        self.log("=" * 60)
-        self.log("STARTING PHASE 2 SUBSCRIPTION SYSTEM BACKEND TESTS")
-        self.log("=" * 60)
+        self.log("=" * 80)
+        self.log("STARTING COMPREHENSIVE PAIRLY BACKEND TESTS")
+        self.log("Testing: Subscription System + Nearby Users APIs")
+        self.log("=" * 80)
         
         results = {}
         
@@ -737,6 +738,10 @@ class PairlyTester:
         if not self.setup_auth():
             self.log("✗ Authentication setup failed, stopping tests", "ERROR")
             return results
+        
+        self.log("-" * 60)
+        self.log("TESTING SUBSCRIPTION SYSTEM")
+        self.log("-" * 60)
         
         # Feature flag and basic endpoints
         results["feature_flag"] = self.test_feature_flag()
@@ -755,6 +760,24 @@ class PairlyTester:
         results["admin_payouts_access_control"] = self.test_admin_payouts_access_control()
         results["admin_payout_stats"] = self.test_admin_payout_stats()
         results["admin_payout_csv_export"] = self.test_admin_payout_csv_export()
+        
+        self.log("-" * 60)
+        self.log("TESTING NEARBY USERS SYSTEM")
+        self.log("-" * 60)
+        
+        # Setup test users for nearby testing
+        if self.setup_nearby_test_users():
+            # Location APIs
+            results["location_update"] = self.test_location_update()
+            results["location_visibility_toggle"] = self.test_location_visibility_toggle()
+            results["get_my_location"] = self.test_get_my_location()
+            
+            # Nearby users APIs
+            results["nearby_users_query"] = self.test_nearby_users_query()
+            results["nearby_users_radius"] = self.test_nearby_users_with_different_radius()
+        else:
+            self.log("✗ Failed to setup nearby test users, skipping nearby tests", "ERROR")
+            results["nearby_setup"] = False
         
         return results
     
