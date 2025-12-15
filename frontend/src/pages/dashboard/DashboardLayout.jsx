@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { Home, MapPin, MessageCircle, User, Coins, LogOut, Menu, X } from 'lucide-react';
-import useAuthStore from '../store/authStore';
-import CustomCursor from '../components/CustomCursor';
+import useAuthStore from '@/store/authStore';
+import CustomCursor from '@/components/CustomCursor';
 
 const DashboardLayout = () => {
   const { user, credits, logout, refreshCredits } = useAuthStore();
