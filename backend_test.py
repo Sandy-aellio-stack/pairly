@@ -805,7 +805,7 @@ class PairlyTester:
 
 def main():
     """Main test execution"""
-    tester = SubscriptionTester()
+    tester = PairlyTester()
     results = tester.run_all_tests()
     tester.print_summary(results)
     
