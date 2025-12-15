@@ -1,242 +1,146 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import MainLayout from '@/layouts/MainLayout';
-import { useAuth } from '@/context/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { toast } from 'sonner';
-import {
-  Globe, MapPin, Navigation, Users, X, MessageSquare,
-  Crown, Lock, Sparkles, RefreshCw, ZoomIn, ZoomOut, Locate
-} from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import { updateLocation } from '@/services/location';
-import { fetchNearbyUsers } from '@/services/nearby';
+import { MapContainer, TileLayer, Marker, Circle, Popup } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import { useEffect, useState } from "react";
+import MainLayout from "@/layouts/MainLayout";
+import { updateLocation } from "@/services/location";
+import { fetchNearbyUsers } from "@/services/nearby";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { useNavigate } from "react-router-dom";
+import { Users, MapPin, MessageSquare, RefreshCw, Crown, Lock, Sparkles } from "lucide-react";
 
-// Fix for default markers
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+// Custom user marker
+const userIcon = new L.Icon({
+  iconUrl: "https://cdn-icons-png.flaticon.com/512/847/847969.png",
+  iconSize: [38, 38],
+  iconAnchor: [19, 38],
 });
 
-// Custom marker icons
-const createCustomIcon = (imageUrl, isOnline = true) => {
+// Create custom icon for nearby users
+const createNearbyUserIcon = (avatarUrl, isOnline = false) => {
   return L.divIcon({
-    className: 'custom-marker',
+    className: "custom-marker",
     html: `
       <div class="relative">
-        <div class="w-12 h-12 rounded-full border-3 ${isOnline ? 'border-green-500' : 'border-gray-400'} overflow-hidden shadow-lg bg-white">
-          <img src="${imageUrl}" class="w-full h-full object-cover" />
+        <div class="w-10 h-10 rounded-full border-2 ${isOnline ? 'border-green-500' : 'border-gray-300'} overflow-hidden shadow-lg bg-white">
+          <img src="${avatarUrl || 'https://i.pravatar.cc/100'}" class="w-full h-full object-cover" onerror="this.src='https://i.pravatar.cc/100'" />
         </div>
-        ${isOnline ? '<div class="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>' : ''}
+        ${isOnline ? '<div class="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>' : ''}
       </div>
     `,
-    iconSize: [48, 48],
-    iconAnchor: [24, 48],
-    popupAnchor: [0, -48],
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40],
   });
 };
 
-const MapControls = ({ onLocate, onZoomIn, onZoomOut, onRefresh }) => {
-  return (
-    <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2">
-      <Button size="icon" variant="secondary" onClick={onLocate} className="shadow-lg">
-        <Locate className="h-5 w-5" />
-      </Button>
-      <Button size="icon" variant="secondary" onClick={onZoomIn} className="shadow-lg">
-        <ZoomIn className="h-5 w-5" />
-      </Button>
-      <Button size="icon" variant="secondary" onClick={onZoomOut} className="shadow-lg">
-        <ZoomOut className="h-5 w-5" />
-      </Button>
-      <Button size="icon" variant="secondary" onClick={onRefresh} className="shadow-lg">
-        <RefreshCw className="h-5 w-5" />
-      </Button>
-    </div>
-  );
-};
-
-const MapController = ({ center, zoom }) => {
-  const map = useMap();
-  
-  useEffect(() => {
-    if (center) {
-      map.flyTo(center, zoom, { duration: 1 });
-    }
-  }, [center, zoom, map]);
-
-  return null;
-};
-
-const SnapMap = () => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const [userLocation, setUserLocation] = useState(null);
+export default function SnapMap() {
+  const [position, setPosition] = useState(null);
+  const [accuracy, setAccuracy] = useState(null);
   const [nearbyUsers, setNearbyUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [useMockData, setUseMockData] = useState(false);
+  const [hasSubscription] = useState(false);
   const [showSubscribeModal, setShowSubscribeModal] = useState(false);
-  const [mapCenter, setMapCenter] = useState([40.7128, -74.0060]); // NYC default
-  const [mapZoom, setMapZoom] = useState(13);
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasSubscription, setHasSubscription] = useState(false); // Mock subscription status
-  const [useMockData, setUseMockData] = useState(false); // Fallback to mock if API fails
-  const mapRef = useRef(null);
+  const navigate = useNavigate();
 
-  // Fetch nearby users from API or use mock data
+  // Mock users fallback
+  const mockUsers = [
+    { id: 1, name: "Emma Wilson", avatar: "https://i.pravatar.cc/100?img=5", distance: 300, isOnline: true, isCreator: true, bio: "Travel & Lifestyle ✨", lat: 0, lng: 0 },
+    { id: 2, name: "Jake Smith", avatar: "https://i.pravatar.cc/100?img=8", distance: 500, isOnline: true, isCreator: false, bio: "Coffee enthusiast ☕", lat: 0, lng: 0 },
+    { id: 3, name: "Sophia Chen", avatar: "https://i.pravatar.cc/100?img=9", distance: 800, isOnline: true, isCreator: true, bio: "Fitness & Wellness 💪", lat: 0, lng: 0 },
+    { id: 4, name: "Lucas Brown", avatar: "https://i.pravatar.cc/100?img=12", distance: 1200, isOnline: false, isCreator: false, bio: "Music lover 🎵", lat: 0, lng: 0 },
+    { id: 5, name: "Mia Johnson", avatar: "https://i.pravatar.cc/100?img=16", distance: 1500, isOnline: true, isCreator: true, bio: "Art & Design 🎨", lat: 0, lng: 0 },
+  ];
+
+  // Load nearby users from API
   const loadNearbyUsers = async (lat, lng) => {
     try {
       const response = await fetchNearbyUsers(lat, lng, 5, 50);
       if (response.users && response.users.length > 0) {
-        // Transform API response to component format
         const users = response.users.map(u => ({
           id: u.user_id,
-          name: u.display_name || 'Unknown',
-          username: u.display_name?.toLowerCase().replace(/\s+/g, '') || 'user',
+          name: u.display_name || "Unknown",
           avatar: u.avatar || `https://i.pravatar.cc/100?u=${u.user_id}`,
-          distance: u.distance_km < 1 
-            ? `${Math.round(u.distance)} m` 
-            : `${u.distance_km} km`,
+          distance: u.distance,
           isOnline: u.is_online || false,
           isCreator: false,
-          bio: u.bio || '',
+          bio: u.bio || "",
           lat: u.lat,
           lng: u.lng,
         }));
         setNearbyUsers(users);
         setUseMockData(false);
       } else {
-        // No users found, use mock data
-        loadMockUsers();
+        // No users from API, use mock with random positions near user
+        const usersWithPositions = mockUsers.map((u, i) => ({
+          ...u,
+          lat: lat + (Math.random() - 0.5) * 0.01,
+          lng: lng + (Math.random() - 0.5) * 0.01,
+        }));
+        setNearbyUsers(usersWithPositions);
+        setUseMockData(true);
       }
     } catch (error) {
-      console.log('Failed to fetch nearby users, using mock data:', error);
-      loadMockUsers();
+      console.log("Failed to fetch nearby users:", error);
+      // Use mock with random positions
+      const usersWithPositions = mockUsers.map((u, i) => ({
+        ...u,
+        lat: lat + (Math.random() - 0.5) * 0.01,
+        lng: lng + (Math.random() - 0.5) * 0.01,
+      }));
+      setNearbyUsers(usersWithPositions);
+      setUseMockData(true);
     }
   };
 
-  // Mock nearby users fallback
-  const loadMockUsers = () => {
-    setUseMockData(true);
-    const mockUsers = [
-      {
-        id: 1,
-        name: 'Emma Wilson',
-        username: 'emmaw',
-        avatar: 'https://i.pravatar.cc/100?img=5',
-        distance: '0.3 mi',
-        isOnline: true,
-        isCreator: true,
-        bio: 'Travel & Lifestyle ✨',
-        lat: 40.7138,
-        lng: -74.0050,
-      },
-      {
-        id: 2,
-        name: 'Jake Smith',
-        username: 'jakes',
-        avatar: 'https://i.pravatar.cc/100?img=8',
-        distance: '0.5 mi',
-        isOnline: true,
-        isCreator: false,
-        bio: 'Coffee enthusiast ☕',
-        lat: 40.7148,
-        lng: -74.0080,
-      },
-      {
-        id: 3,
-        name: 'Sophia Chen',
-        username: 'sophiac',
-        avatar: 'https://i.pravatar.cc/100?img=9',
-        distance: '0.8 mi',
-        isOnline: true,
-        isCreator: true,
-        bio: 'Fitness & Wellness 💪',
-        lat: 40.7108,
-        lng: -74.0020,
-      },
-      {
-        id: 4,
-        name: 'Lucas Brown',
-        username: 'lucasb',
-        avatar: 'https://i.pravatar.cc/100?img=12',
-        distance: '1.2 mi',
-        isOnline: false,
-        isCreator: false,
-        bio: 'Music lover 🎵',
-        lat: 40.7168,
-        lng: -74.0100,
-      },
-      {
-        id: 5,
-        name: 'Mia Johnson',
-        username: 'miaj',
-        avatar: 'https://i.pravatar.cc/100?img=16',
-        distance: '1.5 mi',
-        isOnline: true,
-        isCreator: true,
-        bio: 'Art & Design 🎨',
-        lat: 40.7088,
-        lng: -74.0090,
-      },
-    ];
-    setNearbyUsers(mockUsers);
-  };
-
-  // Initial load
+  // Get user location
   useEffect(() => {
-    // Load mock data initially while waiting for location
-    loadMockUsers();
-  }, []);
+    if (!navigator.geolocation) return;
 
-  // Get user's location and update backend
-  useEffect(() => {
-    const fetchLocationAndUsers = async () => {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          async (position) => {
-            const { latitude, longitude } = position.coords;
-            setUserLocation({ lat: latitude, lng: longitude });
-            setMapCenter([latitude, longitude]);
-            
-            // Update location on backend
-            try {
-              await updateLocation(latitude, longitude);
-              console.log('Location updated on backend');
-            } catch (error) {
-              console.log('Failed to update location on backend:', error);
-            }
-            
-            // Fetch nearby users
-            await loadNearbyUsers(latitude, longitude);
-            setIsLoading(false);
-          },
-          (error) => {
-            console.log('Location error:', error);
-            toast.info('Using default location. Enable location for better experience.');
-            setIsLoading(false);
-          }
-        );
-      } else {
-        setIsLoading(false);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setPosition([lat, lng]);
+        setAccuracy(pos.coords.accuracy);
+
+        // Update location on backend
+        try {
+          await updateLocation(lat, lng);
+        } catch (error) {
+          console.log("Failed to update location:", error);
+        }
+
+        // Fetch nearby users
+        await loadNearbyUsers(lat, lng);
+      },
+      (err) => console.error(err),
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
       }
-    };
-    
-    fetchLocationAndUsers();
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleUserClick = (nearbyUser) => {
-    setSelectedUser(nearbyUser);
+  const handleRefresh = async () => {
+    if (!position) return;
+    setIsLoading(true);
+    await loadNearbyUsers(position[0], position[1]);
+    setIsLoading(false);
   };
 
-  const handleInteract = () => {
+  const handleUserClick = (user) => {
+    setSelectedUser(user);
+  };
+
+  const handleMessage = () => {
     if (!hasSubscription) {
       setShowSubscribeModal(true);
     } else {
@@ -244,32 +148,26 @@ const SnapMap = () => {
     }
   };
 
-  const handleLocate = () => {
-    if (userLocation) {
-      setMapCenter([userLocation.lat, userLocation.lng]);
-      setMapZoom(15);
-    } else if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          setUserLocation({ lat: latitude, lng: longitude });
-          setMapCenter([latitude, longitude]);
-          setMapZoom(15);
-        }
-      );
-    }
+  const formatDistance = (meters) => {
+    if (meters < 1000) return `${Math.round(meters)} m`;
+    return `${(meters / 1000).toFixed(1)} km`;
   };
 
-  const handleZoomIn = () => setMapZoom(prev => Math.min(prev + 1, 18));
-  const handleZoomOut = () => setMapZoom(prev => Math.max(prev - 1, 5));
-  const handleRefresh = async () => {
-    setIsLoading(true);
-    if (userLocation) {
-      await loadNearbyUsers(userLocation.lat, userLocation.lng);
-    }
-    setTimeout(() => setIsLoading(false), 500);
-    toast.success('Map refreshed!');
-  };
+  if (!position) {
+    return (
+      <MainLayout>
+        <div className="h-[calc(100vh-120px)] flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-16 h-16 rounded-full bg-violet-100 flex items-center justify-center mx-auto mb-4 animate-pulse">
+              <MapPin className="h-8 w-8 text-violet-600" />
+            </div>
+            <p className="text-lg font-medium text-slate-700">📍 Getting your precise location…</p>
+            <p className="text-sm text-slate-500 mt-2">Please allow location access</p>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -277,7 +175,7 @@ const SnapMap = () => {
         {/* Header */}
         <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-[1001]">
           <div className="flex items-center gap-2">
-            <Globe className="h-6 w-6 text-violet-600" />
+            <MapPin className="h-6 w-6 text-violet-600" />
             <h1 className="text-xl font-bold text-slate-900">Snap Map</h1>
           </div>
           <div className="flex items-center gap-2">
@@ -286,99 +184,87 @@ const SnapMap = () => {
               {nearbyUsers.filter(u => u.isOnline).length} nearby
             </Badge>
             {useMockData && (
-              <Badge variant="secondary" className="gap-1 bg-amber-100 text-amber-700">
-                Demo Mode
+              <Badge variant="secondary" className="bg-amber-100 text-amber-700">
+                Demo
               </Badge>
             )}
+            <Button size="icon" variant="ghost" onClick={handleRefresh} disabled={isLoading}>
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            </Button>
           </div>
         </div>
 
-        {/* Map Container */}
-        <div className="relative h-[calc(100vh-180px)]">
+        {/* Map */}
+        <div className="relative h-[calc(100vh-240px)]">
           <MapContainer
-            center={mapCenter}
-            zoom={mapZoom}
+            center={position}
+            zoom={16}
             className="h-full w-full"
-            ref={mapRef}
             zoomControl={false}
           >
+            {/* Clean Light Map (Carto) */}
             <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+              attribution="© OpenStreetMap © CARTO"
             />
-            <MapController center={mapCenter} zoom={mapZoom} />
 
-            {/* User's location */}
-            {userLocation && (
-              <>
-                <Circle
-                  center={[userLocation.lat, userLocation.lng]}
-                  radius={100}
-                  pathOptions={{ color: '#7c3aed', fillColor: '#ede9fe', fillOpacity: 0.3 }}
-                />
+            {/* Accuracy Circle */}
+            <Circle
+              center={position}
+              radius={accuracy}
+              pathOptions={{
+                color: "#8b5cf6",
+                fillColor: "#c4b5fd",
+                fillOpacity: 0.35,
+              }}
+            />
+
+            {/* User Marker */}
+            <Marker position={position} icon={userIcon}>
+              <Popup>You are here</Popup>
+            </Marker>
+
+            {/* Nearby Users Markers */}
+            {nearbyUsers.map((user) => (
+              user.lat && user.lng && (
                 <Marker
-                  position={[userLocation.lat, userLocation.lng]}
-                  icon={createCustomIcon('https://i.pravatar.cc/100?img=1', true)}
-                >
-                  <Popup>You are here</Popup>
-                </Marker>
-              </>
-            )}
-
-            {/* Nearby users */}
-            {nearbyUsers.map((nearbyUser) => (
-              <Marker
-                key={nearbyUser.id}
-                position={[nearbyUser.lat, nearbyUser.lng]}
-                icon={createCustomIcon(nearbyUser.avatar, nearbyUser.isOnline)}
-                eventHandlers={{
-                  click: () => handleUserClick(nearbyUser),
-                }}
-              />
+                  key={user.id}
+                  position={[user.lat, user.lng]}
+                  icon={createNearbyUserIcon(user.avatar, user.isOnline)}
+                  eventHandlers={{
+                    click: () => handleUserClick(user),
+                  }}
+                />
+              )
             ))}
           </MapContainer>
-
-          {/* Map Controls */}
-          <MapControls
-            onLocate={handleLocate}
-            onZoomIn={handleZoomIn}
-            onZoomOut={handleZoomOut}
-            onRefresh={handleRefresh}
-          />
-
-          {/* Loading Overlay */}
-          {isLoading && (
-            <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-[1000]">
-              <RefreshCw className="h-8 w-8 text-violet-600 animate-spin" />
-            </div>
-          )}
         </div>
 
         {/* Bottom User List */}
         <div className="bg-white border-t border-slate-200">
           <div className="p-4">
             <h3 className="font-semibold mb-3 flex items-center gap-2 text-slate-900">
-              <MapPin className="h-4 w-4 text-violet-600" />
+              <Users className="h-4 w-4 text-violet-600" />
               People Nearby
             </h3>
-            <div className="flex gap-3 overflow-x-auto pb-2">
-              {nearbyUsers.map((nearbyUser) => (
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+              {nearbyUsers.map((user) => (
                 <div
-                  key={nearbyUser.id}
+                  key={user.id}
                   className="flex-shrink-0 cursor-pointer"
-                  onClick={() => handleUserClick(nearbyUser)}
+                  onClick={() => handleUserClick(user)}
                 >
                   <div className="relative">
                     <Avatar className="h-14 w-14 border-2 border-white shadow">
-                      <AvatarImage src={nearbyUser.avatar} />
-                      <AvatarFallback>{nearbyUser.name[0]}</AvatarFallback>
+                      <AvatarImage src={user.avatar} />
+                      <AvatarFallback>{user.name[0]}</AvatarFallback>
                     </Avatar>
-                    {nearbyUser.isOnline && (
+                    {user.isOnline && (
                       <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
                     )}
                   </div>
-                  <p className="text-xs text-center mt-1 truncate w-14">{nearbyUser.name.split(' ')[0]}</p>
-                  <p className="text-xs text-center text-gray-500">{nearbyUser.distance}</p>
+                  <p className="text-xs text-center mt-1 truncate w-14">{user.name.split(" ")[0]}</p>
+                  <p className="text-xs text-center text-gray-500">{formatDistance(user.distance)}</p>
                 </div>
               ))}
             </div>
@@ -410,10 +296,9 @@ const SnapMap = () => {
                         </Badge>
                       )}
                     </div>
-                    <p className="text-gray-500">@{selectedUser.username}</p>
                     <div className="flex items-center gap-1 text-sm text-gray-500 mt-1">
                       <MapPin className="h-3 w-3" />
-                      {selectedUser.distance} away
+                      {formatDistance(selectedUser.distance)} away
                     </div>
                   </div>
                 </div>
@@ -421,12 +306,16 @@ const SnapMap = () => {
                 <div className="flex gap-3 mt-4">
                   <Button
                     className="flex-1 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700"
-                    onClick={handleInteract}
+                    onClick={handleMessage}
                   >
                     <MessageSquare className="h-4 w-4 mr-2" />
                     Message
                   </Button>
-                  <Button variant="outline" className="flex-1 border-slate-300" onClick={() => navigate(`/profile/${selectedUser.id}`)}>
+                  <Button 
+                    variant="outline" 
+                    className="flex-1 border-slate-300" 
+                    onClick={() => navigate(`/profile/${selectedUser.id}`)}
+                  >
                     View Profile
                   </Button>
                 </div>
@@ -442,14 +331,14 @@ const SnapMap = () => {
               <div className="w-16 h-16 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 flex items-center justify-center mx-auto mb-4">
                 <Lock className="h-8 w-8 text-white" />
               </div>
-              <DialogTitle className="text-2xl mb-2 text-slate-900">Unlock Map Interactions</DialogTitle>
-              <DialogDescription className="text-base text-slate-600">
+              <h3 className="text-2xl font-bold mb-2 text-slate-900">Unlock Map Interactions</h3>
+              <p className="text-base text-slate-600">
                 Subscribe to message and interact with people you discover on the map.
-              </DialogDescription>
+              </p>
               <div className="mt-6 space-y-3">
                 <Button
                   className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700"
-                  onClick={() => navigate('/pricing')}
+                  onClick={() => navigate("/pricing")}
                 >
                   <Crown className="h-4 w-4 mr-2" />
                   Subscribe Now
@@ -464,6 +353,4 @@ const SnapMap = () => {
       </div>
     </MainLayout>
   );
-};
-
-export default SnapMap;
+}
