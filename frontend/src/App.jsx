@@ -5,6 +5,8 @@ import useAuthStore from '@/store/authStore';
 
 // Pages
 import LandingPage from '@/pages/LandingPage';
+import LoginPage from '@/pages/LoginPage';
+import SignupPage from '@/pages/SignupPage';
 import DashboardLayout from '@/pages/dashboard/DashboardLayout';
 import HomePage from '@/pages/dashboard/HomePage';
 import NearbyPage from '@/pages/dashboard/NearbyPage';
@@ -28,7 +30,7 @@ const ProtectedRoute = ({ children }) => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   return children;
@@ -67,12 +69,28 @@ function App() {
     <BrowserRouter>
       <Toaster position="top-center" theme="light" richColors />
       <Routes>
-        {/* Public landing page */}
+        {/* Public routes */}
         <Route
           path="/"
           element={
             <PublicRoute>
               <LandingPage />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/login"
+          element={
+            <PublicRoute>
+              <LoginPage />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/signup"
+          element={
+            <PublicRoute>
+              <SignupPage />
             </PublicRoute>
           }
         />
