@@ -179,13 +179,13 @@ const LandingPage = () => {
       </nav>
 
       {/* ===== HERO SECTION ===== */}
-      <section id="home" className="min-h-screen flex items-center relative overflow-hidden pt-16">
+      <section id="home" className="min-h-screen flex items-center relative overflow-hidden pt-16 lg:pt-0">
         <div className="absolute inset-0 bg-gradient-to-br from-purple-50 via-white to-pink-50" />
         <div className="absolute top-20 right-20 w-96 h-96 rounded-full bg-purple-200/30 blur-[100px]" />
         <div className="absolute bottom-20 left-20 w-80 h-80 rounded-full bg-pink-200/30 blur-[100px]" />
 
-        <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-16 py-20 lg:ml-24">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+        <div className="relative z-10 w-full max-w-[1400px] mx-auto px-6 lg:px-12 py-12 lg:py-16">
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
             <div>
               <div className="hero-badge inline-flex items-center gap-2 px-4 py-2 bg-purple-100 rounded-full mb-6">
                 <Heart size={16} className="text-purple-600" fill="currentColor" />
@@ -218,8 +218,8 @@ const LandingPage = () => {
             </div>
 
             {/* Hero Visual */}
-            <div className="hidden lg:block relative">
-              <div className="relative w-full max-w-md mx-auto">
+            <div className="hidden lg:flex justify-center items-center relative">
+              <div className="relative w-full max-w-sm">
                 <div className="bg-white rounded-[2rem] p-3 shadow-2xl shadow-purple-200/40">
                   <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-[1.5rem] p-6 aspect-[9/14] relative overflow-hidden">
                     <div className="space-y-3">
@@ -245,10 +245,10 @@ const LandingPage = () => {
                   </div>
                 </div>
 
-                <div className="hero-float float-1 absolute -left-12 top-8 bg-white rounded-xl p-4 shadow-xl">
-                  <div className="flex items-center gap-3">
+                <div className="hero-float float-1 absolute -left-4 top-12 bg-white rounded-xl p-3 shadow-xl">
+                  <div className="flex items-center gap-2">
                     <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                      <Users size={20} className="text-green-600" />
+                      <Users size={18} className="text-green-600" />
                     </div>
                     <div>
                       <div className="font-bold text-sm">5 nearby</div>
@@ -257,10 +257,10 @@ const LandingPage = () => {
                   </div>
                 </div>
 
-                <div className="hero-float float-2 absolute -right-8 top-1/3 bg-white rounded-xl p-4 shadow-xl">
-                  <div className="flex items-center gap-3">
+                <div className="hero-float float-2 absolute -right-4 top-1/3 bg-white rounded-xl p-3 shadow-xl">
+                  <div className="flex items-center gap-2">
                     <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
-                      <Heart size={20} className="text-purple-600" fill="currentColor" />
+                      <Heart size={18} className="text-purple-600" fill="currentColor" />
                     </div>
                     <div>
                       <div className="font-bold text-sm">New match!</div>
@@ -269,10 +269,10 @@ const LandingPage = () => {
                   </div>
                 </div>
 
-                <div className="hero-float float-3 absolute -left-6 bottom-16 bg-white rounded-xl p-4 shadow-xl">
-                  <div className="flex items-center gap-3">
+                <div className="hero-float float-3 absolute -left-4 bottom-20 bg-white rounded-xl p-3 shadow-xl">
+                  <div className="flex items-center gap-2">
                     <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center">
-                      <MessageCircle size={20} className="text-pink-600" />
+                      <MessageCircle size={18} className="text-pink-600" />
                     </div>
                     <div>
                       <div className="font-bold text-sm">12 messages</div>
@@ -288,7 +288,7 @@ const LandingPage = () => {
 
       {/* ===== FEATURES SECTION ===== */}
       <section id="features" className="py-24 bg-gradient-to-b from-white via-purple-50/50 to-white">
-        <div className="max-w-7xl mx-auto px-6 lg:px-16 lg:ml-24">
+        <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">
               Powerful <span className="gradient-text">Features</span>
@@ -331,7 +331,7 @@ const LandingPage = () => {
 
       {/* ===== SAFETY SECTION ===== */}
       <section id="safety" className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-6 lg:px-16 lg:ml-24">
+        <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
           <div className="text-center mb-4">
             <span className="text-sm font-medium text-purple-600 uppercase tracking-wide">Your safety matters</span>
           </div>
@@ -403,7 +403,7 @@ const LandingPage = () => {
 
       {/* ===== SUPPORT SECTION ===== */}
       <section id="support" className="py-24 bg-gradient-to-b from-purple-50/50 via-white to-white">
-        <div className="max-w-7xl mx-auto px-6 lg:px-16 lg:ml-24">
+        <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
           <div className="text-center mb-12">
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">
               How can we <span className="gradient-text">help you?</span>
@@ -510,7 +510,7 @@ const LandingPage = () => {
 
       {/* ===== PRICING SECTION ===== */}
       <section id="pricing" className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-6 lg:px-16 lg:ml-24">
+        <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
           <div className="text-center mb-12">
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">
               Find love at <span className="gradient-text">any price</span>
