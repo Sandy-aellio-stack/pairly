@@ -165,8 +165,13 @@ class TrueBondTester:
     def test_login_valid(self) -> bool:
         """Test valid login"""
         try:
+            # Use the same email from signup
+            if not hasattr(self, 'test_email'):
+                self.log("✗ No test email available from signup", "ERROR")
+                return False
+            
             login_data = {
-                "email": "john@test.com",
+                "email": self.test_email,
                 "password": "Test@1234"
             }
             
