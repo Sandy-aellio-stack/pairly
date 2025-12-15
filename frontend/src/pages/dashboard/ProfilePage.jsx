@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
-import { User, Heart, MapPin, Save } from 'lucide-react';
+import { User, Heart, MapPin, Save, Camera, Check } from 'lucide-react';
 import useAuthStore from '@/store/authStore';
 import { userAPI } from '@/services/api';
+import { toast } from 'sonner';
 
 const ProfilePage = () => {
   const { user, initialize } = useAuthStore();
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState('');
-  const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState('profile');
 
   const [profile, setProfile] = useState({
     name: '',
@@ -40,14 +40,12 @@ const ProfilePage = () => {
 
   const handleProfileSave = async () => {
     setLoading(true);
-    setError('');
-    setSuccess('');
     try {
       await userAPI.updateProfile(profile);
-      setSuccess('Profile updated!');
+      toast.success('Profile updated!');
       await initialize();
     } catch (e) {
-      setError(e.response?.data?.detail || 'Failed to update profile');
+      toast.error(e.response?.data?.detail || 'Failed to update profile');
     } finally {
       setLoading(false);
     }
@@ -55,14 +53,12 @@ const ProfilePage = () => {
 
   const handlePreferencesSave = async () => {
     setLoading(true);
-    setError('');
-    setSuccess('');
     try {
       await userAPI.updatePreferences(preferences);
-      setSuccess('Preferences updated!');
+      toast.success('Preferences updated!');
       await initialize();
     } catch (e) {
-      setError(e.response?.data?.detail || 'Failed to update preferences');
+      toast.error(e.response?.data?.detail || 'Failed to update preferences');
     } finally {
       setLoading(false);
     }
@@ -70,167 +66,196 @@ const ProfilePage = () => {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Profile</h1>
-
-      {success && (
-        <div className="bg-green-500/10 border border-green-500/30 text-green-400 px-4 py-3 rounded-xl mb-6">
-          {success}
-        </div>
-      )}
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl mb-6">
-          {error}
-        </div>
-      )}
-
-      {/* Profile Section */}
-      <div className="card-dark mb-6">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
-            <User size={20} className="text-purple-400" />
+      {/* Profile Header */}
+      <div className="card mb-6">
+        <div className="flex items-center gap-6">
+          <div className="relative">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white text-3xl font-bold">
+              {user?.name?.[0]}
+            </div>
+            <button className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-purple-500 text-white flex items-center justify-center shadow-lg hover:bg-purple-600 transition-colors">
+              <Camera size={16} />
+            </button>
           </div>
-          <h2 className="text-lg font-semibold">Basic Info</h2>
-        </div>
-
-        <div className="space-y-4">
           <div>
-            <label className="block text-sm text-white/60 mb-2">Name</label>
-            <input
-              type="text"
-              value={profile.name}
-              onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-              className="input-dark"
-            />
+            <h1 className="text-2xl font-bold text-gray-900">{user?.name}</h1>
+            <p className="text-gray-500">{user?.email}</p>
+            <div className="flex items-center gap-2 mt-2">
+              {user?.is_verified ? (
+                <span className="inline-flex items-center gap-1 text-green-600 text-sm bg-green-50 px-2 py-1 rounded-full">
+                  <Check size={14} /> Verified
+                </span>
+              ) : (
+                <span className="text-yellow-600 text-sm bg-yellow-50 px-2 py-1 rounded-full">Pending Verification</span>
+              )}
+            </div>
           </div>
-
-          <div>
-            <label className="block text-sm text-white/60 mb-2">Bio</label>
-            <textarea
-              value={profile.bio}
-              onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
-              className="input-dark min-h-[100px] resize-none"
-              placeholder="Tell others about yourself..."
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm text-white/60 mb-2">Looking for</label>
-            <select
-              value={profile.intent}
-              onChange={(e) => setProfile({ ...profile, intent: e.target.value })}
-              className="input-dark"
-            >
-              <option value="dating">Dating</option>
-              <option value="serious">Serious Relationship</option>
-              <option value="casual">Casual</option>
-              <option value="friendship">Friendship</option>
-            </select>
-          </div>
-
-          <button
-            onClick={handleProfileSave}
-            disabled={loading}
-            className="btn-primary flex items-center gap-2 disabled:opacity-50"
-          >
-            <Save size={18} />
-            Save Profile
-          </button>
         </div>
       </div>
 
-      {/* Preferences Section */}
-      <div className="card-dark mb-6">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-pink-500/20 flex items-center justify-center">
-            <Heart size={20} className="text-pink-400" />
-          </div>
-          <h2 className="text-lg font-semibold">Preferences</h2>
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm text-white/60 mb-2">Interested In</label>
-            <select
-              value={preferences.interested_in}
-              onChange={(e) => setPreferences({ ...preferences, interested_in: e.target.value })}
-              className="input-dark"
-            >
-              <option value="male">Men</option>
-              <option value="female">Women</option>
-              <option value="other">Everyone</option>
-            </select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm text-white/60 mb-2">Min Age</label>
-              <input
-                type="number"
-                value={preferences.min_age}
-                onChange={(e) => setPreferences({ ...preferences, min_age: parseInt(e.target.value) })}
-                className="input-dark"
-                min={18}
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-white/60 mb-2">Max Age</label>
-              <input
-                type="number"
-                value={preferences.max_age}
-                onChange={(e) => setPreferences({ ...preferences, max_age: parseInt(e.target.value) })}
-                className="input-dark"
-                max={100}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm text-white/60 mb-2">
-              <MapPin size={14} className="inline mr-1" />
-              Max Distance (km)
-            </label>
-            <input
-              type="number"
-              value={preferences.max_distance_km}
-              onChange={(e) => setPreferences({ ...preferences, max_distance_km: parseInt(e.target.value) })}
-              className="input-dark"
-              min={1}
-              max={500}
-            />
-          </div>
-
-          <button
-            onClick={handlePreferencesSave}
-            disabled={loading}
-            className="btn-primary flex items-center gap-2 disabled:opacity-50"
-          >
-            <Save size={18} />
-            Save Preferences
-          </button>
-        </div>
+      {/* Tabs */}
+      <div className="flex gap-2 mb-6">
+        <button
+          onClick={() => setActiveTab('profile')}
+          className={`px-6 py-3 rounded-xl font-medium transition-all ${
+            activeTab === 'profile'
+              ? 'bg-purple-500 text-white'
+              : 'bg-white text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          <User size={18} className="inline mr-2" />
+          Profile
+        </button>
+        <button
+          onClick={() => setActiveTab('preferences')}
+          className={`px-6 py-3 rounded-xl font-medium transition-all ${
+            activeTab === 'preferences'
+              ? 'bg-purple-500 text-white'
+              : 'bg-white text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          <Heart size={18} className="inline mr-2" />
+          Preferences
+        </button>
       </div>
+
+      {activeTab === 'profile' ? (
+        <div className="card">
+          <div className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+              <input
+                type="text"
+                value={profile.name}
+                onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                className="input"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Bio</label>
+              <textarea
+                value={profile.bio}
+                onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
+                className="input min-h-[120px] resize-none"
+                placeholder="Tell others about yourself..."
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Looking for</label>
+              <select
+                value={profile.intent}
+                onChange={(e) => setProfile({ ...profile, intent: e.target.value })}
+                className="input"
+              >
+                <option value="dating">Dating</option>
+                <option value="serious">Serious Relationship</option>
+                <option value="casual">Casual</option>
+                <option value="friendship">Friendship</option>
+              </select>
+            </div>
+
+            <button
+              onClick={handleProfileSave}
+              disabled={loading}
+              className="btn-primary flex items-center gap-2 disabled:opacity-50"
+            >
+              <Save size={18} />
+              Save Profile
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="card">
+          <div className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Interested In</label>
+              <select
+                value={preferences.interested_in}
+                onChange={(e) => setPreferences({ ...preferences, interested_in: e.target.value })}
+                className="input"
+              >
+                <option value="male">Men</option>
+                <option value="female">Women</option>
+                <option value="other">Everyone</option>
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Min Age</label>
+                <input
+                  type="number"
+                  value={preferences.min_age}
+                  onChange={(e) => setPreferences({ ...preferences, min_age: parseInt(e.target.value) })}
+                  className="input"
+                  min={18}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Max Age</label>
+                <input
+                  type="number"
+                  value={preferences.max_age}
+                  onChange={(e) => setPreferences({ ...preferences, max_age: parseInt(e.target.value) })}
+                  className="input"
+                  max={100}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <MapPin size={14} className="inline mr-1" />
+                Max Distance (km)
+              </label>
+              <input
+                type="range"
+                value={preferences.max_distance_km}
+                onChange={(e) => setPreferences({ ...preferences, max_distance_km: parseInt(e.target.value) })}
+                className="w-full accent-purple-500"
+                min={1}
+                max={500}
+              />
+              <div className="flex justify-between text-sm text-gray-500 mt-1">
+                <span>1 km</span>
+                <span className="font-medium text-purple-600">{preferences.max_distance_km} km</span>
+                <span>500 km</span>
+              </div>
+            </div>
+
+            <button
+              onClick={handlePreferencesSave}
+              disabled={loading}
+              className="btn-primary flex items-center gap-2 disabled:opacity-50"
+            >
+              <Save size={18} />
+              Save Preferences
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Account Info */}
-      <div className="card-dark">
-        <h2 className="text-lg font-semibold mb-4">Account</h2>
+      <div className="card mt-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Account Info</h2>
         <div className="space-y-3 text-sm">
-          <div className="flex justify-between">
-            <span className="text-white/60">Email</span>
-            <span>{user?.email}</span>
+          <div className="flex justify-between py-2 border-b border-gray-100">
+            <span className="text-gray-500">Email</span>
+            <span className="text-gray-900">{user?.email}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-white/60">Mobile</span>
-            <span>{user?.mobile_number}</span>
+          <div className="flex justify-between py-2 border-b border-gray-100">
+            <span className="text-gray-500">Mobile</span>
+            <span className="text-gray-900">{user?.mobile_number || 'Not set'}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-white/60">Age</span>
-            <span>{user?.age}</span>
+          <div className="flex justify-between py-2 border-b border-gray-100">
+            <span className="text-gray-500">Age</span>
+            <span className="text-gray-900">{user?.age}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-white/60">Verified</span>
-            <span className={user?.is_verified ? 'text-green-400' : 'text-yellow-400'}>
-              {user?.is_verified ? 'Yes' : 'Pending'}
-            </span>
+          <div className="flex justify-between py-2">
+            <span className="text-gray-500">Member since</span>
+            <span className="text-gray-900">{user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}</span>
           </div>
         </div>
       </div>

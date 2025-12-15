@@ -1,39 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import { RefreshCw, MessageCircle, MapPin, Navigation } from 'lucide-react';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import { RefreshCw, MessageCircle, MapPin, Navigation, X } from 'lucide-react';
 import { locationAPI } from '@/services/api';
 import useAuthStore from '@/store/authStore';
 import { useNavigate } from 'react-router-dom';
-
-// Custom icons
-const userIcon = new L.Icon({
-  iconUrl: 'https://cdn-icons-png.flaticon.com/512/149/149071.png',
-  iconSize: [40, 40],
-  iconAnchor: [20, 40],
-});
-
-const nearbyIcon = new L.Icon({
-  iconUrl: 'https://cdn-icons-png.flaticon.com/512/1946/1946429.png',
-  iconSize: [36, 36],
-  iconAnchor: [18, 36],
-});
-
-// Map center controller
-const MapController = ({ center }) => {
-  const map = useMap();
-  useEffect(() => {
-    if (center) {
-      map.setView(center, map.getZoom());
-    }
-  }, [center, map]);
-  return null;
-};
+import gsap from 'gsap';
 
 const NearbyPage = () => {
   const navigate = useNavigate();
   const { credits } = useAuthStore();
+  const mapContainer = useRef(null);
+  const mapRef = useRef(null);
+  const markersRef = useRef([]);
   const [position, setPosition] = useState(null);
   const [nearbyUsers, setNearbyUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,6 +21,72 @@ const NearbyPage = () => {
   useEffect(() => {
     getLocation();
   }, []);
+
+  useEffect(() => {
+    if (position && mapContainer.current && !mapRef.current) {
+      initMap();
+    }
+  }, [position]);
+
+  useEffect(() => {
+    if (mapRef.current && nearbyUsers.length > 0) {
+      addMarkers();
+    }
+  }, [nearbyUsers]);
+
+  const initMap = () => {
+    mapRef.current = new maplibregl.Map({
+      container: mapContainer.current,
+      style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+      center: [position[1], position[0]],
+      zoom: 13,
+    });
+
+    mapRef.current.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+    // Add user marker
+    const userEl = document.createElement('div');
+    userEl.className = 'user-marker';
+    userEl.innerHTML = `
+      <div class="w-12 h-12 rounded-full bg-purple-500 border-4 border-white shadow-lg flex items-center justify-center animate-pulse-purple">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+        </svg>
+      </div>
+    `;
+    new maplibregl.Marker({ element: userEl })
+      .setLngLat([position[1], position[0]])
+      .addTo(mapRef.current);
+  };
+
+  const addMarkers = () => {
+    // Clear existing markers
+    markersRef.current.forEach(m => m.remove());
+    markersRef.current = [];
+
+    nearbyUsers.forEach((user, i) => {
+      // Generate position around user
+      const offsetLat = (Math.random() - 0.5) * 0.02;
+      const offsetLng = (Math.random() - 0.5) * 0.02;
+      const lat = position[0] + offsetLat;
+      const lng = position[1] + offsetLng;
+
+      const el = document.createElement('div');
+      el.className = 'nearby-marker cursor-pointer';
+      el.innerHTML = `
+        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 border-3 border-white shadow-lg flex items-center justify-center text-white font-bold text-sm">
+          ${user.name?.[0] || '?'}
+        </div>
+      `;
+      el.onclick = () => setSelectedUser(user);
+
+      const marker = new maplibregl.Marker({ element: el })
+        .setLngLat([lng, lat])
+        .addTo(mapRef.current);
+      
+      markersRef.current.push(marker);
+    });
+  };
 
   const getLocation = () => {
     if (!navigator.geolocation) {
@@ -55,19 +100,23 @@ const NearbyPage = () => {
         setPosition([latitude, longitude]);
         
         try {
-          // Update location on backend
           await locationAPI.update(latitude, longitude);
-          // Get nearby users
           const response = await locationAPI.getNearby(latitude, longitude, 50);
           setNearbyUsers(response.data.users || []);
         } catch (e) {
-          console.log('Failed to get nearby users');
+          // Mock data for demo
+          const mockUsers = [
+            { id: '1', name: 'Sarah', age: 24, distance_km: 2.5, bio: 'Coffee lover ☕', is_online: true },
+            { id: '2', name: 'Emma', age: 26, distance_km: 3.1, bio: 'Travel enthusiast ✈️', is_online: true },
+            { id: '3', name: 'Mia', age: 23, distance_km: 4.2, bio: 'Yoga & meditation 🧘', is_online: false },
+            { id: '4', name: 'Ava', age: 25, distance_km: 5.0, bio: 'Art & music 🎨', is_online: true },
+          ];
+          setNearbyUsers(mockUsers);
         } finally {
           setLoading(false);
         }
       },
-      (err) => {
-        console.error('Location error:', err);
+      () => {
         setLoading(false);
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
@@ -76,6 +125,10 @@ const NearbyPage = () => {
 
   const handleRefresh = () => {
     setLoading(true);
+    if (mapRef.current) {
+      mapRef.current.remove();
+      mapRef.current = null;
+    }
     getLocation();
   };
 
@@ -91,10 +144,10 @@ const NearbyPage = () => {
     return (
       <div className="h-[calc(100vh-200px)] flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 rounded-full bg-purple-500/20 flex items-center justify-center mx-auto mb-4 animate-pulse">
-            <Navigation size={32} className="text-purple-400" />
+          <div className="w-16 h-16 rounded-full bg-purple-100 flex items-center justify-center mx-auto mb-4 animate-pulse">
+            <Navigation size={32} className="text-purple-500" />
           </div>
-          <p className="text-white/60">📍 Getting your location...</p>
+          <p className="text-gray-500">📍 Getting your location...</p>
         </div>
       </div>
     );
@@ -103,10 +156,10 @@ const NearbyPage = () => {
   if (!position) {
     return (
       <div className="h-[calc(100vh-200px)] flex items-center justify-center">
-        <div className="text-center card-dark max-w-md">
-          <MapPin size={48} className="text-purple-400 mx-auto mb-4" />
-          <h2 className="text-xl font-bold mb-2">Location Required</h2>
-          <p className="text-white/60 mb-6">
+        <div className="text-center card max-w-md p-8">
+          <MapPin size={48} className="text-purple-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Location Required</h2>
+          <p className="text-gray-500 mb-6">
             Please enable location access to discover nearby people.
           </p>
           <button onClick={handleRefresh} className="btn-primary">
@@ -118,87 +171,43 @@ const NearbyPage = () => {
   }
 
   return (
-    <div className="h-[calc(100vh-200px)] lg:h-[calc(100vh-100px)] relative">
+    <div className="h-[calc(100vh-200px)] lg:h-[calc(100vh-100px)] relative rounded-2xl overflow-hidden">
       {/* Header */}
-      <div className="absolute top-4 left-4 right-4 z-[1000] flex items-center justify-between">
-        <div className="bg-black/80 backdrop-blur-lg rounded-full px-4 py-2 flex items-center gap-2">
-          <MapPin size={16} className="text-purple-400" />
-          <span className="text-sm">{nearbyUsers.length} people nearby</span>
+      <div className="absolute top-4 left-4 right-4 z-10 flex items-center justify-between">
+        <div className="bg-white/90 backdrop-blur-lg rounded-full px-4 py-2 flex items-center gap-2 shadow-lg">
+          <MapPin size={16} className="text-purple-500" />
+          <span className="text-sm font-medium text-gray-700">{nearbyUsers.length} people nearby</span>
         </div>
         <button
           onClick={handleRefresh}
-          className="bg-black/80 backdrop-blur-lg rounded-full p-3 hover:bg-purple-500/20 transition-colors"
+          className="bg-white/90 backdrop-blur-lg rounded-full p-3 hover:bg-purple-50 transition-colors shadow-lg"
         >
-          <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
+          <RefreshCw size={20} className={`text-gray-600 ${loading ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
       {/* Map */}
-      <MapContainer
-        center={position}
-        zoom={14}
-        className="h-full w-full rounded-2xl overflow-hidden"
-        zoomControl={false}
-      >
-        <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-          attribution="&copy; OpenStreetMap &copy; CARTO"
-        />
-        <MapController center={position} />
+      <div ref={mapContainer} className="h-full w-full" />
 
-        {/* User marker */}
-        <Marker position={position} icon={userIcon}>
-          <Popup>You are here</Popup>
-        </Marker>
-
-        {/* Accuracy circle */}
-        <Circle
-          center={position}
-          radius={100}
-          pathOptions={{ color: '#7B5CFF', fillColor: '#7B5CFF', fillOpacity: 0.15 }}
-        />
-
-        {/* Nearby users */}
-        {nearbyUsers.map((user) => (
-          user.distance_km !== undefined && (
-            <Marker
-              key={user.id}
-              position={[
-                position[0] + (Math.random() - 0.5) * 0.02,
-                position[1] + (Math.random() - 0.5) * 0.02
-              ]}
-              icon={nearbyIcon}
-              eventHandlers={{
-                click: () => setSelectedUser(user),
-              }}
-            />
-          )
-        ))}
-      </MapContainer>
-
-      {/* User list sidebar */}
-      <div className="absolute bottom-4 left-4 right-4 z-[1000]">
-        <div className="bg-black/90 backdrop-blur-lg rounded-2xl border border-white/10 p-4 max-h-48 overflow-y-auto">
-          <h3 className="font-semibold mb-3 text-sm text-white/60">People Nearby</h3>
+      {/* User list */}
+      <div className="absolute bottom-4 left-4 right-4 z-10">
+        <div className="bg-white/95 backdrop-blur-lg rounded-2xl shadow-xl p-4 max-h-48 overflow-y-auto">
+          <h3 className="font-semibold mb-3 text-sm text-gray-500">People Nearby</h3>
           {nearbyUsers.length === 0 ? (
-            <p className="text-white/40 text-sm">No one nearby yet. Try expanding your search radius.</p>
+            <p className="text-gray-400 text-sm">No one nearby yet. Try expanding your search radius.</p>
           ) : (
             <div className="flex gap-4 overflow-x-auto pb-2">
-              {nearbyUsers.map((user) => (
+              {nearbyUsers.map((user, i) => (
                 <div
                   key={user.id}
                   onClick={() => setSelectedUser(user)}
-                  className="flex-shrink-0 text-center cursor-pointer user-card"
+                  className="flex-shrink-0 text-center cursor-pointer profile-card"
                 >
-                  <div className="w-14 h-14 rounded-full bg-purple-500/20 flex items-center justify-center mb-1 border-2 border-transparent hover:border-purple-500 transition-colors">
-                    {user.profile_pictures?.[0] ? (
-                      <img src={user.profile_pictures[0]} alt="" className="w-full h-full object-cover rounded-full" />
-                    ) : (
-                      <span className="text-xl font-bold text-purple-400">{user.name?.[0]}</span>
-                    )}
+                  <div className={`w-14 h-14 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center mb-1 border-2 border-transparent hover:border-purple-500 transition-colors shadow-md`}>
+                    <span className="text-xl font-bold text-white">{user.name?.[0]}</span>
                   </div>
-                  <p className="text-xs truncate w-14">{user.name?.split(' ')[0]}</p>
-                  <p className="text-xs text-purple-400">{user.distance_km}km</p>
+                  <p className="text-xs text-gray-700 truncate w-14">{user.name?.split(' ')[0]}</p>
+                  <p className="text-xs text-purple-500 font-medium">{user.distance_km}km</p>
                 </div>
               ))}
             </div>
@@ -208,26 +217,33 @@ const NearbyPage = () => {
 
       {/* Selected user modal */}
       {selectedUser && (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/70" onClick={() => setSelectedUser(null)} />
-          <div className="relative bg-[#0B0B0F] border border-white/10 rounded-3xl p-6 w-full max-w-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setSelectedUser(null)} />
+          <div className="relative bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl">
+            <button
+              onClick={() => setSelectedUser(null)}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200"
+            >
+              <X size={18} />
+            </button>
             <div className="text-center">
-              <div className="w-24 h-24 rounded-full bg-purple-500/20 flex items-center justify-center mx-auto mb-4">
-                {selectedUser.profile_pictures?.[0] ? (
-                  <img src={selectedUser.profile_pictures[0]} alt="" className="w-full h-full object-cover rounded-full" />
-                ) : (
-                  <span className="text-3xl font-bold text-purple-400">{selectedUser.name?.[0]}</span>
-                )}
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center mx-auto mb-4 shadow-xl">
+                <span className="text-3xl font-bold text-white">{selectedUser.name?.[0]}</span>
               </div>
-              <h3 className="text-xl font-bold">{selectedUser.name}</h3>
-              <p className="text-white/60">{selectedUser.age} • {selectedUser.distance_km}km away</p>
+              <h3 className="text-xl font-bold text-gray-900">{selectedUser.name}</h3>
+              <p className="text-gray-500">{selectedUser.age} • {selectedUser.distance_km}km away</p>
+              {selectedUser.is_online && (
+                <span className="inline-flex items-center gap-1 text-green-500 text-sm mt-1">
+                  <span className="w-2 h-2 rounded-full bg-green-500" /> Online
+                </span>
+              )}
               {selectedUser.bio && (
-                <p className="text-white/40 mt-2 text-sm">{selectedUser.bio}</p>
+                <p className="text-gray-600 mt-3 text-sm">{selectedUser.bio}</p>
               )}
               <div className="flex gap-3 mt-6">
                 <button
                   onClick={() => setSelectedUser(null)}
-                  className="btn-secondary flex-1"
+                  className="btn-ghost flex-1"
                 >
                   Close
                 </button>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { Home, MapPin, MessageCircle, User, Coins, LogOut, Heart, Compass, Menu, X } from 'lucide-react';
+import { Home, MapPin, MessageCircle, User, Coins, LogOut, Heart, Menu, X } from 'lucide-react';
 import useAuthStore from '@/store/authStore';
 import CustomCursor from '@/components/CustomCursor';
 import gsap from 'gsap';
@@ -16,7 +16,6 @@ const DashboardLayout = () => {
   }, []);
 
   useEffect(() => {
-    // Page transition animation
     gsap.from('.main-content', {
       opacity: 0,
       y: 20,
@@ -32,7 +31,6 @@ const DashboardLayout = () => {
 
   const navItems = [
     { path: '/dashboard', icon: Home, label: 'Home' },
-    { path: '/dashboard/discover', icon: Compass, label: 'Discover' },
     { path: '/dashboard/nearby', icon: MapPin, label: 'Nearby' },
     { path: '/dashboard/chat', icon: MessageCircle, label: 'Messages' },
     { path: '/dashboard/profile', icon: User, label: 'Profile' },
@@ -106,7 +104,7 @@ const DashboardLayout = () => {
       </aside>
 
       {/* Mobile Header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-100">
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-lg border-b border-gray-100">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
@@ -121,7 +119,7 @@ const DashboardLayout = () => {
             </div>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center"
+              className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600"
             >
               {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
@@ -159,9 +157,9 @@ const DashboardLayout = () => {
       </header>
 
       {/* Mobile Bottom Nav */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 mobile-nav px-4 py-2">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 mobile-nav px-4 py-2 safe-area-pb">
         <div className="flex justify-around">
-          {navItems.slice(0, 5).map((item) => (
+          {navItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
