@@ -1,0 +1,85 @@
+import axios from 'axios';
+
+const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8001';
+
+const api = axios.create({
+  baseURL: `${API_URL}/api`,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Request interceptor to add auth token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('tb_access_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Response interceptor for error handling
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('tb_access_token');
+      localStorage.removeItem('tb_refresh_token');
+      localStorage.removeItem('tb_user');
+      window.location.href = '/';
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Auth APIs
+export const authAPI = {
+  signup: (data) => api.post('/auth/signup', data),
+  login: (data) => api.post('/auth/login', data),
+  logout: () => api.post('/auth/logout'),
+  getMe: () => api.get('/auth/me'),
+  sendOTP: (mobile_number) => api.post('/auth/otp/send', { mobile_number }),
+  verifyOTP: (mobile_number, otp_code) => api.post('/auth/otp/verify', { mobile_number, otp_code }),
+};
+
+// User APIs
+export const userAPI = {
+  getProfile: (userId) => api.get(`/users/profile/${userId}`),
+  updateProfile: (data) => api.put('/users/profile', data),
+  updatePreferences: (data) => api.put('/users/preferences', data),
+  getCredits: () => api.get('/users/credits'),
+};
+
+// Credits APIs
+export const creditsAPI = {
+  getBalance: () => api.get('/credits/balance'),
+  getHistory: (limit = 50) => api.get(`/credits/history?limit=${limit}`),
+};
+
+// Location APIs
+export const locationAPI = {
+  update: (latitude, longitude) => api.post('/location/update', { latitude, longitude }),
+  getNearby: (lat, lng, radius_km = 50) => 
+    api.get(`/location/nearby?lat=${lat}&lng=${lng}&radius_km=${radius_km}`),
+};
+
+// Messages APIs
+export const messagesAPI = {
+  send: (receiver_id, content) => api.post('/messages/send', { receiver_id, content }),
+  getConversations: () => api.get('/messages/conversations'),
+  getMessages: (userId, limit = 50) => api.get(`/messages/${userId}?limit=${limit}`),
+  markRead: (userId) => api.post(`/messages/read/${userId}`),
+};
+
+// Payments APIs
+export const paymentsAPI = {
+  getPackages: () => api.get('/payments/packages'),
+  createOrder: (package_id) => api.post('/payments/order', { package_id }),
+  verifyPayment: (data) => api.post('/payments/verify', data),
+  getHistory: () => api.get('/payments/history'),
+};
+
+export default api;
