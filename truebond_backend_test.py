@@ -48,10 +48,12 @@ class TrueBondTester:
     def test_signup_valid(self) -> bool:
         """Test valid user signup with all required fields"""
         try:
+            # Use timestamp to ensure unique email
+            timestamp = int(time.time())
             signup_data = {
                 "name": "John Doe",
-                "email": "john@test.com",
-                "mobile_number": "+919876543210",
+                "email": f"john{timestamp}@test.com",
+                "mobile_number": f"+91987654{timestamp % 10000}",
                 "password": "Test@1234",
                 "age": 25,
                 "gender": "male",
