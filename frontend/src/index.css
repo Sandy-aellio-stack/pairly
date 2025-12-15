@@ -354,3 +354,8 @@ body {
   right: 30%;
   animation: float 7s ease-in-out infinite;
 }
+
+/* Radial gradient utility */
+.bg-gradient-radial {
+  background: radial-gradient(circle, var(--tw-gradient-stops));
+}

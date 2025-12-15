@@ -37,10 +37,36 @@ const LandingPage = () => {
       gsap.from('.hero-cta', { y: 30, opacity: 0, duration: 0.8, stagger: 0.15, ease: 'power3.out', delay: 0.8 });
       gsap.from('.hero-float', { y: 80, opacity: 0, duration: 1, stagger: 0.2, ease: 'power3.out', delay: 1 });
 
-      // Floating animation loops
-      gsap.to('.float-1', { y: -20, duration: 3, ease: 'sine.inOut', yoyo: true, repeat: -1 });
-      gsap.to('.float-2', { y: -15, duration: 2.5, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 0.5 });
-      gsap.to('.float-3', { y: -25, duration: 3.5, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 1 });
+      // Floating animation loops with different speeds and subtle movements
+      gsap.to('.float-1', { 
+        y: -20, 
+        x: 5,
+        duration: 4, 
+        ease: 'sine.inOut', 
+        yoyo: true, 
+        repeat: -1,
+        opacity: 1
+      });
+      gsap.to('.float-2', { 
+        y: -25, 
+        x: -8,
+        duration: 3, 
+        ease: 'sine.inOut', 
+        yoyo: true, 
+        repeat: -1, 
+        delay: 0.5,
+        opacity: 1
+      });
+      gsap.to('.float-3', { 
+        y: -18, 
+        x: 6,
+        duration: 3.8, 
+        ease: 'sine.inOut', 
+        yoyo: true, 
+        repeat: -1, 
+        delay: 1,
+        opacity: 1
+      });
 
       // Active section detection
       navItems.forEach(({ id }) => {
@@ -179,51 +205,62 @@ const LandingPage = () => {
       </nav>
 
       {/* ===== HERO SECTION ===== */}
-      <section id="home" className="min-h-screen flex items-center justify-center relative overflow-hidden pt-16">
+      <section id="home" className="min-h-[90vh] flex items-center justify-center relative overflow-hidden pt-16">
+        {/* Enhanced Background with Soft Radial Gradients */}
         <div className="absolute inset-0 bg-gradient-to-br from-purple-50 via-white to-pink-50" />
-        <div className="absolute top-1/4 right-1/4 w-96 h-96 rounded-full bg-purple-200/30 blur-[100px]" />
-        <div className="absolute bottom-1/4 left-1/4 w-80 h-80 rounded-full bg-pink-200/30 blur-[100px]" />
+        <div className="absolute top-[20%] right-[15%] w-[500px] h-[500px] rounded-full bg-purple-300/20 blur-[120px]" />
+        <div className="absolute bottom-[15%] left-[10%] w-[450px] h-[450px] rounded-full bg-pink-300/20 blur-[120px]" />
+        <div className="absolute top-[50%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-purple-200/15 blur-[150px]" />
 
-        <div className="relative z-10 w-full max-w-[1400px] mx-auto px-6 md:px-10 lg:px-12 py-20 lg:py-28">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+        <div className="relative z-10 w-full max-w-[1400px] mx-auto px-6 md:px-10 lg:px-12">
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
             {/* Left Column - Text Content */}
-            <div className="max-w-xl lg:pl-16">
+            <div className="max-w-xl">
               <div className="hero-badge inline-flex items-center gap-2 px-4 py-2 bg-purple-100 rounded-full mb-6">
                 <Heart size={16} className="text-purple-600" fill="currentColor" />
                 <span className="text-sm font-medium text-purple-700">Trusted by 100,000+ singles</span>
               </div>
 
-              <h1 className="hero-title text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.1] mb-6 text-gray-900">
+              <h1 className="hero-title text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.15] mb-6 text-gray-900">
                 Making meaningful
                 <br />
-                connections
+                <span className="text-gray-900 bg-gradient-to-r from-purple-600 to-purple-600 bg-[length:100%_3px] bg-no-repeat bg-bottom pb-1">connections</span>
                 <br />
-                <span className="gradient-text">since 2024</span>
+                <span className="gradient-text text-[0.85em] font-bold opacity-70">since 2024</span>
               </h1>
 
-              <p className="hero-subtitle text-lg lg:text-xl text-gray-600 mb-8 leading-relaxed">
+              <p className="hero-subtitle text-lg lg:text-xl text-gray-600 mb-10 leading-relaxed">
                 We exist to bring people closer to love. Discover genuine connections with verified profiles, smart matching, and secure messaging.
               </p>
 
-              <div className="flex flex-wrap gap-4 hero-cta">
+              <div className="flex flex-col sm:flex-row flex-wrap gap-4 hero-cta mb-4">
                 <button
                   onClick={() => setAuthModal({ open: true, mode: 'signup' })}
-                  className="btn-primary px-8 py-4 flex items-center gap-2 shadow-xl shadow-purple-300/30"
+                  className="btn-primary px-10 py-4 flex items-center justify-center gap-2 shadow-xl shadow-purple-400/40 hover:shadow-2xl hover:shadow-purple-400/50 text-base font-semibold"
                 >
                   Get Started Free <ArrowRight size={20} />
                 </button>
-                <button className="px-8 py-4 bg-white text-gray-700 font-medium rounded-full border border-gray-200 hover:border-purple-300 hover:text-purple-600 transition-all flex items-center gap-2">
+                <button className="px-10 py-4 bg-white/50 text-gray-600 font-medium rounded-full border border-gray-300/50 hover:bg-white hover:border-gray-300 hover:text-gray-700 transition-all flex items-center justify-center gap-2 backdrop-blur-sm">
                   <Video size={20} /> Watch Demo
                 </button>
               </div>
+              
+              <p className="text-sm text-gray-500 flex items-center justify-center sm:justify-start gap-2">
+                <span>No credit card required</span>
+                <span className="text-gray-400">·</span>
+                <span>10 free coins</span>
+              </p>
             </div>
 
             {/* Right Column - Hero Visual */}
             <div className="hidden lg:flex justify-center items-center">
-              <div className="relative w-[320px] xl:w-[360px]">
+              <div className="relative w-[380px] xl:w-[420px]">
+                {/* Radial Glow Behind Phone */}
+                <div className="absolute inset-0 bg-gradient-radial from-purple-400/30 via-purple-300/10 to-transparent blur-3xl scale-110" />
+                
                 {/* Phone Mockup */}
-                <div className="bg-white rounded-[2rem] p-3 shadow-2xl shadow-purple-200/40">
-                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-[1.5rem] p-5 aspect-[9/14] relative overflow-hidden">
+                <div className="relative bg-white rounded-[2.5rem] p-3 shadow-2xl shadow-purple-300/50 transform hover:scale-[1.02] transition-transform duration-500">
+                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-[2rem] p-5 aspect-[9/14] relative overflow-hidden">
                     <div className="space-y-3">
                       <div className="flex gap-2">
                         {[1, 2, 3, 4].map((i) => (
@@ -248,7 +285,7 @@ const LandingPage = () => {
                 </div>
 
                 {/* Floating Card - Top Left */}
-                <div className="hero-float float-1 absolute -left-4 xl:-left-8 top-4 bg-white rounded-xl p-3 shadow-xl border border-gray-100">
+                <div className="hero-float float-1 absolute -left-6 xl:-left-10 top-8 bg-white/90 backdrop-blur-sm rounded-xl p-3 shadow-xl shadow-green-200/20 border border-gray-100 z-10 opacity-0">
                   <div className="flex items-center gap-2">
                     <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center">
                       <Users size={18} className="text-green-600" />
@@ -261,7 +298,7 @@ const LandingPage = () => {
                 </div>
 
                 {/* Floating Card - Right */}
-                <div className="hero-float float-2 absolute -right-2 xl:-right-6 top-1/3 bg-white rounded-xl p-3 shadow-xl border border-gray-100">
+                <div className="hero-float float-2 absolute -right-4 xl:-right-8 top-1/3 bg-white/90 backdrop-blur-sm rounded-xl p-3 shadow-xl shadow-purple-200/20 border border-gray-100 z-20 opacity-0">
                   <div className="flex items-center gap-2">
                     <div className="w-9 h-9 rounded-full bg-purple-100 flex items-center justify-center">
                       <Heart size={18} className="text-purple-600" fill="currentColor" />
@@ -274,7 +311,7 @@ const LandingPage = () => {
                 </div>
 
                 {/* Floating Card - Bottom Left */}
-                <div className="hero-float float-3 absolute left-0 xl:-left-4 bottom-20 bg-white rounded-xl p-3 shadow-xl border border-gray-100">
+                <div className="hero-float float-3 absolute -left-4 xl:-left-8 bottom-24 bg-white/90 backdrop-blur-sm rounded-xl p-3 shadow-xl shadow-pink-200/20 border border-gray-100 z-10 opacity-0">
                   <div className="flex items-center gap-2">
                     <div className="w-9 h-9 rounded-full bg-pink-100 flex items-center justify-center">
                       <MessageCircle size={18} className="text-pink-600" />
