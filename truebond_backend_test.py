@@ -633,9 +633,10 @@ class TrueBondTester:
                     data["currency"] == "INR" and data.get("min_purchase") == 100):
                     packages = data["packages"]
                     if packages and len(packages) > 0:
-                        # Check if packages have proper structure
+                        # Check if packages have proper structure (actual format from API)
                         first_package = packages[0]
-                        if "id" in first_package and "price" in first_package:
+                        if ("id" in first_package and "credits" in first_package and 
+                            "amount_inr" in first_package and "label" in first_package):
                             self.log(f"✓ Payment packages available - {len(packages)} packages, currency: INR")
                             return True
                         else:
