@@ -179,14 +179,15 @@ const LandingPage = () => {
       </nav>
 
       {/* ===== HERO SECTION ===== */}
-      <section id="home" className="min-h-screen flex items-center relative overflow-hidden pt-16">
+      <section id="home" className="min-h-screen flex items-center justify-center relative overflow-hidden pt-16">
         <div className="absolute inset-0 bg-gradient-to-br from-purple-50 via-white to-pink-50" />
-        <div className="absolute top-20 right-20 w-96 h-96 rounded-full bg-purple-200/30 blur-[100px]" />
-        <div className="absolute bottom-20 left-20 w-80 h-80 rounded-full bg-pink-200/30 blur-[100px]" />
+        <div className="absolute top-1/4 right-1/4 w-96 h-96 rounded-full bg-purple-200/30 blur-[100px]" />
+        <div className="absolute bottom-1/4 left-1/4 w-80 h-80 rounded-full bg-pink-200/30 blur-[100px]" />
 
-        <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-16 py-20 lg:ml-24">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div>
+        <div className="relative z-10 w-full max-w-[1400px] mx-auto px-6 lg:px-12 xl:px-20 py-16">
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center lg:pl-28">
+            {/* Left Column - Text Content */}
+            <div className="max-w-xl">
               <div className="hero-badge inline-flex items-center gap-2 px-4 py-2 bg-purple-100 rounded-full mb-6">
                 <Heart size={16} className="text-purple-600" fill="currentColor" />
                 <span className="text-sm font-medium text-purple-700">Trusted by 100,000+ singles</span>
@@ -200,7 +201,7 @@ const LandingPage = () => {
                 <span className="gradient-text">since 2024</span>
               </h1>
 
-              <p className="hero-subtitle text-lg lg:text-xl text-gray-600 mb-8 max-w-lg leading-relaxed">
+              <p className="hero-subtitle text-lg lg:text-xl text-gray-600 mb-8 leading-relaxed">
                 We exist to bring people closer to love. Discover genuine connections with verified profiles, smart matching, and secure messaging.
               </p>
 
@@ -217,11 +218,12 @@ const LandingPage = () => {
               </div>
             </div>
 
-            {/* Hero Visual */}
-            <div className="hidden lg:block relative">
-              <div className="relative w-full max-w-md mx-auto">
+            {/* Right Column - Hero Visual */}
+            <div className="hidden lg:flex justify-center items-center">
+              <div className="relative w-[320px] xl:w-[360px]">
+                {/* Phone Mockup */}
                 <div className="bg-white rounded-[2rem] p-3 shadow-2xl shadow-purple-200/40">
-                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-[1.5rem] p-6 aspect-[9/14] relative overflow-hidden">
+                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-[1.5rem] p-5 aspect-[9/14] relative overflow-hidden">
                     <div className="space-y-3">
                       <div className="flex gap-2">
                         {[1, 2, 3, 4].map((i) => (
@@ -245,10 +247,11 @@ const LandingPage = () => {
                   </div>
                 </div>
 
-                <div className="hero-float float-1 absolute -left-12 top-8 bg-white rounded-xl p-4 shadow-xl">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                      <Users size={20} className="text-green-600" />
+                {/* Floating Card - Top Left */}
+                <div className="hero-float float-1 absolute -left-4 xl:-left-8 top-4 bg-white rounded-xl p-3 shadow-xl border border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center">
+                      <Users size={18} className="text-green-600" />
                     </div>
                     <div>
                       <div className="font-bold text-sm">5 nearby</div>
@@ -257,10 +260,11 @@ const LandingPage = () => {
                   </div>
                 </div>
 
-                <div className="hero-float float-2 absolute -right-8 top-1/3 bg-white rounded-xl p-4 shadow-xl">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
-                      <Heart size={20} className="text-purple-600" fill="currentColor" />
+                {/* Floating Card - Right */}
+                <div className="hero-float float-2 absolute -right-2 xl:-right-6 top-1/3 bg-white rounded-xl p-3 shadow-xl border border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <div className="w-9 h-9 rounded-full bg-purple-100 flex items-center justify-center">
+                      <Heart size={18} className="text-purple-600" fill="currentColor" />
                     </div>
                     <div>
                       <div className="font-bold text-sm">New match!</div>
@@ -269,10 +273,11 @@ const LandingPage = () => {
                   </div>
                 </div>
 
-                <div className="hero-float float-3 absolute -left-6 bottom-16 bg-white rounded-xl p-4 shadow-xl">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center">
-                      <MessageCircle size={20} className="text-pink-600" />
+                {/* Floating Card - Bottom Left */}
+                <div className="hero-float float-3 absolute left-0 xl:-left-4 bottom-20 bg-white rounded-xl p-3 shadow-xl border border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <div className="w-9 h-9 rounded-full bg-pink-100 flex items-center justify-center">
+                      <MessageCircle size={18} className="text-pink-600" />
                     </div>
                     <div>
                       <div className="font-bold text-sm">12 messages</div>
