@@ -193,35 +193,43 @@ const SnapMap = () => {
   useEffect(() => {
     // Load mock data initially while waiting for location
     loadMockUsers();
-    setIsLoading(false);
   }, []);
 
   // Get user's location and update backend
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const { latitude, longitude } = position.coords;
-          setUserLocation({ lat: latitude, lng: longitude });
-          setMapCenter([latitude, longitude]);
-          
-          // Update location on backend
-          try {
-            await updateLocation(latitude, longitude);
-            console.log('Location updated on backend');
-          } catch (error) {
-            console.log('Failed to update location on backend:', error);
+    const fetchLocationAndUsers = async () => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const { latitude, longitude } = position.coords;
+            setUserLocation({ lat: latitude, lng: longitude });
+            setMapCenter([latitude, longitude]);
+            
+            // Update location on backend
+            try {
+              await updateLocation(latitude, longitude);
+              console.log('Location updated on backend');
+            } catch (error) {
+              console.log('Failed to update location on backend:', error);
+            }
+            
+            // Fetch nearby users
+            await loadNearbyUsers(latitude, longitude);
+            setIsLoading(false);
+          },
+          (error) => {
+            console.log('Location error:', error);
+            toast.info('Using default location. Enable location for better experience.');
+            setIsLoading(false);
           }
-          
-          // Fetch nearby users
-          await loadNearbyUsers(latitude, longitude);
-        },
-        (error) => {
-          console.log('Location error:', error);
-          toast.info('Using default location. Enable location for better experience.');
-        }
-      );
-    }
+        );
+      } else {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchLocationAndUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleUserClick = (nearbyUser) => {
