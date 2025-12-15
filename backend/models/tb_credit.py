@@ -2,6 +2,7 @@ from beanie import Document, Indexed
 from pydantic import Field
 from datetime import datetime, timezone
 from enum import Enum
+from typing import Optional
 
 
 class TransactionReason(str, Enum):
