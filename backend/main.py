@@ -170,6 +170,8 @@ app.include_router(matchmaking.router)
 app.include_router(presence.router)  # Phase 11: Presence Engine V2
 app.include_router(analytics.router)  # Phase 12: Analytics & Insights
 app.include_router(notifications.router)  # Phase 13: Notification Engine
+app.include_router(location.router)  # Geo-location API
+app.include_router(nearby.router)  # Nearby users API
 
 @app.get("/api")
 async def root():
