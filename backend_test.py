@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Comprehensive Backend Testing for Phase 2 - Hybrid Payment & Subscription System
-Tests all subscription-related APIs, webhooks, and admin functionality.
+Comprehensive Backend Testing for Pairly App
+Tests subscription APIs, Nearby Users APIs, and other core functionality.
 """
 
 import requests
@@ -9,6 +9,7 @@ import json
 import hmac
 import hashlib
 import time
+import random
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
 
