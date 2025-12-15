@@ -179,7 +179,7 @@ const LandingPage = () => {
       </nav>
 
       {/* ===== HERO SECTION ===== */}
-      <section id="home" className="min-h-screen flex items-center relative overflow-hidden pt-16 lg:pt-0">
+      <section id="home" className="min-h-screen flex items-center relative overflow-hidden pt-16 md:pt-12 lg:pt-8">
         <div className="absolute inset-0 bg-gradient-to-br from-purple-50 via-white to-pink-50" />
         <div className="absolute top-20 right-20 w-96 h-96 rounded-full bg-purple-200/30 blur-[100px]" />
         <div className="absolute bottom-20 left-20 w-80 h-80 rounded-full bg-pink-200/30 blur-[100px]" />
@@ -219,7 +219,7 @@ const LandingPage = () => {
 
             {/* Hero Visual */}
             <div className="hidden lg:flex justify-center items-center relative">
-              <div className="relative w-full max-w-sm">
+              <div className="relative w-full max-w-sm xl:max-w-md">
                 <div className="bg-white rounded-[2rem] p-3 shadow-2xl shadow-purple-200/40">
                   <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-[1.5rem] p-6 aspect-[9/14] relative overflow-hidden">
                     <div className="space-y-3">
