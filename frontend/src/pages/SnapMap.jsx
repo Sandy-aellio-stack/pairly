@@ -254,9 +254,12 @@ const SnapMap = () => {
 
   const handleZoomIn = () => setMapZoom(prev => Math.min(prev + 1, 18));
   const handleZoomOut = () => setMapZoom(prev => Math.max(prev - 1, 5));
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsLoading(true);
-    setTimeout(() => setIsLoading(false), 1000);
+    if (userLocation) {
+      await loadNearbyUsers(userLocation.lat, userLocation.lng);
+    }
+    setTimeout(() => setIsLoading(false), 500);
     toast.success('Map refreshed!');
   };
 
