@@ -77,6 +77,7 @@ class TrueBondTester:
                     "tokens" in data and data["credits_balance"] == 10):
                     self.user_id = data["user_id"]
                     self.auth_token = data["tokens"]["access_token"]
+                    self.test_email = signup_data["email"]  # Store for login test
                     self.log("✓ Valid signup successful - 10 credits bonus received")
                     return True
                 else:
