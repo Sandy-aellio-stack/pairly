@@ -19,8 +19,8 @@ class TBCreditTransaction(Document):
     amount: int  # positive for credit, negative for debit
     reason: TransactionReason
     balance_after: int
-    reference_id: str = None  # payment_id, message_id, etc.
-    description: str = None
+    reference_id: Optional[str] = None  # payment_id, message_id, etc.
+    description: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     class Settings:
