@@ -42,19 +42,6 @@ const LandingPage = () => {
       gsap.to('.float-2', { y: -15, duration: 2.5, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 0.5 });
       gsap.to('.float-3', { y: -25, duration: 3.5, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 1 });
 
-      // Section animations
-      const sections = ['features', 'safety', 'support', 'pricing', 'connect'];
-      sections.forEach((section) => {
-        gsap.from(`#${section} .section-title`, {
-          y: 50, opacity: 0, duration: 0.8, ease: 'power3.out',
-          scrollTrigger: { trigger: `#${section}`, start: 'top 85%' }
-        });
-        gsap.from(`#${section} .section-content`, {
-          y: 40, opacity: 0, duration: 0.6, stagger: 0.1, ease: 'power3.out',
-          scrollTrigger: { trigger: `#${section}`, start: 'top 80%' }
-        });
-      });
-
       // Active section detection
       navItems.forEach(({ id }) => {
         ScrollTrigger.create({
