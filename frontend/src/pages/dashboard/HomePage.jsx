@@ -1,39 +1,52 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, MessageCircle, Users, Coins, ArrowRight, Sparkles } from 'lucide-react';
+import { Heart, MessageCircle, MapPin, Sparkles } from 'lucide-react';
 import useAuthStore from '@/store/authStore';
 import { locationAPI, messagesAPI } from '@/services/api';
+import gsap from 'gsap';
 
 const HomePage = () => {
   const { user, credits } = useAuthStore();
-  const [nearbyCount, setNearbyCount] = useState(0);
-  const [conversations, setConversations] = useState([]);
+  const [nearbyUsers, setNearbyUsers] = useState([]);
+  const [stories, setStories] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadData();
   }, []);
 
+  useEffect(() => {
+    // Animate cards on load
+    gsap.from('.user-card', {
+      y: 40,
+      opacity: 0,
+      duration: 0.6,
+      stagger: 0.1,
+      ease: 'power3.out',
+    });
+  }, [nearbyUsers]);
+
   const loadData = async () => {
     try {
-      // Get user location and nearby count
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(async (pos) => {
           try {
             const response = await locationAPI.getNearby(pos.coords.latitude, pos.coords.longitude, 50);
-            setNearbyCount(response.data.count || 0);
+            setNearbyUsers(response.data.users || []);
+            // Create stories from nearby users
+            setStories(response.data.users?.slice(0, 8) || []);
           } catch (e) {
-            console.log('Failed to get nearby users');
+            // Mock data for demo
+            const mockUsers = [
+              { id: '1', name: 'Sarah', age: 24, distance_km: 2.5, bio: 'Coffee lover ☕', is_online: true },
+              { id: '2', name: 'Emma', age: 26, distance_km: 3.1, bio: 'Travel enthusiast ✈️', is_online: true },
+              { id: '3', name: 'Mia', age: 23, distance_km: 4.2, bio: 'Yoga & meditation 🧘', is_online: false },
+              { id: '4', name: 'Ava', age: 25, distance_km: 5.0, bio: 'Art & music 🎨', is_online: true },
+            ];
+            setNearbyUsers(mockUsers);
+            setStories(mockUsers);
           }
         });
-      }
-
-      // Get recent conversations
-      try {
-        const convResponse = await messagesAPI.getConversations();
-        setConversations(convResponse.data.conversations?.slice(0, 3) || []);
-      } catch (e) {
-        console.log('Failed to get conversations');
       }
     } finally {
       setLoading(false);
@@ -41,137 +54,108 @@ const HomePage = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto">
-      {/* Welcome Section */}
-      <div className="mb-10">
-        <h1 className="text-3xl md:text-4xl font-bold mb-2">
-          Welcome back, <span className="gradient-text">{user?.name?.split(' ')[0]}</span>
+    <div className="max-w-2xl mx-auto">
+      {/* Welcome */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900 mb-1">
+          Hey, {user?.name?.split(' ')[0]} 👋
         </h1>
-        <p className="text-white/60">Ready to make new connections today?</p>
+        <p className="text-gray-500">Ready to find your bond today?</p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
-        <div className="card-dark">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
-              <Coins size={20} className="text-purple-400" />
+      {/* Stories */}
+      <div className="mb-8">
+        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+          {/* Your Story */}
+          <div className="flex-shrink-0 text-center">
+            <div className="w-[72px] h-[72px] rounded-full bg-gradient-to-br from-purple-100 to-pink-100 border-2 border-dashed border-purple-300 flex items-center justify-center mb-2">
+              <span className="text-2xl">+</span>
             </div>
-            <span className="text-white/60 text-sm">Balance</span>
+            <span className="text-xs text-gray-600">Your Story</span>
           </div>
-          <div className="text-3xl font-bold gradient-text">{credits}</div>
-          <p className="text-white/40 text-sm">coins available</p>
+          
+          {/* Other Stories */}
+          {stories.map((story, i) => (
+            <div key={story.id || i} className="flex-shrink-0 text-center story-bubble-wrapper">
+              <div className="story-bubble">
+                <div className="story-bubble-inner bg-gradient-to-br from-purple-300 to-pink-300 flex items-center justify-center">
+                  <span className="text-white text-xl font-bold">{story.name?.[0]}</span>
+                </div>
+              </div>
+              <span className="text-xs text-gray-600 mt-2 block truncate w-16">{story.name?.split(' ')[0]}</span>
+            </div>
+          ))}
         </div>
-
-        <div className="card-dark">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
-              <Users size={20} className="text-green-400" />
-            </div>
-            <span className="text-white/60 text-sm">Nearby</span>
-          </div>
-          <div className="text-3xl font-bold text-green-400">{nearbyCount}</div>
-          <p className="text-white/40 text-sm">people near you</p>
-        </div>
-
-        <div className="card-dark">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
-              <MessageCircle size={20} className="text-blue-400" />
-            </div>
-            <span className="text-white/60 text-sm">Chats</span>
-          </div>
-          <div className="text-3xl font-bold text-blue-400">{conversations.length}</div>
-          <p className="text-white/40 text-sm">conversations</p>
-        </div>
-
-        <Link to="/dashboard/credits" className="card-dark group hover:border-purple-500/30 transition-colors">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-pink-500/20 flex items-center justify-center">
-              <Sparkles size={20} className="text-pink-400" />
-            </div>
-            <span className="text-white/60 text-sm">Buy More</span>
-          </div>
-          <div className="text-lg font-bold text-pink-400">Get Coins</div>
-          <ArrowRight size={16} className="text-white/40 group-hover:translate-x-1 transition-transform" />
-        </Link>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid md:grid-cols-2 gap-6 mb-10">
-        <Link
-          to="/dashboard/nearby"
-          className="card-dark flex items-center gap-6 group hover:border-purple-500/30 transition-all"
-        >
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center group-hover:scale-110 transition-transform">
-            <MapPin size={32} className="text-white" />
+      {/* Feed */}
+      <div className="space-y-6">
+        {loading ? (
+          <div className="text-center py-20">
+            <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-gray-500">Finding people nearby...</p>
           </div>
-          <div className="flex-1">
-            <h3 className="text-xl font-bold mb-1">Discover Nearby</h3>
-            <p className="text-white/60">Find people around you on the map</p>
-          </div>
-          <ArrowRight size={24} className="text-white/40 group-hover:text-purple-400 group-hover:translate-x-2 transition-all" />
-        </Link>
-
-        <Link
-          to="/dashboard/chat"
-          className="card-dark flex items-center gap-6 group hover:border-purple-500/30 transition-all"
-        >
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center group-hover:scale-110 transition-transform">
-            <MessageCircle size={32} className="text-white" />
-          </div>
-          <div className="flex-1">
-            <h3 className="text-xl font-bold mb-1">Messages</h3>
-            <p className="text-white/60">Continue your conversations</p>
-          </div>
-          <ArrowRight size={24} className="text-white/40 group-hover:text-purple-400 group-hover:translate-x-2 transition-all" />
-        </Link>
-      </div>
-
-      {/* Recent Conversations */}
-      {conversations.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold">Recent Conversations</h2>
-            <Link to="/dashboard/chat" className="text-purple-400 text-sm hover:underline">
-              View all
+        ) : nearbyUsers.length === 0 ? (
+          <div className="text-center py-20 card">
+            <Sparkles size={48} className="text-purple-400 mx-auto mb-4" />
+            <h3 className="text-lg font-bold mb-2">No one nearby yet</h3>
+            <p className="text-gray-500 mb-4">Enable location to discover people around you</p>
+            <Link to="/dashboard/nearby" className="btn-primary inline-block">
+              Enable Location
             </Link>
           </div>
-          <div className="space-y-3">
-            {conversations.map((conv) => (
-              <Link
-                key={conv.conversation_id}
-                to={`/dashboard/chat/${conv.user.id}`}
-                className="card-dark flex items-center gap-4 py-4 hover:border-purple-500/30 transition-colors"
-              >
+        ) : (
+          nearbyUsers.map((person) => (
+            <div key={person.id} className="user-card">
+              {/* Header */}
+              <div className="flex items-center gap-3 p-4 border-b border-gray-100">
                 <div className="relative">
-                  <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center overflow-hidden">
-                    {conv.user.profile_picture ? (
-                      <img src={conv.user.profile_picture} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-lg font-bold text-purple-400">{conv.user.name?.[0]}</span>
-                    )}
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white font-bold text-lg">
+                    {person.name?.[0]}
                   </div>
-                  {conv.user.is_online && (
-                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[#0B0B0F]" />
+                  {person.is_online && (
+                    <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white" />
                   )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-semibold truncate">{conv.user.name}</h4>
-                    {conv.unread_count > 0 && (
-                      <span className="bg-purple-500 text-white text-xs px-2 py-0.5 rounded-full">
-                        {conv.unread_count}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-white/40 text-sm truncate">{conv.last_message}</p>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900">{person.name}, {person.age}</h3>
+                  <p className="text-sm text-gray-500 flex items-center gap-1">
+                    <MapPin size={12} /> {person.distance_km}km away
+                  </p>
                 </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
+              </div>
+
+              {/* Image placeholder */}
+              <div className="aspect-square bg-gradient-to-br from-purple-100 via-pink-50 to-purple-50 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white text-4xl font-bold mx-auto mb-4">
+                    {person.name?.[0]}
+                  </div>
+                  {person.bio && (
+                    <p className="text-gray-600 px-4">{person.bio}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-4 p-4">
+                <button className="flex items-center gap-2 text-gray-600 hover:text-red-500 transition-colors">
+                  <Heart size={24} />
+                </button>
+                <Link
+                  to={`/dashboard/chat/${person.id}`}
+                  className="flex items-center gap-2 text-gray-600 hover:text-purple-500 transition-colors"
+                >
+                  <MessageCircle size={24} />
+                </Link>
+                <div className="ml-auto text-sm text-gray-400">
+                  1 coin to message
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 };
