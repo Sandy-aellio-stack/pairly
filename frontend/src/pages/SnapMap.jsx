@@ -155,6 +155,7 @@ const SnapMap = () => {
   }, []);
 
   // Get user's location
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
