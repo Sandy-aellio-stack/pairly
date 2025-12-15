@@ -187,6 +187,12 @@ const SnapMap = () => {
       },
     ];
     setNearbyUsers(mockUsers);
+  };
+
+  // Initial load
+  useEffect(() => {
+    // Load mock data initially while waiting for location
+    loadMockUsers();
     setIsLoading(false);
   }, []);
 
