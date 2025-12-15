@@ -1,94 +1,87 @@
 <analysis>**original_problem_statement:**
-The user initially wanted to continue backend development for Pairly (Phases 9-15) in mock mode. However, the user pivoted to a complete frontend overhaul with a new design, pages, and features inspired by Bumble and Snapchat, including a creator/fan model, geolocation features, and a new UI theme. The most recent request is to add a 5-page animated intro sequence and a new animated background to the sign-in page using user-provided images, while keeping all other existing content and layouts unchanged.
+The user's initial request was for backend development on a project called Pairly. This quickly pivoted to a complete frontend overhaul for Pairly with a dark, Bumble-inspired theme. The user then requested to build an entirely new dating application called TrueBond.
+
+This involved:
+1.  **Backend Rebuild:** Create a new, production-ready backend for TrueBond using FastAPI, MongoDB, and Redis. This included a credit-based messaging system, live location features, and a robust user authentication system where the user's physical address is collected but never exposed.
+2.  **Frontend Rebuild (Dark Theme):** Build a new, immersive frontend for TrueBond with a dark theme, GSAP animations, and a custom cursor.
+3.  **Frontend Rebuild (Light Theme):** Immediately after the dark theme frontend was built, the user requested another *complete* rebuild, this time with a light, Instagram-style UI, a left sidebar, a high-quality map (MapLibre GL), and an improved, friendlier signup flow.
+
+The current and active task is to build this new, light-themed frontend for the TrueBond application.
 
 **PRODUCT REQUIREMENTS:**
--   **Backend (Phases 11-15):** Implement Presence, Analytics, Notifications, QA/Hardening, and Deployment prep. (This was done in a rapid, drop-in manner with testing skipped per user instruction).
--   **Frontend Overhaul:**
-    -   New landing page content and navigation bar (Features, Support, Safety, Pricing, Creators).
-    -   Separate pages for each navigation item.
-    -   Signup flow with Creator and Fan roles.
-    -   Post-login experience with a social media feed, a Snap Map for nearby users, and a creator-specific upload button.
-    -   Updated professional color palette (violet/fuchsia).
-    -   A footer component for all pages.
--   **Latest Request (Animation):**
-    -   Create a 5-page animated intro sequence before the sign-in screen using 5 provided images.
-    -   Each intro page should feature one full-screen image with fade-in and slide-up effects.
-    -   Users should be able to scroll/swipe through the intro pages.
-    -   The sign-in page background should be an animated slideshow of the same 5 images with a parallax effect.
-    -   The existing sign-in form and all other project layouts must remain unchanged.
+-   **App Name:** TrueBond
+-   **Theme:** Light, modern, and friendly (Instagram-inspired). No dark backgrounds.
+-   **Palette:** Primary Background: /, Accent: , Highlight: , Text: .
+-   **Framework:** React + Vite.
+-   **Animation:** GSAP for all major transitions, reveals, and interactions.
+-   **Navigation:** A fixed left vertical sidebar on desktop and a bottom navigation bar on mobile.
+-   **Dashboard:** An Instagram-style feed with stories-like bubbles and a vertical feed of user cards.
+-   **Map:** A high-quality map using MapLibre GL JS, featuring custom markers, clustering, and smooth interactions.
+-   **Auth Flow:** A redesigned, multi-step signup process including a new profile photo upload step.
+-   **Chat:** A redesigned chat UI with optional social media links (Instagram, Snapchat, etc.) in the header.
+-   **Landing Page:** A single-page, scroll-based experience with GSAP animations.
+-   **Custom Cursor:** A magnifying glass-style cursor with GSAP easing.
+-   **Integration:** The new frontend must integrate with the existing, tested TrueBond backend.
+-   **Constraint:** The user has explicitly requested **NO TESTING** for the frontend.
 
 **User's preferred language**: English
 
 **what currently exists?**
-The backend has mock implementations for Phases 11-15 (Presence, Analytics, Notifications, QA, Deployment), but they are untested. The frontend has been significantly overhauled with new pages, components, and a new color scheme. Pages like Landing, Features, Safety, Support, Pricing, Creators, and the new Signup/Login flow have been created. Post-login pages like Home, SnapMap, Discovery, Profile, and Settings have been scaffolded or restyled. The project is fragile as the user explicitly requested to skip all testing and full frontend-backend integration is pending.
+1.  **Backend**: A complete, tested, and production-ready backend for the TrueBond dating app exists. It includes APIs for auth, profiles, a credit-based messaging system, live location/nearby users (with geo-indexing), and payment stubs for Razorpay.
+2.  **Frontend Build System**: The frontend has been successfully migrated from Create React App (CRACO) to Vite.
+3.  **Frontend (Light Theme - In Progress)**: The foundation for the new light-themed frontend has been laid. New dependencies (GSAP, MapLibre) have been installed, a new  with the light color palette is in place, and placeholder components for the new design (, , , ) have been created.
 
 **Last working item**:
-The user provided 5 images and detailed instructions to create a new animated intro sequence and update the sign-in page background. The agent acknowledged the request and was about to begin implementation.
+The agent was actively building the new, light-themed, Instagram-style frontend for TrueBond as per the user's latest request. It had just set up the initial file structure and was about to implement the Instagram-style home page.
 
--   **Last item agent was working:** Implementing a 5-page animated intro and a new sign-in page background animation.
--   **Status:** NOT STARTED
+-   **Last item agent was working:** Creating the new light-themed TrueBond frontend, specifically beginning the implementation of the main components after installing dependencies and setting up the basic CSS and file structure.
+-   **Status:** IN PROGRESS
 -   **Agent Testing Done:** N
--   **Which testing method agent to use?** frontend testing agent should be used after implementation to verify the new animations and ensure no regressions were introduced. A screenshot tool can be used for visual confirmation.
+-   **Which testing method agent to use?** The user explicitly requested **NO TESTING**. However, for visual verification, the  should be used after each major component is built.
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Frontend is unstable and shows a blank page (P0)**
-    -   A temporary fix was applied by removing a duplicate import in , which made the UI render again. However, the root cause of the initial blank screen might persist, as this often points to deeper React compilation or runtime errors. The frontend restarted and showed the page, but this could recur.
-    -   **Attempted fixes:** Removed duplicate  import from .
-    -   **Next debug checklist:** If the blank screen reappears, check the browser console for JavaScript errors. Inspect the  router file and  for any misconfigurations.
-    -   **Why fix this issue and what will be achieved with the fix?** A stable, rendering frontend is required to proceed with any new feature development or testing.
-    -   **Status:** IN PROGRESS
-    -   **Is recurring issue?** Y
-    -   **Should Test frontend/backend/both after fix?** Frontend
-    -   **Blocked on other issue:** None.
+-   There are no known technical bugs or issues. The primary challenge is managing the rapid, iterative nature of the user's requests which has led to previously completed work being discarded.
 
 **In progress Task List**:
--   **Task 1: Implement Animated Intro and Sign-In Background (P0)**
-    -   **Description:** Create a 5-page animated intro sequence and a new animated background for the sign-in page using the 5 images provided by the user.
-    -   **Where to resume:** Start by creating the new intro page components and modifying the  page. The images and animation specifications are in the user's last message.
-    -   **What will be achieved with this?** Fulfills the user's latest and most direct request.
-    -   **Status:** NOT STARTED
-    -   **Should Test frontend/backend/both after fix?** Frontend
+-   **Task 1: Complete the TrueBond Light-Themed Frontend Rebuild (P0)**
+    -   **Description:** Build the entire frontend from scratch according to the new Instagram-style design specifications. The previous dark-themed frontend is now obsolete.
+    -   **Where to resume:** Continue by creating the Instagram-style home page (), as the layout () and other foundational components have been created.
+    -   **What will be achieved with this?** A modern, light-themed, and fully functional frontend for the TrueBond application that aligns with the user's latest vision.
+    -   **Status:** IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?** Frontend (visual verification via screenshots only, as per user instructions).
     -   **Blocked on something:** None.
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks:**
-    -   **P0: Connect Frontend to Backend:** The user requested this but it has not been done. This involves wiring up all forms (Login, Signup, Profile, Settings) and data displays (Home feed, Discovery, user profiles) to their corresponding backend API endpoints.
-    -   **P1: Implement Full Creator/Fan Functionality:** The UI for role selection exists, but the backend logic for post uploads (Creators), subscriptions, and differentiated user experiences is not implemented. The  needs to be built out with actual upload functionality.
-    -   **P1: Implement Geolocation Snap Map:** The  page is a placeholder. A backend service needs to be built to store and retrieve user locations to display on the map.
-    -   **P2: Update Profile & Settings Pages:** The  and  pages were styled, but they lack the functionality to fetch and update user data. This needs to be connected to the backend.
+    -   **P0: Implement Instagram-Style Dashboard:** Build the main dashboard feed with stories-style bubbles and a vertical scroll of user cards.
+    -   **P0: Implement High-Quality Map:** Create the Nearby page using MapLibre GL, integrating live geolocation, custom markers, and clustering.
+    -   **P0: Implement Redesigned Chat UI:** Build the new chat interface, including social media link integration.
+    -   **P0: Finalize Landing Page:** Complete all GSAP-animated sections for the single-page scroll landing experience.
+    -   **P0: Integrate All Pages with Backend:** Connect all frontend components (Auth, Profile, Nearby, Chat, Credits) to the existing, tested TrueBond backend APIs.
 
 -   **Future Tasks:**
-    -   **P2: Comprehensive Backend & Frontend Testing:** The user repeatedly instructed the agent to skip testing. This has created significant technical debt. The entire backend (Phases 10-15) and the new frontend need to be tested thoroughly using the testing agent to ensure stability and correctness.
-    -   **P2: Revisit Original Backend Plan:** The initial plan included thorough implementation and testing of backend phases. The current drop-in code should be reviewed, hardened, and properly tested as originally intended.
+    -   There are no other future tasks defined. The user's focus is entirely on the current frontend rebuild.
 
 **Completed work in this session**
--   **Backend Scaffolding (Phases 11-15 - UNTESTED):**
-    -   Phase 11 (Presence): Created , ,  route, and .
-    -   Phase 12 (Analytics): Created , ,  route, and .
-    -   Phase 13 (Notifications): Updated  model, created ,  route, and .
-    -   Phase 14 (QA/Hardening): Created , , and .
-    -   Phase 15 (Deployment): Created , , , and .
--   **Frontend Overhaul (Partially Implemented, UNTESTED):**
-    -   Created new pages: , , , , , .
-    -   Overhauled auth pages:  (with Fan/Creator roles), .
-    -   Created post-login pages: , , .
-    -   Created/Styled placeholder pages: , , .
-    -   Applied a new professional violet/fuchsia color theme project-wide.
-    -   Created  and .
-    -   Installed  and  for map features.
-    -   Fixed a critical rendering bug that caused a blank screen.
+-   **TrueBond Backend Implementation:**
+    -   Built a complete, production-ready backend for the TrueBond dating app from scratch.
+    -   Implemented models, services, and routes for Users, Auth, Credits, Messaging, Live Location, and Payments.
+    -   The entire backend successfully passed 20 automated tests.
+-   **Frontend Migration (CRACO to Vite):**
+    -   Successfully migrated the frontend project from Create React App to Vite, including dependency updates, configuration changes, and script modifications.
+-   **TrueBond Frontend v1 (Dark Theme - DISCARDED):**
+    -   A full frontend was built based on a dark, immersive, cinematic theme with GSAP animations. This work was subsequently discarded at the user's request.
+-   **TrueBond Frontend v2 (Light Theme - Started):**
+    -   Installed new dependencies: , , , .
+    -   Created a new  with the light theme color palette.
+    -   Created initial components for the new design: , ,  (updated for image uploads),  (with left sidebar).
 
 -   **Recently completed:**
-    -   Applied a new professional color palette and footer to all frontend pages.
-    -   Resolved a frontend crash by fixing a duplicate import in .
+    -   The agent just started the new light-theme frontend build, creating the foundational files and components.
 
 **Earlier issues found/mentioned but not fixed**
--   **Issue 1: Lack of Testing**
-    -   **Debug checklist:** The user explicitly and repeatedly told the agent to skip testing for all backend and frontend work. This is not a bug but a high-risk directive that has resulted in a large amount of untested code.
-    -   **Why to solve this issue and what will be achieved with this?** Testing is critical to ensure the application is stable, functional, and free of regressions. Fixing this involves convincing the user to allow testing and then systematically writing and running tests for all new features.
-    -   **Should Test frontend/backend/both after fix:** Both.
-    -   **Is recurring issue?** Y
+-   None. All previous technical issues (e.g., Vite configuration) were resolved.
 
 **Known issue recurrence from previous fork**
 -   None.
@@ -97,77 +90,71 @@ The user provided 5 images and detailed instructions to create a new animated in
 
 
 **Key Technical Concepts**
--   **Full-Stack Development:** React frontend with FastAPI backend.
--   **Mock-First Development:** Backend services are designed to function with in-memory fallbacks.
--   **Component-Based UI:** Using React to build a modular frontend.
--   **Geolocation:** Using Leaflet.js for map displays.
--   **CSS-in-JS/Utility-First CSS:** Using TailwindCSS for styling.
+-   **Backend:** FastAPI, MongoDB with Beanie (ODM), Redis for rate limiting, JWT authentication, Geospatial queries ( index).
+-   **Frontend:** React, Vite, GSAP (for all animations), Zustand (for global state), MapLibre GL (for maps), TailwindCSS.
+-   **Architecture:** Decoupled frontend/backend. The frontend is being built as a single-page application with client-side routing for the post-login dashboard experience.
 
 **key DB schema**
 -   : 
 -   : 
 -   : 
+-   : 
+-   : 
 
 **changes in tech stack**
--   Added  and  to the frontend for map functionality.
+-   **Frontend Build Tool:** Migrated from CRACO (Create React App) to **Vite**.
+-   **Frontend Dependencies:** Added , , , , , and  to support the new design.
+-   **Backend:** The entire backend was replaced with a new FastAPI application for TrueBond. All previous Pairly backend code is now obsolete.
 
 **All files of reference**
--   **Backend (New/Updated):**
-    -   : , , 
-    -   : , , 
-    -   : , , , 
-    -   : , 
-    -   : , , , 
-    -   : Updated with new routers and middleware.
-    -   : Updated with new models.
-    -   Root: , , , 
--   **Frontend (New/Updated):**
-    -   : , 
-    -   
-    -   : , , , , , , , , , , 
-    -   : , 
-    -    (placeholder)
-    -   : Updated with all new pages.
-    -   : Added styles for Leaflet.
+-   **Backend (TrueBond):** All files starting with  in , , and . Also,  and .
+-   **Frontend (Vite Config):** , .
+-   **Frontend (New Light Theme):** , , , , .
+
+**Areas that need refactoring**:
+-   The entire project has been rebuilt multiple times. The current task is a fresh build, so no refactoring is needed yet. However, the agent should ensure the new codebase is clean and follows the specified architecture.
+
+**key api endpoints**
+-   
+-   
+-   
+-   
+-   
+-   
+-   
 
 **Critical Info for New Agent**
--   **PRIORITIZE THE ANIMATION TASK:** The user's latest request is to build the animated intro and sign-in screen. This should be your first action.
--   **USER SKIPS TESTING:** The user has repeatedly instructed to skip testing. This is a major risk. After completing the animation task, you should gently but clearly explain the importance of testing the new frontend and backend features to ensure the app is stable, and ask for permission to proceed with it.
--   **FRONTEND/BACKEND IS DISCONNECTED:** The beautiful new frontend is mostly a facade. A major upcoming task is to connect all the UI components and user actions to the backend APIs.
--   **EXISTING LAYOUTS MUST BE PRESERVED:** For the animation task, the user was very specific that no other part of the application's layout or content should be changed. Adhere strictly to this constraint.
+-   **PRIORITIZE LIGHT THEME REBUILD:** The user's latest request is a *complete* frontend rebuild with a light, Instagram-style theme. All previous frontend work (dark theme) is obsolete and must be ignored.
+-   **DO NOT TEST:** The user has been very explicit: **No testing required** for the frontend. Do not run or create any tests. Use screenshots for visual confirmation only.
+-   **BACKEND IS COMPLETE:** The new TrueBond backend is finished and has been tested. You should integrate the new frontend with these existing APIs. Do not modify the backend.
+-   **USE SPECIFIED TECH:** Adhere strictly to the requested tech stack for the new frontend: Vite, GSAP, MapLibre GL, and Zustand.
 
 **documents created in this job**
--   /app/backend/DEPLOYMENT.md
--   /app/test_result.md
+-   None.
 
 **Last 10 User Messages and any pending user messages**
-1.   - **In Progress.** Agent implemented UI changes but connection is pending.
-2.   - **In Progress.** Agent identified the pages exist but need functionality.
-3.   - **Pending.** This is the current, highest-priority task.
--   **Pending User Messages:** None. The agent is expected to act on the last request.
+1.   - **Completed**. Agent built the new backend with Razorpay sandbox keys.
+2.   - **Completed & Discarded**. Agent built the dark theme frontend, which was then immediately replaced by a new request.
+3.   - **In Progress**. This is the current, active task. The agent has started implementation.
 
 **Project Health Check:**
--   **Broken:** The frontend-backend connection is non-existent for most new features. The application is untested and likely contains numerous bugs.
--   **Mocked:** All backend services (Payments, Redis, Celery) and the new modules (Presence, Analytics, etc.) are running in mock mode.
+-   **Broken:** The frontend is in the middle of a complete rebuild, so it's non-functional. The connection between the frontend and the new backend is not yet established.
+-   **Mocked:** Razorpay is using sandbox keys. Fonoster API key was provided but implementation is part of the new backend.
 
 **3rd Party Integrations**
--   **Stripe (Payments):** Mocked.
--   **Razorpay (Payments):** Mocked.
--   **Redis:** Mocked (in-memory fallback).
--   **Celery:** Mocked (manual triggers only).
+-   **Razorpay:** Integrated into the backend with sandbox keys.
+-   **Stripe:** Available as an optional provider in the backend but not fully implemented.
+-   **Fonoster:** API key provided for OTP, integrated into the backend.
+-   **MapLibre GL:** To be used for the new frontend map.
 
 **Testing status**
--   **Testing agent used after significant changes:** NO (explicitly skipped by user).
--   **Troubleshoot agent used after agent stuck in loop:** NO.
--   **Test files created:**
-    -   
-    -   
-    -   
-    -   
--   **Known regressions:** Unknown, due to lack of testing.
+-   **Testing agent used after significant changes:** YES, for the backend rebuild (all 20 tests passed). NO for the frontend, as per user's explicit instruction.
+-   **Test files created:** A full test suite for the TrueBond backend was created by the testing agent. No frontend test files exist.
+-   **Known regressions:** None.
 
 **Credentials to test flow:**
-N/A (Application is in mock mode and auth flow is not fully connected/tested).
+-   **Razorpay:** Sandbox keys are present in .
+-   **Fonoster:** API key  is in .
 
 **What agent forgot to execute**
-The agent did not forget but was explicitly instructed by the user **not to perform any testing** on the vast amount of new code written for both the backend (Phases 11-15) and the entire frontend overhaul. The task to connect the frontend and backend was also acknowledged but not completed before the user issued a new, superseding request for animations.</analysis>
+-   The agent has been following user instructions closely. The major miss is the lack of frontend testing, but this is a direct and repeated instruction from the user, not an oversight.</analysis>
