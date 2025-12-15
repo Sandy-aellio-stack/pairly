@@ -15,6 +15,8 @@ import {
 import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { updateLocation } from '@/services/location';
+import { fetchNearbyUsers } from '@/services/nearby';
 
 // Fix for default markers
 delete L.Icon.Default.prototype._getIconUrl;
