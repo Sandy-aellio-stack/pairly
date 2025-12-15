@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { MapPin, MessageCircle, Users, Coins, ArrowRight, Sparkles } from 'lucide-react';
-import useAuthStore from '../../store/authStore';
-import { locationAPI, messagesAPI } from '../../services/api';
+import useAuthStore from '@/store/authStore';
+import { locationAPI, messagesAPI } from '@/services/api';
 
 const HomePage = () => {
   const { user, credits } = useAuthStore();

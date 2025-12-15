@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Send, Coins, AlertCircle } from 'lucide-react';
-import { messagesAPI, userAPI } from '../../services/api';
-import useAuthStore from '../../store/authStore';
+import { messagesAPI, userAPI } from '@/services/api';
+import useAuthStore from '@/store/authStore';
 
 const ChatPage = () => {
   const { userId } = useParams();

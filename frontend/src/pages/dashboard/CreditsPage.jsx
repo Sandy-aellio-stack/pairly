@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Coins, CreditCard, History, Check, IndianRupee } from 'lucide-react';
-import useAuthStore from '../../store/authStore';
-import { paymentsAPI, creditsAPI } from '../../services/api';
+import useAuthStore from '@/store/authStore';
+import { paymentsAPI, creditsAPI } from '@/services/api';
 
 const CreditsPage = () => {
   const { credits, refreshCredits } = useAuthStore();

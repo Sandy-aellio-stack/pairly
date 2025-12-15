@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { X, ChevronRight, ChevronLeft, Eye, EyeOff } from 'lucide-react';
 import gsap from 'gsap';
-import useAuthStore from '../store/authStore';
+import useAuthStore from '@/store/authStore';
 
 const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
   const [mode, setMode] = useState(initialMode);

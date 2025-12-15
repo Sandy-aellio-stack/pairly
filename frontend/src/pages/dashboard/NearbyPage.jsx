@@ -3,8 +3,8 @@ import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-le
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { RefreshCw, MessageCircle, MapPin, Navigation } from 'lucide-react';
-import { locationAPI } from '../../services/api';
-import useAuthStore from '../../store/authStore';
+import { locationAPI } from '@/services/api';
+import useAuthStore from '@/store/authStore';
 import { useNavigate } from 'react-router-dom';
 
 // Custom icons

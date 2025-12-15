@@ -1,16 +1,16 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
-import useAuthStore from './store/authStore';
+import useAuthStore from '@/store/authStore';
 
 // Pages
-import LandingPage from './pages/LandingPage';
-import DashboardLayout from './pages/dashboard/DashboardLayout';
-import HomePage from './pages/dashboard/HomePage';
-import NearbyPage from './pages/dashboard/NearbyPage';
-import ChatPage from './pages/dashboard/ChatPage';
-import ProfilePage from './pages/dashboard/ProfilePage';
-import CreditsPage from './pages/dashboard/CreditsPage';
+import LandingPage from '@/pages/LandingPage';
+import DashboardLayout from '@/pages/dashboard/DashboardLayout';
+import HomePage from '@/pages/dashboard/HomePage';
+import NearbyPage from '@/pages/dashboard/NearbyPage';
+import ChatPage from '@/pages/dashboard/ChatPage';
+import ProfilePage from '@/pages/dashboard/ProfilePage';
+import CreditsPage from '@/pages/dashboard/CreditsPage';
 
 // Protected Route wrapper
 const ProtectedRoute = ({ children }) => {

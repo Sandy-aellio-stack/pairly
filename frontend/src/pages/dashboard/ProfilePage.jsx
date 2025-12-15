@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { User, Heart, MapPin, Save } from 'lucide-react';
-import useAuthStore from '../../store/authStore';
-import { userAPI } from '../../services/api';
+import useAuthStore from '@/store/authStore';
+import { userAPI } from '@/services/api';
 
 const ProfilePage = () => {
   const { user, initialize } = useAuthStore();
