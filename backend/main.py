@@ -29,7 +29,9 @@ from backend.routes import (
     matchmaking,
     presence,  # Phase 11: Presence Engine V2
     analytics,  # Phase 12: Analytics & Insights
-    notifications  # Phase 13: Notification Engine
+    notifications,  # Phase 13: Notification Engine
+    location,  # Geo-location update
+    nearby  # Nearby users query
 )
 from backend.admin.routes import admin_payouts
 from backend.routes import admin_security_enhanced, admin_analytics_enhanced, admin_users
