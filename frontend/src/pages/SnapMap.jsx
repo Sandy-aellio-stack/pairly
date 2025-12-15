@@ -277,6 +277,11 @@ const SnapMap = () => {
               <Users className="h-3 w-3" />
               {nearbyUsers.filter(u => u.isOnline).length} nearby
             </Badge>
+            {useMockData && (
+              <Badge variant="secondary" className="gap-1 bg-amber-100 text-amber-700">
+                Demo Mode
+              </Badge>
+            )}
           </div>
         </div>
 
