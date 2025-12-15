@@ -1,7 +1,7 @@
-\"\"\"
+"""
 TrueBond - Dating App Backend
 Production-ready FastAPI backend with MongoDB
-\"\"\"
+"""
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -24,30 +24,30 @@ mongo_client = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    \"\"\"Application lifespan handler\"\"\"
+    """Application lifespan handler"""
     global mongo_client
     # Startup
     mongo_client = await init_db()
-    print(\"🚀 TrueBond Backend Started\")
+    print("🚀 TrueBond Backend Started")
     yield
     # Shutdown
     await close_db(mongo_client)
 
 
 app = FastAPI(
-    title=\"TrueBond API\",
-    description=\"Dating App Backend - Credit-based messaging with live location\",
-    version=\"1.0.0\",
+    title="TrueBond API",
+    description="Dating App Backend - Credit-based messaging with live location",
+    version="1.0.0",
     lifespan=lifespan
 )
 
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[\"*\"],  # Configure for production
+    allow_origins=["*"],  # Configure for production
     allow_credentials=True,
-    allow_methods=[\"*\"],
-    allow_headers=[\"*\"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -57,8 +57,8 @@ async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=500,
         content={
-            \"error\": \"Internal server error\",
-            \"detail\": str(exc) if os.getenv(\"ENV\") == \"development\" else \"Something went wrong\"
+            "error": "Internal server error",
+            "detail": str(exc) if os.getenv("ENV") == "development" else "Something went wrong"
         }
     )
 
@@ -72,20 +72,20 @@ app.include_router(credits_router)
 app.include_router(payments_router)
 
 
-@app.get(\"/api/health\")
+@app.get("/api/health")
 async def health_check():
     return {
-        \"status\": \"healthy\",
-        \"service\": \"truebond\",
-        \"version\": \"1.0.0\"
+        "status": "healthy",
+        "service": "truebond",
+        "version": "1.0.0"
     }
 
 
-@app.get(\"/\")
+@app.get("/")
 async def root():
     return {
-        \"app\": \"TrueBond\",
-        \"version\": \"1.0.0\",
-        \"docs\": \"/docs\",
-        \"health\": \"/api/health\"
+        "app": "TrueBond",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "health": "/api/health"
     }
