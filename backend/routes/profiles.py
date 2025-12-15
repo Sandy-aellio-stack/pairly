@@ -77,7 +77,10 @@ async def update_profile(req: UpdateProfileRequest, user: User = Depends(get_cur
 
     for key, value in update_data.items():
         if key == "location":
-            profile.location = GeoJSONPoint(coordinates=[value.lng, value.lat])
+            profile.location = {
+                "type": "Point",
+                "coordinates": [value.lng, value.lat]
+            }
         else:
             setattr(profile, key, value)
 
