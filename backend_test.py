@@ -407,7 +407,7 @@ class PairlyTester:
                 }
             }
             
-            response = self.session.post(f"{BACKEND_URL}/profiles", json=profile_data, headers=headers)
+            response = self.session.post(f"{BACKEND_URL}/profiles/", json=profile_data, headers=headers)
             
             if response.status_code == 200:
                 self.log(f"✓ Profile created for {name} at ({lat}, {lng})")
