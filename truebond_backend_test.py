@@ -260,10 +260,11 @@ class TrueBondTester:
     def create_second_user(self) -> Tuple[str, str]:
         """Create a second user for testing interactions"""
         try:
+            timestamp = int(time.time()) + 1  # Ensure different from first user
             signup_data = {
                 "name": "Jane Smith",
-                "email": "jane@test.com",
-                "mobile_number": "+919876543213",
+                "email": f"jane{timestamp}@test.com",
+                "mobile_number": f"+91987654{timestamp % 10000}",
                 "password": "Test@1234",
                 "age": 28,
                 "gender": "female",
