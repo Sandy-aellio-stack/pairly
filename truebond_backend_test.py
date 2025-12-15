@@ -200,7 +200,7 @@ class TrueBondTester:
         """Test invalid login credentials"""
         try:
             login_data = {
-                "email": "john@test.com",
+                "email": self.test_email if hasattr(self, 'test_email') else "nonexistent@test.com",
                 "password": "WrongPassword"
             }
             
