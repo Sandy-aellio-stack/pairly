@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { Heart, Home, Star, Shield, HelpCircle, CreditCard, Sparkles, MapPin, MessageCircle, Video, BadgeCheck, Bell, Lock, Eye, UserCheck, Flag, ChevronDown, ChevronUp, Mail, MessageSquare, Headphones, Coins, ArrowRight, Phone, Users, Zap } from 'lucide-react';
+import { Heart, Home, Star, Shield, HelpCircle, CreditCard, Sparkles, MapPin, MessageCircle, Video, BadgeCheck, Bell, Lock, Eye, UserCheck, Flag, ChevronDown, ChevronUp, Mail, MessageSquare, Headphones, Coins, ArrowRight, Phone, Users, Zap, Filter, ThumbsUp, UserPlus, Search, AlertTriangle, Check } from 'lucide-react';
 import CustomCursor from '@/components/CustomCursor';
 import AuthModal from '@/components/AuthModal';
 
@@ -42,24 +42,17 @@ const LandingPage = () => {
       gsap.to('.float-2', { y: -15, duration: 2.5, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 0.5 });
       gsap.to('.float-3', { y: -25, duration: 3.5, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 1 });
 
-      // Section scroll animations
+      // Section animations
       const sections = ['features', 'safety', 'support', 'pricing', 'connect'];
       sections.forEach((section) => {
         gsap.from(`#${section} .section-title`, {
           y: 50, opacity: 0, duration: 0.8, ease: 'power3.out',
-          scrollTrigger: { trigger: `#${section}`, start: 'top 80%' }
+          scrollTrigger: { trigger: `#${section}`, start: 'top 85%' }
         });
         gsap.from(`#${section} .section-content`, {
-          y: 60, opacity: 0, duration: 0.8, stagger: 0.1, ease: 'power3.out',
-          scrollTrigger: { trigger: `#${section}`, start: 'top 75%' }
+          y: 40, opacity: 0, duration: 0.6, stagger: 0.1, ease: 'power3.out',
+          scrollTrigger: { trigger: `#${section}`, start: 'top 80%' }
         });
-      });
-
-      // Parallax backgrounds
-      gsap.to('.parallax-bg', {
-        yPercent: 20,
-        ease: 'none',
-        scrollTrigger: { trigger: '.parallax-bg', start: 'top bottom', end: 'bottom top', scrub: true }
       });
 
       // Active section detection
@@ -77,21 +70,39 @@ const LandingPage = () => {
     return () => ctx.revert();
   }, []);
 
-  const features = [
-    { icon: Sparkles, title: 'AI-Powered Matching', desc: 'Smart algorithms find your perfect match based on personality, interests, and compatibility scores.' },
-    { icon: MapPin, title: 'Snap Map Discovery', desc: 'See who\'s nearby in real-time. Discover connections within your preferred distance range.' },
+  const mainFeatures = [
+    { icon: MapPin, title: 'Snap Map Style Discovery', desc: "See nearby users on an interactive map. Discover people around you in real-time with our location-based matching." },
+    { icon: Sparkles, title: 'AI-Powered Matching', desc: 'Our intelligent algorithm learns your preferences and suggests compatible matches based on interests, values, and behavior.' },
+    { icon: Video, title: 'Video & Voice Calls', desc: 'Connect face-to-face with video calls or have voice conversations before meeting in person.' },
+    { icon: BadgeCheck, title: 'Verified Profiles', desc: "Photo verification and ID checks ensure you're talking to real people. Safety is our top priority." },
     { icon: MessageCircle, title: 'Real-Time Messaging', desc: 'Instant messaging with read receipts, typing indicators, and rich media sharing.' },
-    { icon: Video, title: 'Voice & Video Calls', desc: 'Connect face-to-face with HD video calls. Break the ice before meeting in person.' },
-    { icon: BadgeCheck, title: 'Verified Profiles', desc: 'Photo and ID verification ensures you\'re connecting with real, authentic people.' },
-    { icon: Bell, title: 'Smart Notifications', desc: 'Never miss a match or message with intelligent, non-intrusive notifications.' },
+  ];
+
+  const moreFeatures = [
+    { icon: Bell, title: 'Smart Notifications' },
+    { icon: Lock, title: 'End-to-End Encryption' },
+    { icon: Filter, title: 'Advanced Filters' },
+    { icon: ThumbsUp, title: 'Super Likes' },
+    { icon: Users, title: 'Group Chats' },
+    { icon: Zap, title: 'Boost Profile' },
   ];
 
   const safetyFeatures = [
     { icon: Eye, title: 'Photo Verification', desc: 'AI-powered selfie verification confirms users match their profile photos.' },
-    { icon: UserCheck, title: 'ID Verification', desc: 'Optional government ID verification for enhanced trust and safety.' },
-    { icon: Lock, title: 'End-to-End Encryption', desc: 'All messages are encrypted. Your conversations stay private.' },
-    { icon: Flag, title: 'Block & Report', desc: 'Easily block or report suspicious behavior. Our team reviews reports 24/7.' },
-    { icon: Shield, title: 'Privacy-First Design', desc: 'Your location and personal data are never shared without your consent.' },
+    { icon: UserCheck, title: 'ID Verification', desc: 'Optional government ID verification for enhanced trust and authenticity.' },
+    { icon: Lock, title: 'End-to-End Encryption', desc: 'All messages are encrypted. Your conversations stay completely private.' },
+    { icon: Shield, title: 'Private Mode', desc: 'Control who sees your profile with advanced privacy settings.' },
+    { icon: Flag, title: 'Easy Reporting', desc: 'Report suspicious behavior instantly. Our team reviews reports 24/7.' },
+    { icon: UserPlus, title: 'Block & Unmatch', desc: 'Easily block or unmatch anyone. You are always in control.' },
+  ];
+
+  const safetyTips = [
+    'Never share financial information',
+    'Video chat before meeting in person',
+    'Meet in public places first',
+    'Tell a friend about your plans',
+    'Trust your instincts',
+    'Report suspicious behavior',
   ];
 
   const faqs = [
@@ -102,20 +113,48 @@ const LandingPage = () => {
   ];
 
   const pricingPlans = [
-    { coins: 50, price: 49, perCoin: '0.98', popular: false },
-    { coins: 100, price: 89, perCoin: '0.89', popular: true },
-    { coins: 250, price: 199, perCoin: '0.80', popular: false },
-    { coins: 500, price: 349, perCoin: '0.70', popular: false },
+    { name: 'Free', price: 0, period: '', features: ['10 free coins on signup', 'Basic matching', 'Limited daily swipes', 'View profiles'], cta: 'Get Started', popular: false },
+    { name: 'Premium', price: 14.99, period: '/month', features: ['100 coins/month', 'Unlimited swipes', 'See who likes you', 'Advanced filters', 'Read receipts', 'Priority support'], cta: 'Start Premium', popular: true },
+    { name: 'VIP', price: 29.99, period: '/month', features: ['300 coins/month', 'Everything in Premium', 'Profile boost weekly', 'Incognito mode', 'Super likes', 'VIP badge'], cta: 'Go VIP', popular: false },
   ];
 
   return (
     <div ref={containerRef} className="min-h-screen bg-white">
       <CustomCursor />
 
-      {/* LEFT FLOATING NAV */}
-      <nav className="fixed left-6 top-1/2 -translate-y-1/2 z-50 hidden lg:block">
-        <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-3 shadow-xl border border-white/50">
-          <div className="space-y-2">
+      {/* TOP HEADER - App Name Left, Auth Right */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-xl border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          {/* App Name - Left */}
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+              <Heart size={20} className="text-white" fill="white" />
+            </div>
+            <span className="text-xl font-bold text-gray-900">TrueBond</span>
+          </div>
+
+          {/* Auth Buttons - Right */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setAuthModal({ open: true, mode: 'login' })}
+              className="px-5 py-2 text-gray-700 font-medium hover:text-purple-600 transition-colors"
+            >
+              Login
+            </button>
+            <button
+              onClick={() => setAuthModal({ open: true, mode: 'signup' })}
+              className="px-5 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105"
+            >
+              Sign Up
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* LEFT STATIC NAVIGATION */}
+      <nav className="fixed left-6 top-1/2 -translate-y-1/2 z-40 hidden lg:block">
+        <div className="bg-white/80 backdrop-blur-xl rounded-2xl p-3 shadow-xl border border-gray-200/50">
+          <div className="space-y-1">
             {navItems.map((item) => (
               <button
                 key={item.id}
@@ -126,7 +165,7 @@ const LandingPage = () => {
                     : 'text-gray-600 hover:bg-purple-50 hover:text-purple-600'
                 }`}
               >
-                <item.icon size={20} className={activeSection === item.id ? '' : 'group-hover:scale-110 transition-transform'} />
+                <item.icon size={18} />
                 <span className="font-medium text-sm">{item.label}</span>
               </button>
             ))}
@@ -134,24 +173,8 @@ const LandingPage = () => {
         </div>
       </nav>
 
-      {/* TOP-RIGHT AUTH BUTTONS */}
-      <div className="fixed top-6 right-6 z-50 flex items-center gap-3">
-        <button
-          onClick={() => setAuthModal({ open: true, mode: 'login' })}
-          className="px-6 py-2.5 text-gray-700 font-medium hover:text-purple-600 transition-colors bg-white/80 backdrop-blur-lg rounded-full border border-gray-200 hover:border-purple-300"
-        >
-          Login
-        </button>
-        <button
-          onClick={() => setAuthModal({ open: true, mode: 'signup' })}
-          className="px-6 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105"
-        >
-          Sign Up
-        </button>
-      </div>
-
       {/* MOBILE BOTTOM NAV */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-lg border-t border-gray-100 px-2 py-2 safe-area-pb">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-lg border-t border-gray-100 px-2 py-2 safe-area-pb">
         <div className="flex justify-around">
           {navItems.map((item) => (
             <button
@@ -169,188 +192,222 @@ const LandingPage = () => {
       </nav>
 
       {/* ===== HERO SECTION ===== */}
-      <section id="home" className="relative min-h-screen flex items-center overflow-hidden">
-        {/* Background Image */}
-        <div className="absolute inset-0 parallax-bg">
-          <img
-            src="https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?w=1920&q=80"
-            alt=""
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-purple-900/80 via-purple-800/70 to-pink-900/60" />
-          <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent" />
-        </div>
+      <section id="home" className="min-h-screen flex items-center relative overflow-hidden pt-16">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-50 via-white to-pink-50" />
+        <div className="absolute top-20 right-20 w-96 h-96 rounded-full bg-purple-200/30 blur-[100px]" />
+        <div className="absolute bottom-20 left-20 w-80 h-80 rounded-full bg-pink-200/30 blur-[100px]" />
 
-        <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-16 py-32 lg:ml-32">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
+        <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-16 py-20 lg:ml-24">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <div className="hero-badge inline-flex items-center gap-2 px-5 py-2.5 bg-white/20 backdrop-blur-lg rounded-full mb-8 border border-white/30">
-                <Heart size={18} className="text-pink-300" fill="currentColor" />
-                <span className="text-sm font-medium text-white">Trusted by 100,000+ singles</span>
+              <div className="hero-badge inline-flex items-center gap-2 px-4 py-2 bg-purple-100 rounded-full mb-6">
+                <Heart size={16} className="text-purple-600" fill="currentColor" />
+                <span className="text-sm font-medium text-purple-700">Trusted by 100,000+ singles</span>
               </div>
 
-              <h1 className="hero-title text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold leading-[1.1] mb-8 text-white">
+              <h1 className="hero-title text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.1] mb-6 text-gray-900">
                 Making meaningful
                 <br />
                 connections
                 <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-300 to-purple-300">since 2024</span>
+                <span className="gradient-text">since 2024</span>
               </h1>
 
-              <p className="hero-subtitle text-xl lg:text-2xl text-white/80 mb-10 max-w-xl leading-relaxed">
+              <p className="hero-subtitle text-lg lg:text-xl text-gray-600 mb-8 max-w-lg leading-relaxed">
                 We exist to bring people closer to love. Discover genuine connections with verified profiles, smart matching, and secure messaging.
               </p>
 
               <div className="flex flex-wrap gap-4 hero-cta">
                 <button
                   onClick={() => setAuthModal({ open: true, mode: 'signup' })}
-                  className="px-8 py-4 bg-white text-purple-600 font-bold rounded-full shadow-xl hover:shadow-2xl transition-all hover:scale-105 flex items-center gap-2"
+                  className="btn-primary px-8 py-4 flex items-center gap-2 shadow-xl shadow-purple-300/30"
                 >
                   Get Started Free <ArrowRight size={20} />
                 </button>
-                <button className="px-8 py-4 bg-white/20 backdrop-blur-lg text-white font-medium rounded-full border border-white/30 hover:bg-white/30 transition-all flex items-center gap-2">
+                <button className="px-8 py-4 bg-white text-gray-700 font-medium rounded-full border border-gray-200 hover:border-purple-300 hover:text-purple-600 transition-all flex items-center gap-2">
                   <Video size={20} /> Watch Demo
                 </button>
               </div>
             </div>
 
-            {/* Floating UI Elements */}
+            {/* Hero Visual */}
             <div className="hidden lg:block relative">
-              <div className="hero-float float-1 absolute top-0 right-0 bg-white rounded-2xl p-5 shadow-2xl">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-400 to-pink-400" />
-                  <div>
-                    <div className="font-bold text-gray-900">New Match!</div>
-                    <div className="text-sm text-gray-500">Sarah liked you 💖</div>
+              <div className="relative w-full max-w-md mx-auto">
+                <div className="bg-white rounded-[2rem] p-3 shadow-2xl shadow-purple-200/40">
+                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-[1.5rem] p-6 aspect-[9/14] relative overflow-hidden">
+                    <div className="space-y-3">
+                      <div className="flex gap-2">
+                        {[1, 2, 3, 4].map((i) => (
+                          <div key={i} className="story-bubble">
+                            <div className="story-bubble-inner bg-gradient-to-br from-purple-300 to-pink-300" />
+                          </div>
+                        ))}
+                      </div>
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="bg-white rounded-xl p-3 shadow-md">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-pink-400" />
+                            <div className="flex-1">
+                              <div className="h-2.5 w-20 bg-gray-200 rounded" />
+                              <div className="h-2 w-12 bg-gray-100 rounded mt-1.5" />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="hero-float float-2 absolute top-1/3 left-0 bg-white rounded-2xl p-5 shadow-2xl">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
-                    <MessageCircle size={24} className="text-green-600" />
-                  </div>
-                  <div>
-                    <div className="font-bold text-gray-900">12 Messages</div>
-                    <div className="text-sm text-gray-500">3 unread chats</div>
+                <div className="hero-float float-1 absolute -left-12 top-8 bg-white rounded-xl p-4 shadow-xl">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                      <Users size={20} className="text-green-600" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-sm">5 nearby</div>
+                      <div className="text-xs text-gray-500">Looking for you</div>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="hero-float float-3 absolute bottom-1/4 right-10 bg-white rounded-2xl p-5 shadow-2xl">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center">
-                    <Users size={24} className="text-purple-600" />
+                <div className="hero-float float-2 absolute -right-8 top-1/3 bg-white rounded-xl p-4 shadow-xl">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
+                      <Heart size={20} className="text-purple-600" fill="currentColor" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-sm">New match!</div>
+                      <div className="text-xs text-gray-500">Say hello 👋</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="font-bold text-gray-900">8 Nearby</div>
-                    <div className="text-sm text-gray-500">Within 5km</div>
+                </div>
+
+                <div className="hero-float float-3 absolute -left-6 bottom-16 bg-white rounded-xl p-4 shadow-xl">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center">
+                      <MessageCircle size={20} className="text-pink-600" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-sm">12 messages</div>
+                      <div className="text-xs text-gray-500">3 unread</div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* Scroll indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-white/60">
-          <span className="text-sm">Scroll to explore</span>
-          <div className="w-6 h-10 rounded-full border-2 border-white/40 flex items-start justify-center p-2">
-            <div className="w-1.5 h-3 bg-white rounded-full animate-bounce" />
           </div>
         </div>
       </section>
 
       {/* ===== FEATURES SECTION ===== */}
-      <section id="features" className="relative py-32 overflow-hidden">
-        {/* Background */}
-        <div className="absolute inset-0">
-          <img
-            src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1920&q=80"
-            alt=""
-            className="w-full h-full object-cover opacity-10"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-white via-purple-50/80 to-white" />
-        </div>
-
-        <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-16 lg:ml-32">
+      <section id="features" className="py-24 bg-gradient-to-b from-white via-purple-50/50 to-white">
+        <div className="max-w-7xl mx-auto px-6 lg:px-16 lg:ml-24">
           <div className="text-center mb-16">
-            <h2 className="section-title text-4xl sm:text-5xl lg:text-6xl font-bold mb-6">
+            <h2 className="section-title text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">
               Powerful <span className="gradient-text">Features</span>
             </h2>
-            <p className="section-content text-xl text-gray-600 max-w-2xl mx-auto">
-              Everything you need to find meaningful connections, all in one beautifully designed app.
+            <p className="section-title text-lg text-gray-600 mb-2">Everything you need to find your match</p>
+            <p className="section-content text-gray-500 max-w-2xl mx-auto">
+              Discover the features that make TrueBond the most innovative dating platform.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {features.map((feature, i) => (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
+            {mainFeatures.map((feature, i) => (
               <div
                 key={i}
-                className="section-content bg-white rounded-3xl p-8 shadow-lg hover:shadow-xl transition-all hover:-translate-y-2 border border-purple-100"
+                className="section-content bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 border border-purple-100/50"
               >
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-6">
-                  <feature.icon size={32} className="text-white" />
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-4">
+                  <feature.icon size={28} className="text-white" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">{feature.title}</h3>
-                <p className="text-gray-600 leading-relaxed">{feature.desc}</p>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">{feature.title}</h3>
+                <p className="text-gray-600 text-sm leading-relaxed">{feature.desc}</p>
               </div>
             ))}
+          </div>
+
+          {/* More Features Grid */}
+          <div className="section-content bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-8">
+            <h3 className="text-xl font-bold text-gray-900 mb-6 text-center">And so much more...</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              {moreFeatures.map((feature, i) => (
+                <div key={i} className="bg-white rounded-xl p-4 text-center shadow-sm hover:shadow-md transition-all">
+                  <feature.icon size={24} className="text-purple-500 mx-auto mb-2" />
+                  <span className="text-sm font-medium text-gray-700">{feature.title}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
       {/* ===== SAFETY SECTION ===== */}
-      <section id="safety" className="relative py-32 overflow-hidden">
-        {/* Background */}
-        <div className="absolute inset-0">
-          <img
-            src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1920&q=80"
-            alt=""
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-white via-white/95 to-white/90" />
-        </div>
+      <section id="safety" className="py-24 bg-white">
+        <div className="max-w-7xl mx-auto px-6 lg:px-16 lg:ml-24">
+          <div className="text-center mb-4">
+            <span className="section-title text-sm font-medium text-purple-600 uppercase tracking-wide">Your safety matters</span>
+          </div>
+          <div className="text-center mb-12">
+            <h2 className="section-title text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">
+              Date with <span className="gradient-text">confidence</span>
+            </h2>
+            <p className="section-content text-gray-600 max-w-2xl mx-auto">
+              We're committed to creating a safe space for meaningful connections. Your security is built into everything we do.
+            </p>
+          </div>
 
-        <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-16 lg:ml-32">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <div>
-              <h2 className="section-title text-4xl sm:text-5xl lg:text-6xl font-bold mb-6">
-                Your <span className="gradient-text">Safety</span>
-                <br />comes first
-              </h2>
-              <p className="section-content text-xl text-gray-600 mb-10 leading-relaxed">
-                We've built industry-leading safety features to ensure you can focus on what matters most — finding genuine connections.
-              </p>
-
-              <div className="space-y-6">
-                {safetyFeatures.map((feature, i) => (
-                  <div key={i} className="section-content flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center flex-shrink-0">
-                      <feature.icon size={24} className="text-green-600" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900 mb-1">{feature.title}</h4>
-                      <p className="text-gray-600">{feature.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="section-content hidden lg:block">
-              <div className="relative">
-                <div className="bg-gradient-to-br from-green-100 to-blue-100 rounded-3xl p-12 aspect-square flex items-center justify-center">
-                  <div className="relative">
-                    <div className="w-48 h-48 rounded-full bg-white shadow-2xl flex items-center justify-center">
-                      <Shield size={80} className="text-green-500" />
-                    </div>
-                    <div className="absolute -top-4 -right-4 w-16 h-16 rounded-full bg-green-500 flex items-center justify-center shadow-lg">
-                      <BadgeCheck size={32} className="text-white" />
-                    </div>
-                  </div>
+          {/* Safety Features Grid */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
+            {safetyFeatures.map((feature, i) => (
+              <div
+                key={i}
+                className="section-content bg-gray-50 rounded-2xl p-6 hover:bg-white hover:shadow-lg transition-all border border-gray-100"
+              >
+                <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center mb-4">
+                  <feature.icon size={24} className="text-green-600" />
                 </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">{feature.title}</h3>
+                <p className="text-gray-600 text-sm">{feature.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Safety Tips */}
+          <div className="section-content bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-8">
+            <h3 className="text-xl font-bold text-gray-900 mb-2 text-center">Safety Tips</h3>
+            <p className="text-gray-500 text-center mb-6">Follow these guidelines for a safer dating experience.</p>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {safetyTips.map((tip, i) => (
+                <div key={i} className="flex items-center gap-3 bg-white rounded-xl p-4">
+                  <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                    <Check size={16} className="text-green-600" />
+                  </div>
+                  <span className="text-gray-700 font-medium text-sm">{tip}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Emergency Help */}
+          <div className="section-content mt-8 bg-red-50 border border-red-200 rounded-2xl p-6">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                  <AlertTriangle size={24} className="text-red-600" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-gray-900">Need Help?</h4>
+                  <p className="text-gray-600 text-sm">If you're in immediate danger, please contact emergency services.</p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <a href="tel:911" className="px-4 py-2 bg-red-600 text-white font-medium rounded-lg flex items-center gap-2 hover:bg-red-700 transition-colors">
+                  <Phone size={18} /> Emergency 911
+                </a>
+                <button className="px-4 py-2 bg-white text-gray-700 font-medium rounded-lg border border-gray-200 flex items-center gap-2 hover:border-red-300 transition-colors">
+                  <MessageSquare size={18} /> Contact Safety Team
+                </button>
               </div>
             </div>
           </div>
@@ -358,43 +415,42 @@ const LandingPage = () => {
       </section>
 
       {/* ===== SUPPORT SECTION ===== */}
-      <section id="support" className="relative py-32 overflow-hidden">
-        {/* Background */}
-        <div className="absolute inset-0">
-          <img
-            src="https://images.unsplash.com/photo-1553877522-43269d4ea984?w=1920&q=80"
-            alt=""
-            className="w-full h-full object-cover opacity-15"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-purple-50 via-white to-purple-50" />
-        </div>
-
-        <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-16 lg:ml-32">
-          <div className="text-center mb-16">
-            <h2 className="section-title text-4xl sm:text-5xl lg:text-6xl font-bold mb-6">
-              We're here to <span className="gradient-text">Help</span>
+      <section id="support" className="py-24 bg-gradient-to-b from-purple-50/50 via-white to-white">
+        <div className="max-w-7xl mx-auto px-6 lg:px-16 lg:ml-24">
+          <div className="text-center mb-12">
+            <h2 className="section-title text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">
+              How can we <span className="gradient-text">help you?</span>
             </h2>
-            <p className="section-content text-xl text-gray-600 max-w-2xl mx-auto">
-              Our support team is available 24/7 to assist you with any questions or concerns.
-            </p>
+          </div>
+
+          {/* Search */}
+          <div className="section-content max-w-2xl mx-auto mb-12">
+            <div className="relative">
+              <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search for answers..."
+                className="w-full pl-12 pr-4 py-4 rounded-xl border border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 outline-none transition-all text-gray-700"
+              />
+            </div>
           </div>
 
           <div className="grid lg:grid-cols-2 gap-12">
             {/* FAQ */}
             <div className="section-content">
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Frequently Asked Questions</h3>
-              <div className="space-y-4">
+              <h3 className="text-xl font-bold text-gray-900 mb-6">Frequently Asked Questions</h3>
+              <div className="space-y-3">
                 {faqs.map((faq, i) => (
-                  <div key={i} className="bg-white rounded-2xl border border-purple-100 overflow-hidden">
+                  <div key={i} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                     <button
                       onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                      className="w-full flex items-center justify-between p-5 text-left"
+                      className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors"
                     >
                       <span className="font-semibold text-gray-900">{faq.q}</span>
                       {openFaq === i ? <ChevronUp size={20} className="text-purple-500" /> : <ChevronDown size={20} className="text-gray-400" />}
                     </button>
                     {openFaq === i && (
-                      <div className="px-5 pb-5 text-gray-600">{faq.a}</div>
+                      <div className="px-4 pb-4 text-gray-600 text-sm">{faq.a}</div>
                     )}
                   </div>
                 ))}
@@ -402,45 +458,62 @@ const LandingPage = () => {
             </div>
 
             {/* Contact Options */}
-            <div className="section-content space-y-6">
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Get in Touch</h3>
-              
-              <div className="bg-white rounded-2xl p-6 border border-purple-100 hover:shadow-lg transition-all">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-xl bg-purple-100 flex items-center justify-center">
-                    <MessageSquare size={28} className="text-purple-600" />
+            <div className="section-content">
+              <h3 className="text-xl font-bold text-gray-900 mb-6">Still need help?</h3>
+              <div className="space-y-4">
+                <div className="bg-white rounded-xl p-5 border border-gray-200 hover:border-purple-300 hover:shadow-lg transition-all cursor-pointer">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center">
+                      <MessageSquare size={24} className="text-purple-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-bold text-gray-900">Live Chat</h4>
+                      <p className="text-gray-500 text-sm">Chat with our support team in real-time</p>
+                    </div>
+                    <button className="px-4 py-2 bg-purple-500 text-white rounded-lg font-medium hover:bg-purple-600 transition-colors">
+                      Start Chat
+                    </button>
                   </div>
-                  <div>
-                    <h4 className="font-bold text-gray-900">Live Chat</h4>
-                    <p className="text-gray-600">Chat with our team in real-time</p>
+                </div>
+
+                <div className="bg-white rounded-xl p-5 border border-gray-200 hover:border-pink-300 hover:shadow-lg transition-all cursor-pointer">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-pink-100 flex items-center justify-center">
+                      <Mail size={24} className="text-pink-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-bold text-gray-900">Email Us</h4>
+                      <p className="text-gray-500 text-sm">support@truebond.com • We'll respond within 24 hours</p>
+                    </div>
+                    <ArrowRight size={20} className="text-gray-400" />
                   </div>
-                  <ArrowRight size={20} className="ml-auto text-purple-500" />
+                </div>
+
+                <div className="bg-white rounded-xl p-5 border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all cursor-pointer">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
+                      <Phone size={24} className="text-blue-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-bold text-gray-900">Call Us</h4>
+                      <p className="text-gray-500 text-sm">Mon-Fri, 9am-6pm IST • 1-800-TRUEBOND</p>
+                    </div>
+                    <ArrowRight size={20} className="text-gray-400" />
+                  </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-2xl p-6 border border-purple-100 hover:shadow-lg transition-all">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-xl bg-pink-100 flex items-center justify-center">
-                    <Mail size={28} className="text-pink-600" />
+              {/* Contact Form */}
+              <div className="mt-8 bg-gray-50 rounded-xl p-6">
+                <h4 className="font-bold text-gray-900 mb-4">Send us a message</h4>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <input type="text" placeholder="Your name" className="input" />
+                    <input type="email" placeholder="Your email" className="input" />
                   </div>
-                  <div>
-                    <h4 className="font-bold text-gray-900">Email Support</h4>
-                    <p className="text-gray-600">support@truebond.com</p>
-                  </div>
-                  <ArrowRight size={20} className="ml-auto text-pink-500" />
-                </div>
-              </div>
-
-              <div className="bg-white rounded-2xl p-6 border border-purple-100 hover:shadow-lg transition-all">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-xl bg-blue-100 flex items-center justify-center">
-                    <Headphones size={28} className="text-blue-600" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-gray-900">Help Center</h4>
-                    <p className="text-gray-600">Browse our knowledge base</p>
-                  </div>
-                  <ArrowRight size={20} className="ml-auto text-blue-500" />
+                  <input type="text" placeholder="Subject" className="input" />
+                  <textarea placeholder="Tell us more..." className="input min-h-[100px] resize-none" />
+                  <button className="btn-primary w-full">Send Message</button>
                 </div>
               </div>
             </div>
@@ -449,108 +522,95 @@ const LandingPage = () => {
       </section>
 
       {/* ===== PRICING SECTION ===== */}
-      <section id="pricing" className="relative py-32 overflow-hidden">
-        {/* Background */}
-        <div className="absolute inset-0">
-          <img
-            src="https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=1920&q=80"
-            alt=""
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-900/90 via-purple-800/85 to-pink-900/90" />
-        </div>
-
-        <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-16 lg:ml-32">
-          <div className="text-center mb-16">
-            <h2 className="section-title text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 text-white">
-              Simple <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-300 to-purple-300">Pricing</span>
+      <section id="pricing" className="py-24 bg-white">
+        <div className="max-w-7xl mx-auto px-6 lg:px-16 lg:ml-24">
+          <div className="text-center mb-12">
+            <h2 className="section-title text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">
+              Find love at <span className="gradient-text">any price</span>
             </h2>
-            <p className="section-content text-xl text-white/80 max-w-2xl mx-auto">
-              Get 10 free coins on signup! Use coins to send messages and unlock premium features.
+            <p className="section-content text-gray-600 max-w-2xl mx-auto">
+              Choose the plan that's right for you. All plans include our core matching features.
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {pricingPlans.map((plan, i) => (
               <div
                 key={i}
-                className={`section-content rounded-3xl p-8 transition-all hover:-translate-y-2 ${
+                className={`section-content rounded-2xl p-6 transition-all ${
                   plan.popular
-                    ? 'bg-white shadow-2xl scale-105'
-                    : 'bg-white/10 backdrop-blur-lg border border-white/20'
+                    ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-2xl scale-105 relative'
+                    : 'bg-white border border-gray-200 hover:border-purple-300 hover:shadow-lg'
                 }`}
               >
                 {plan.popular && (
-                  <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold px-3 py-1 rounded-full inline-block mb-4">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-yellow-400 text-yellow-900 text-xs font-bold px-3 py-1 rounded-full">
                     MOST POPULAR
                   </div>
                 )}
-                <div className="flex items-center gap-2 mb-4">
-                  <Coins size={28} className={plan.popular ? 'text-purple-500' : 'text-white'} />
-                  <span className={`text-3xl font-bold ${plan.popular ? 'text-gray-900' : 'text-white'}`}>{plan.coins}</span>
-                  <span className={plan.popular ? 'text-gray-500' : 'text-white/60'}>coins</span>
+                <h3 className={`text-xl font-bold mb-2 ${plan.popular ? 'text-white' : 'text-gray-900'}`}>{plan.name}</h3>
+                <div className="mb-6">
+                  <span className={`text-4xl font-bold ${plan.popular ? 'text-white' : 'text-gray-900'}`}>
+                    {plan.price === 0 ? 'Free' : `$${plan.price}`}
+                  </span>
+                  {plan.period && <span className={plan.popular ? 'text-white/70' : 'text-gray-500'}>{plan.period}</span>}
                 </div>
-                <div className={`text-4xl font-bold mb-2 ${plan.popular ? 'text-gray-900' : 'text-white'}`}>
-                  ₹{plan.price}
-                </div>
-                <div className={`text-sm mb-6 ${plan.popular ? 'text-gray-500' : 'text-white/60'}`}>
-                  ₹{plan.perCoin} per coin
-                </div>
+                <ul className="space-y-3 mb-6">
+                  {plan.features.map((feature, j) => (
+                    <li key={j} className="flex items-center gap-2">
+                      <Check size={16} className={plan.popular ? 'text-white' : 'text-green-500'} />
+                      <span className={`text-sm ${plan.popular ? 'text-white/90' : 'text-gray-600'}`}>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
                 <button
                   onClick={() => setAuthModal({ open: true, mode: 'signup' })}
                   className={`w-full py-3 rounded-xl font-semibold transition-all ${
                     plan.popular
-                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg'
-                      : 'bg-white/20 text-white hover:bg-white/30'
+                      ? 'bg-white text-purple-600 hover:bg-gray-100'
+                      : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg'
                   }`}
                 >
-                  Get Started
+                  {plan.cta}
                 </button>
               </div>
             ))}
-          </div>
-
-          <div className="section-content text-center mt-12">
-            <p className="text-white/60">1 coin = 1 message • Coins never expire • Secure payment via Razorpay</p>
           </div>
         </div>
       </section>
 
       {/* ===== CONNECT SECTION ===== */}
-      <section id="connect" className="relative py-32 overflow-hidden">
-        {/* Background Image - Hands Reaching */}
+      <section id="connect" className="py-24 relative overflow-hidden">
         <div className="absolute inset-0">
           <img
-            src="https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?w=1920&q=80"
-            alt=""
+            src="https://customer-assets.emergentagent.com/job_bond-match/artifacts/7u34ylxt_WhatsApp%20Image%202025-12-15%20at%2015.05.44%20%282%29.jpeg"
+            alt="Connection"
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-purple-900/80 via-purple-800/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-purple-900/90 via-purple-800/70 to-purple-900/50" />
         </div>
 
-        <div className="relative z-10 max-w-4xl mx-auto px-6 lg:px-16 text-center">
-          <div className="section-title">
-            <Heart size={64} className="mx-auto mb-8 text-pink-400" fill="currentColor" />
-            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 text-white">
-              Let's get connected
-            </h2>
-          </div>
-          <p className="section-content text-xl text-white/80 mb-10 max-w-2xl mx-auto leading-relaxed">
+        <div className="relative z-10 max-w-4xl mx-auto px-6 text-center py-12">
+          <Heart size={56} className="section-title mx-auto mb-6 text-pink-400" fill="currentColor" />
+          <h2 className="section-title text-3xl sm:text-4xl lg:text-5xl font-bold mb-6 text-white">
+            Let's get connected
+          </h2>
+          <p className="section-content text-lg text-white/80 mb-8 max-w-2xl mx-auto leading-relaxed">
             Your perfect match could be just around the corner. Join thousands who've found love on TrueBond. Start your journey today.
           </p>
           <button
             onClick={() => setAuthModal({ open: true, mode: 'signup' })}
-            className="section-content px-10 py-5 bg-white text-purple-600 font-bold text-lg rounded-full shadow-2xl hover:shadow-3xl transition-all hover:scale-105 inline-flex items-center gap-3"
+            className="section-content px-8 py-4 bg-white text-purple-600 font-bold rounded-full shadow-xl hover:shadow-2xl transition-all hover:scale-105 inline-flex items-center gap-2"
           >
-            Find Your Bond <ArrowRight size={24} />
+            Find Your Bond <ArrowRight size={20} />
           </button>
-          <p className="section-content text-white/60 mt-6">Free to join • 10 coins on signup • Cancel anytime</p>
+          <p className="section-content text-white/60 mt-6 text-sm">Free to join • 10 coins on signup • Cancel anytime</p>
         </div>
       </section>
 
       {/* ===== FOOTER ===== */}
-      <footer className="bg-gray-900 py-12 px-6 lg:px-16">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6 lg:ml-32">
+      <footer className="bg-gray-900 py-10 px-6">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
               <Heart size={20} className="text-white" fill="white" />
