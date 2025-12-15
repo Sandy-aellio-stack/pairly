@@ -25,7 +25,7 @@ export default defineConfig({
     port: 3000,
     host: '0.0.0.0',
     strictPort: true,
-    allowedHosts: ['pairly-intro.preview.emergentagent.com', 'localhost'],
+    allowedHosts: ['pairly-intro.preview.emergentagent.com', 'bond-match.preview.emergentagent.com', 'localhost', '.emergentagent.com'],
   },
   build: {
     outDir: 'build',
