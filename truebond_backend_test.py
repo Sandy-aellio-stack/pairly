@@ -133,7 +133,7 @@ class TrueBondTester:
         try:
             signup_data = {
                 "name": "Duplicate User",
-                "email": "john@test.com",  # Same as first user
+                "email": self.test_email if hasattr(self, 'test_email') else "john@test.com",  # Same as first user
                 "mobile_number": "+919876543212",
                 "password": "Test@1234",
                 "age": 25,
