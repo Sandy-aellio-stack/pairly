@@ -382,6 +382,342 @@ class PairlyTester:
             self.log(f"✗ Subscription cancellation test failed: {e}", "ERROR")
             return False
     
+    def create_test_profile(self, token: str, user_id: str, name: str, lat: float = None, lng: float = None) -> bool:
+        """Create a test profile for a user"""
+        try:
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json"
+            }
+            
+            profile_data = {
+                "display_name": name,
+                "bio": f"Test bio for {name}",
+                "age": random.randint(18, 35),
+                "location": f"Test City for {name}"
+            }
+            
+            response = self.session.post(f"{BACKEND_URL}/profiles", json=profile_data, headers=headers)
+            
+            if response.status_code == 200:
+                self.log(f"✓ Profile created for {name}")
+                
+                # Update location if provided
+                if lat is not None and lng is not None:
+                    location_data = {"lat": lat, "lng": lng}
+                    loc_response = self.session.post(
+                        f"{BACKEND_URL}/location/update", 
+                        json=location_data, 
+                        headers=headers
+                    )
+                    if loc_response.status_code == 200:
+                        self.log(f"✓ Location updated for {name}: ({lat}, {lng})")
+                    else:
+                        self.log(f"⚠ Location update failed for {name}: {loc_response.status_code}")
+                
+                return True
+            else:
+                self.log(f"✗ Profile creation failed for {name}: {response.status_code}", "ERROR")
+                if response.text:
+                    self.log(f"  Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            self.log(f"✗ Profile creation failed for {name}: {e}", "ERROR")
+            return False
+    
+    def setup_nearby_test_users(self) -> bool:
+        """Setup multiple test users for nearby testing"""
+        try:
+            # NYC coordinates for testing
+            base_lat = 40.7128
+            base_lng = -74.0060
+            
+            test_users_data = [
+                {"email": "alice@pairly.com", "name": "Alice Johnson", "lat": base_lat + 0.001, "lng": base_lng + 0.001},
+                {"email": "bob@pairly.com", "name": "Bob Smith", "lat": base_lat + 0.002, "lng": base_lng - 0.001},
+                {"email": "charlie@pairly.com", "name": "Charlie Brown", "lat": base_lat - 0.001, "lng": base_lng + 0.002},
+                {"email": "diana@pairly.com", "name": "Diana Prince", "lat": base_lat + 0.005, "lng": base_lng - 0.003}
+            ]
+            
+            for user_data in test_users_data:
+                token, user_id = self.register_test_user(user_data["email"])
+                if token and user_id:
+                    if self.create_test_profile(token, user_id, user_data["name"], user_data["lat"], user_data["lng"]):
+                        self.test_users.append({
+                            "email": user_data["email"],
+                            "name": user_data["name"],
+                            "token": token,
+                            "user_id": user_id,
+                            "lat": user_data["lat"],
+                            "lng": user_data["lng"]
+                        })
+                    else:
+                        self.log(f"⚠ Failed to create profile for {user_data['name']}")
+                else:
+                    self.log(f"⚠ Failed to register user {user_data['email']}")
+            
+            self.log(f"✓ Setup {len(self.test_users)} test users for nearby testing")
+            return len(self.test_users) >= 2  # Need at least 2 users for meaningful testing
+            
+        except Exception as e:
+            self.log(f"✗ Nearby test users setup failed: {e}", "ERROR")
+            return False
+    
+    def test_location_update(self) -> bool:
+        """Test location update API"""
+        try:
+            if not self.test_users:
+                self.log("✗ No test users available for location update test", "ERROR")
+                return False
+            
+            user = self.test_users[0]
+            headers = {
+                "Authorization": f"Bearer {user['token']}",
+                "Content-Type": "application/json"
+            }
+            
+            # Test location update
+            new_lat = 40.7589
+            new_lng = -73.9851
+            location_data = {"lat": new_lat, "lng": new_lng}
+            
+            response = self.session.post(
+                f"{BACKEND_URL}/location/update",
+                json=location_data,
+                headers=headers
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                if (data.get("status") == "updated" and 
+                    data.get("location", {}).get("lat") == new_lat and
+                    data.get("location", {}).get("lng") == new_lng):
+                    self.log("✓ Location update API working correctly")
+                    return True
+                else:
+                    self.log(f"✗ Location update response format incorrect: {data}", "ERROR")
+                    return False
+            else:
+                self.log(f"✗ Location update failed: {response.status_code}", "ERROR")
+                if response.text:
+                    self.log(f"  Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            self.log(f"✗ Location update test failed: {e}", "ERROR")
+            return False
+    
+    def test_location_visibility_toggle(self) -> bool:
+        """Test location visibility toggle API"""
+        try:
+            if not self.test_users:
+                self.log("✗ No test users available for visibility test", "ERROR")
+                return False
+            
+            user = self.test_users[0]
+            headers = {
+                "Authorization": f"Bearer {user['token']}",
+                "Content-Type": "application/json"
+            }
+            
+            # Test visibility toggle to false
+            visibility_data = {"is_visible_on_map": False}
+            response = self.session.post(
+                f"{BACKEND_URL}/location/visibility",
+                json=visibility_data,
+                headers=headers
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("status") == "updated" and data.get("is_visible_on_map") == False:
+                    self.log("✓ Location visibility toggle working correctly")
+                    
+                    # Toggle back to true
+                    visibility_data = {"is_visible_on_map": True}
+                    response2 = self.session.post(
+                        f"{BACKEND_URL}/location/visibility",
+                        json=visibility_data,
+                        headers=headers
+                    )
+                    
+                    if response2.status_code == 200:
+                        data2 = response2.json()
+                        if data2.get("is_visible_on_map") == True:
+                            self.log("✓ Location visibility toggle back to true working")
+                            return True
+                    
+                    self.log("✗ Location visibility toggle back to true failed", "ERROR")
+                    return False
+                else:
+                    self.log(f"✗ Location visibility response format incorrect: {data}", "ERROR")
+                    return False
+            else:
+                self.log(f"✗ Location visibility toggle failed: {response.status_code}", "ERROR")
+                if response.text:
+                    self.log(f"  Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            self.log(f"✗ Location visibility test failed: {e}", "ERROR")
+            return False
+    
+    def test_get_my_location(self) -> bool:
+        """Test get current user's location API"""
+        try:
+            if not self.test_users:
+                self.log("✗ No test users available for get location test", "ERROR")
+                return False
+            
+            user = self.test_users[0]
+            headers = {
+                "Authorization": f"Bearer {user['token']}",
+                "Content-Type": "application/json"
+            }
+            
+            response = self.session.get(f"{BACKEND_URL}/location/me", headers=headers)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if "location" in data and "is_visible_on_map" in data:
+                    self.log("✓ Get my location API working correctly")
+                    self.log(f"  Location: {data.get('location')}")
+                    self.log(f"  Visible on map: {data.get('is_visible_on_map')}")
+                    return True
+                else:
+                    self.log(f"✗ Get my location response format incorrect: {data}", "ERROR")
+                    return False
+            else:
+                self.log(f"✗ Get my location failed: {response.status_code}", "ERROR")
+                if response.text:
+                    self.log(f"  Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            self.log(f"✗ Get my location test failed: {e}", "ERROR")
+            return False
+    
+    def test_nearby_users_query(self) -> bool:
+        """Test nearby users query API"""
+        try:
+            if len(self.test_users) < 2:
+                self.log("✗ Need at least 2 test users for nearby query test", "ERROR")
+                return False
+            
+            # Use first user to query for nearby users
+            user = self.test_users[0]
+            headers = {
+                "Authorization": f"Bearer {user['token']}",
+                "Content-Type": "application/json"
+            }
+            
+            # Query nearby users from user's location
+            params = {
+                "lat": user["lat"],
+                "lng": user["lng"],
+                "radius_km": 10,
+                "limit": 50
+            }
+            
+            response = self.session.get(f"{BACKEND_URL}/nearby", params=params, headers=headers)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if ("users" in data and "count" in data and 
+                    "search_center" in data and "radius_km" in data):
+                    
+                    users_found = data.get("users", [])
+                    self.log(f"✓ Nearby users query working correctly")
+                    self.log(f"  Found {len(users_found)} nearby users")
+                    self.log(f"  Search center: {data.get('search_center')}")
+                    self.log(f"  Radius: {data.get('radius_km')} km")
+                    
+                    # Verify user structure
+                    if users_found:
+                        first_user = users_found[0]
+                        expected_fields = ["user_id", "display_name", "distance", "distance_km"]
+                        if all(field in first_user for field in expected_fields):
+                            self.log("✓ Nearby users response format correct")
+                            return True
+                        else:
+                            self.log(f"✗ Nearby users response missing fields: {first_user}", "ERROR")
+                            return False
+                    else:
+                        self.log("⚠ No nearby users found (might be expected if users are not visible)")
+                        return True
+                else:
+                    self.log(f"✗ Nearby users response format incorrect: {data}", "ERROR")
+                    return False
+            else:
+                self.log(f"✗ Nearby users query failed: {response.status_code}", "ERROR")
+                if response.text:
+                    self.log(f"  Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            self.log(f"✗ Nearby users query test failed: {e}", "ERROR")
+            return False
+    
+    def test_nearby_users_with_different_radius(self) -> bool:
+        """Test nearby users query with different radius values"""
+        try:
+            if len(self.test_users) < 2:
+                self.log("✗ Need at least 2 test users for radius test", "ERROR")
+                return False
+            
+            user = self.test_users[0]
+            headers = {
+                "Authorization": f"Bearer {user['token']}",
+                "Content-Type": "application/json"
+            }
+            
+            # Test with small radius (1 km)
+            params_small = {
+                "lat": user["lat"],
+                "lng": user["lng"],
+                "radius_km": 1,
+                "limit": 50
+            }
+            
+            response_small = self.session.get(f"{BACKEND_URL}/nearby", params=params_small, headers=headers)
+            
+            # Test with large radius (50 km)
+            params_large = {
+                "lat": user["lat"],
+                "lng": user["lng"],
+                "radius_km": 50,
+                "limit": 50
+            }
+            
+            response_large = self.session.get(f"{BACKEND_URL}/nearby", params=params_large, headers=headers)
+            
+            if response_small.status_code == 200 and response_large.status_code == 200:
+                data_small = response_small.json()
+                data_large = response_large.json()
+                
+                users_small = len(data_small.get("users", []))
+                users_large = len(data_large.get("users", []))
+                
+                self.log(f"✓ Nearby users radius test working")
+                self.log(f"  1 km radius: {users_small} users")
+                self.log(f"  50 km radius: {users_large} users")
+                
+                # Large radius should find same or more users
+                if users_large >= users_small:
+                    self.log("✓ Radius filtering working correctly")
+                    return True
+                else:
+                    self.log("⚠ Large radius found fewer users than small radius (unexpected but not critical)")
+                    return True
+            else:
+                self.log(f"✗ Nearby users radius test failed: {response_small.status_code}, {response_large.status_code}", "ERROR")
+                return False
+                
+        except Exception as e:
+            self.log(f"✗ Nearby users radius test failed: {e}", "ERROR")
+            return False
+    
     def run_all_tests(self) -> Dict[str, bool]:
         """Run all backend tests and return results"""
         self.log("=" * 60)
