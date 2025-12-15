@@ -303,7 +303,7 @@ const LandingPage = () => {
             {mainFeatures.map((feature, i) => (
               <div
                 key={i}
-                className="section-content bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 border border-purple-100/50"
+                className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 border border-purple-100/50"
               >
                 <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-4">
                   <feature.icon size={28} className="text-white" />
