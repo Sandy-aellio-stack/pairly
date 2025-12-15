@@ -1,17 +1,29 @@
 import { useState, useEffect } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { Home, MapPin, MessageCircle, User, Coins, LogOut, Menu, X } from 'lucide-react';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { Home, MapPin, MessageCircle, User, Coins, LogOut, Heart, Compass, Menu, X } from 'lucide-react';
 import useAuthStore from '@/store/authStore';
 import CustomCursor from '@/components/CustomCursor';
+import gsap from 'gsap';
 
 const DashboardLayout = () => {
   const { user, credits, logout, refreshCredits } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     refreshCredits();
   }, []);
+
+  useEffect(() => {
+    // Page transition animation
+    gsap.from('.main-content', {
+      opacity: 0,
+      y: 20,
+      duration: 0.4,
+      ease: 'power2.out',
+    });
+  }, [location.pathname]);
 
   const handleLogout = async () => {
     await logout();
@@ -20,21 +32,28 @@ const DashboardLayout = () => {
 
   const navItems = [
     { path: '/dashboard', icon: Home, label: 'Home' },
+    { path: '/dashboard/discover', icon: Compass, label: 'Discover' },
     { path: '/dashboard/nearby', icon: MapPin, label: 'Nearby' },
-    { path: '/dashboard/chat', icon: MessageCircle, label: 'Chat' },
+    { path: '/dashboard/chat', icon: MessageCircle, label: 'Messages' },
     { path: '/dashboard/profile', icon: User, label: 'Profile' },
-    { path: '/dashboard/credits', icon: Coins, label: 'Credits' },
+    { path: '/dashboard/credits', icon: Coins, label: 'Wallet' },
   ];
 
   return (
-    <div className="min-h-screen bg-[#0B0B0F] flex">
+    <div className="min-h-screen bg-[#F8F9FB] flex">
       <CustomCursor />
-      <div className="noise-overlay" />
 
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex flex-col w-64 bg-black/50 border-r border-white/10 p-6">
-        <div className="text-2xl font-bold gradient-text mb-10">TrueBond</div>
+      <aside className="hidden lg:flex flex-col w-72 bg-white border-r border-gray-100 p-6 fixed h-full">
+        {/* Logo */}
+        <div className="flex items-center gap-3 mb-10">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+            <Heart size={24} className="text-white" fill="white" />
+          </div>
+          <span className="text-2xl font-bold text-gray-900">TrueBond</span>
+        </div>
 
+        {/* Navigation */}
         <nav className="flex-1 space-y-2">
           {navItems.map((item) => (
             <NavLink
@@ -42,11 +61,7 @@ const DashboardLayout = () => {
               to={item.path}
               end={item.path === '/dashboard'}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                  isActive
-                    ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
-                    : 'text-white/60 hover:text-white hover:bg-white/5'
-                }`
+                `nav-item ${isActive ? 'active' : ''}`
               }
             >
               <item.icon size={20} />
@@ -55,19 +70,34 @@ const DashboardLayout = () => {
           ))}
         </nav>
 
-        {/* Credits display */}
-        <div className="mt-auto pt-6 border-t border-white/10">
-          <div className="flex items-center gap-3 px-4 py-3 bg-purple-500/10 rounded-xl border border-purple-500/20">
-            <Coins size={20} className="text-purple-400" />
-            <div>
-              <div className="text-sm text-white/60">Balance</div>
-              <div className="font-bold text-purple-400">{credits} coins</div>
+        {/* Credits Display */}
+        <div className="mt-auto">
+          <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-4 mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center shadow-sm">
+                <Coins size={24} className="text-purple-500" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Balance</p>
+                <p className="text-xl font-bold text-purple-600">{credits} coins</p>
+              </div>
+            </div>
+          </div>
+
+          {/* User Profile */}
+          <div className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white font-bold">
+              {user?.name?.[0]}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-gray-900 truncate">{user?.name}</p>
+              <p className="text-xs text-gray-500 truncate">{user?.email}</p>
             </div>
           </div>
 
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 px-4 py-3 mt-4 w-full text-white/60 hover:text-red-400 transition-colors"
+            className="w-full mt-4 flex items-center gap-3 px-4 py-3 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
           >
             <LogOut size={20} />
             Logout
@@ -76,23 +106,31 @@ const DashboardLayout = () => {
       </aside>
 
       {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-lg border-b border-white/10">
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-100">
         <div className="flex items-center justify-between px-4 py-3">
-          <div className="text-xl font-bold gradient-text">TrueBond</div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 px-3 py-1 bg-purple-500/20 rounded-full">
-              <Coins size={16} className="text-purple-400" />
-              <span className="text-purple-400 font-bold text-sm">{credits}</span>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+              <Heart size={16} className="text-white" fill="white" />
             </div>
-            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            <span className="font-bold text-gray-900">TrueBond</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 px-3 py-1.5 bg-purple-50 rounded-full">
+              <Coins size={14} className="text-purple-500" />
+              <span className="text-sm font-bold text-purple-600">{credits}</span>
+            </div>
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center"
+            >
+              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
           </div>
         </div>
 
-        {/* Mobile Menu */}
+        {/* Mobile Menu Dropdown */}
         {mobileMenuOpen && (
-          <nav className="px-4 py-4 space-y-2 bg-black/95">
+          <div className="bg-white border-b border-gray-100 px-4 py-4 space-y-2">
             {navItems.map((item) => (
               <NavLink
                 key={item.path}
@@ -100,10 +138,8 @@ const DashboardLayout = () => {
                 end={item.path === '/dashboard'}
                 onClick={() => setMobileMenuOpen(false)}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                    isActive
-                      ? 'bg-purple-500/20 text-purple-400'
-                      : 'text-white/60'
+                  `flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                    isActive ? 'bg-purple-500 text-white' : 'text-gray-600 hover:bg-gray-100'
                   }`
                 }
               >
@@ -113,39 +149,41 @@ const DashboardLayout = () => {
             ))}
             <button
               onClick={handleLogout}
-              className="flex items-center gap-3 px-4 py-3 w-full text-red-400"
+              className="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl"
             >
               <LogOut size={20} />
               Logout
             </button>
-          </nav>
+          </div>
         )}
-      </div>
+      </header>
 
       {/* Mobile Bottom Nav */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-lg border-t border-white/10">
-        <div className="flex justify-around py-2">
-          {navItems.map((item) => (
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 mobile-nav px-4 py-2">
+        <div className="flex justify-around">
+          {navItems.slice(0, 5).map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
               end={item.path === '/dashboard'}
               className={({ isActive }) =>
-                `flex flex-col items-center gap-1 px-4 py-2 ${
-                  isActive ? 'text-purple-400' : 'text-white/40'
+                `flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-colors ${
+                  isActive ? 'text-purple-600' : 'text-gray-400'
                 }`
               }
             >
-              <item.icon size={20} />
-              <span className="text-xs">{item.label}</span>
+              <item.icon size={22} />
+              <span className="text-[10px] font-medium">{item.label}</span>
             </NavLink>
           ))}
         </div>
       </nav>
 
       {/* Main Content */}
-      <main className="flex-1 lg:p-8 p-4 pt-20 pb-24 lg:pt-8 lg:pb-8 overflow-auto">
-        <Outlet />
+      <main className="flex-1 lg:ml-72 min-h-screen">
+        <div className="main-content p-4 lg:p-8 pt-20 pb-24 lg:pt-8 lg:pb-8">
+          <Outlet />
+        </div>
       </main>
     </div>
   );
