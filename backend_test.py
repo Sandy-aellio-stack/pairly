@@ -17,13 +17,14 @@ from typing import Dict, Any, Optional
 BACKEND_URL = "https://pairly-intro.preview.emergentagent.com/api"
 WEBHOOK_BASE_URL = "https://pairly-intro.preview.emergentagent.com/api/webhooks"
 
-class SubscriptionTester:
+class PairlyTester:
     def __init__(self):
         self.session = requests.Session()
         self.auth_token = None
         self.admin_token = None
         self.test_user_id = None
         self.test_admin_id = None
+        self.test_users = []  # For nearby users testing
         
     def log(self, message: str, level: str = "INFO"):
         """Log test messages with timestamp"""
