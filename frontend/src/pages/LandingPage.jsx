@@ -290,11 +290,11 @@ const LandingPage = () => {
       <section id="features" className="py-24 bg-gradient-to-b from-white via-purple-50/50 to-white">
         <div className="max-w-7xl mx-auto px-6 lg:px-16 lg:ml-24">
           <div className="text-center mb-16">
-            <h2 className="section-title text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">
               Powerful <span className="gradient-text">Features</span>
             </h2>
-            <p className="section-title text-lg text-gray-600 mb-2">Everything you need to find your match</p>
-            <p className="section-content text-gray-500 max-w-2xl mx-auto">
+            <p className="text-lg text-gray-600 mb-2">Everything you need to find your match</p>
+            <p className="text-gray-500 max-w-2xl mx-auto">
               Discover the features that make TrueBond the most innovative dating platform.
             </p>
           </div>
@@ -315,7 +315,7 @@ const LandingPage = () => {
           </div>
 
           {/* More Features Grid */}
-          <div className="section-content bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-8">
+          <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-8">
             <h3 className="text-xl font-bold text-gray-900 mb-6 text-center">And so much more...</h3>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
               {moreFeatures.map((feature, i) => (
@@ -333,13 +333,13 @@ const LandingPage = () => {
       <section id="safety" className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-6 lg:px-16 lg:ml-24">
           <div className="text-center mb-4">
-            <span className="section-title text-sm font-medium text-purple-600 uppercase tracking-wide">Your safety matters</span>
+            <span className="text-sm font-medium text-purple-600 uppercase tracking-wide">Your safety matters</span>
           </div>
           <div className="text-center mb-12">
-            <h2 className="section-title text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">
               Date with <span className="gradient-text">confidence</span>
             </h2>
-            <p className="section-content text-gray-600 max-w-2xl mx-auto">
+            <p className="text-gray-600 max-w-2xl mx-auto">
               We're committed to creating a safe space for meaningful connections. Your security is built into everything we do.
             </p>
           </div>
@@ -349,7 +349,7 @@ const LandingPage = () => {
             {safetyFeatures.map((feature, i) => (
               <div
                 key={i}
-                className="section-content bg-gray-50 rounded-2xl p-6 hover:bg-white hover:shadow-lg transition-all border border-gray-100"
+                className="bg-gray-50 rounded-2xl p-6 hover:bg-white hover:shadow-lg transition-all border border-gray-100"
               >
                 <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center mb-4">
                   <feature.icon size={24} className="text-green-600" />
@@ -361,7 +361,7 @@ const LandingPage = () => {
           </div>
 
           {/* Safety Tips */}
-          <div className="section-content bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-8">
+          <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-8">
             <h3 className="text-xl font-bold text-gray-900 mb-2 text-center">Safety Tips</h3>
             <p className="text-gray-500 text-center mb-6">Follow these guidelines for a safer dating experience.</p>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -377,7 +377,7 @@ const LandingPage = () => {
           </div>
 
           {/* Emergency Help */}
-          <div className="section-content mt-8 bg-red-50 border border-red-200 rounded-2xl p-6">
+          <div className="mt-8 bg-red-50 border border-red-200 rounded-2xl p-6">
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
@@ -405,13 +405,13 @@ const LandingPage = () => {
       <section id="support" className="py-24 bg-gradient-to-b from-purple-50/50 via-white to-white">
         <div className="max-w-7xl mx-auto px-6 lg:px-16 lg:ml-24">
           <div className="text-center mb-12">
-            <h2 className="section-title text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">
               How can we <span className="gradient-text">help you?</span>
             </h2>
           </div>
 
           {/* Search */}
-          <div className="section-content max-w-2xl mx-auto mb-12">
+          <div className="max-w-2xl mx-auto mb-12">
             <div className="relative">
               <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
@@ -512,10 +512,10 @@ const LandingPage = () => {
       <section id="pricing" className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-6 lg:px-16 lg:ml-24">
           <div className="text-center mb-12">
-            <h2 className="section-title text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">
               Find love at <span className="gradient-text">any price</span>
             </h2>
-            <p className="section-content text-gray-600 max-w-2xl mx-auto">
+            <p className="text-gray-600 max-w-2xl mx-auto">
               Choose the plan that's right for you. All plans include our core matching features.
             </p>
           </div>
@@ -578,20 +578,20 @@ const LandingPage = () => {
         </div>
 
         <div className="relative z-10 max-w-4xl mx-auto px-6 text-center py-12">
-          <Heart size={56} className="section-title mx-auto mb-6 text-pink-400" fill="currentColor" />
-          <h2 className="section-title text-3xl sm:text-4xl lg:text-5xl font-bold mb-6 text-white">
+          <Heart size={56} className="mx-auto mb-6 text-pink-400" fill="currentColor" />
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-6 text-white">
             Let's get connected
           </h2>
-          <p className="section-content text-lg text-white/80 mb-8 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-lg text-white/80 mb-8 max-w-2xl mx-auto leading-relaxed">
             Your perfect match could be just around the corner. Join thousands who've found love on TrueBond. Start your journey today.
           </p>
           <button
             onClick={() => setAuthModal({ open: true, mode: 'signup' })}
-            className="section-content px-8 py-4 bg-white text-purple-600 font-bold rounded-full shadow-xl hover:shadow-2xl transition-all hover:scale-105 inline-flex items-center gap-2"
+            className="px-8 py-4 bg-white text-purple-600 font-bold rounded-full shadow-xl hover:shadow-2xl transition-all hover:scale-105 inline-flex items-center gap-2"
           >
             Find Your Bond <ArrowRight size={20} />
           </button>
-          <p className="section-content text-white/60 mt-6 text-sm">Free to join • 10 coins on signup • Cancel anytime</p>
+          <p className="text-white/60 mt-6 text-sm">Free to join • 10 coins on signup • Cancel anytime</p>
         </div>
       </section>
 
