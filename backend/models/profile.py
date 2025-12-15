@@ -16,6 +16,7 @@ class Profile(Document):
     gallery_urls: List[str] = Field(default_factory=list)
     price_per_message: int = 0  # in credits
     location: Optional[dict] = None  # GeoJSON Point format
+    is_visible_on_map: bool = True  # Toggle map visibility
     is_online: bool = False
     last_seen: datetime = Field(default_factory=datetime.utcnow)
     total_earnings: int = 0
