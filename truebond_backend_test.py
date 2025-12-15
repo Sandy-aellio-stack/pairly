@@ -114,7 +114,7 @@ class TrueBondTester:
             
             response = self.session.post(f"{BACKEND_URL}/auth/signup", json=signup_data)
             
-            if response.status_code == 400:
+            if response.status_code in [400, 422]:  # FastAPI returns 422 for validation errors
                 self.log("✓ Underage signup properly rejected")
                 return True
             else:
