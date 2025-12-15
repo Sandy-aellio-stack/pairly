@@ -450,7 +450,8 @@ class TrueBondTester:
             
             if response.status_code == 200:
                 data = response.json()
-                if data.get("status") == "success":
+                if (data.get("status") == "updated" and 
+                    "location" in data and "updated_at" in data):
                     self.log("✓ Location update successful")
                     return True
                 else:
