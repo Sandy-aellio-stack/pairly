@@ -390,31 +390,27 @@ class PairlyTester:
                 "Content-Type": "application/json"
             }
             
+            # Use default NYC coordinates if not provided
+            if lat is None:
+                lat = 40.7128
+            if lng is None:
+                lng = -74.0060
+            
             profile_data = {
                 "display_name": name,
                 "bio": f"Test bio for {name}",
                 "age": random.randint(18, 35),
-                "location": f"Test City for {name}"
+                "price_per_message": 10,
+                "location": {
+                    "lat": lat,
+                    "lng": lng
+                }
             }
             
             response = self.session.post(f"{BACKEND_URL}/profiles", json=profile_data, headers=headers)
             
             if response.status_code == 200:
-                self.log(f"✓ Profile created for {name}")
-                
-                # Update location if provided
-                if lat is not None and lng is not None:
-                    location_data = {"lat": lat, "lng": lng}
-                    loc_response = self.session.post(
-                        f"{BACKEND_URL}/location/update", 
-                        json=location_data, 
-                        headers=headers
-                    )
-                    if loc_response.status_code == 200:
-                        self.log(f"✓ Location updated for {name}: ({lat}, {lng})")
-                    else:
-                        self.log(f"⚠ Location update failed for {name}: {loc_response.status_code}")
-                
+                self.log(f"✓ Profile created for {name} at ({lat}, {lng})")
                 return True
             else:
                 self.log(f"✗ Profile creation failed for {name}: {response.status_code}", "ERROR")
