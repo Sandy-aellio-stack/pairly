@@ -86,10 +86,44 @@ const SnapMap = () => {
   const [mapZoom, setMapZoom] = useState(13);
   const [isLoading, setIsLoading] = useState(true);
   const [hasSubscription, setHasSubscription] = useState(false); // Mock subscription status
+  const [useMockData, setUseMockData] = useState(false); // Fallback to mock if API fails
   const mapRef = useRef(null);
 
-  // Mock nearby users
-  useEffect(() => {
+  // Fetch nearby users from API or use mock data
+  const loadNearbyUsers = async (lat, lng) => {
+    try {
+      const response = await fetchNearbyUsers(lat, lng, 5, 50);
+      if (response.users && response.users.length > 0) {
+        // Transform API response to component format
+        const users = response.users.map(u => ({
+          id: u.user_id,
+          name: u.display_name || 'Unknown',
+          username: u.display_name?.toLowerCase().replace(/\s+/g, '') || 'user',
+          avatar: u.avatar || `https://i.pravatar.cc/100?u=${u.user_id}`,
+          distance: u.distance_km < 1 
+            ? `${Math.round(u.distance)} m` 
+            : `${u.distance_km} km`,
+          isOnline: u.is_online || false,
+          isCreator: false,
+          bio: u.bio || '',
+          lat: u.lat,
+          lng: u.lng,
+        }));
+        setNearbyUsers(users);
+        setUseMockData(false);
+      } else {
+        // No users found, use mock data
+        loadMockUsers();
+      }
+    } catch (error) {
+      console.log('Failed to fetch nearby users, using mock data:', error);
+      loadMockUsers();
+    }
+  };
+
+  // Mock nearby users fallback
+  const loadMockUsers = () => {
+    setUseMockData(true);
     const mockUsers = [
       {
         id: 1,
