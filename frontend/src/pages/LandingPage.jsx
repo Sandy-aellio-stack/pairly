@@ -111,7 +111,7 @@ const LandingPage = () => {
 
       {/* TOP HEADER - App Name Left, Auth Right */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-xl border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="max-w-[1400px] mx-auto px-6 md:px-10 lg:px-12 h-16 flex items-center justify-between">
           {/* App Name - Left */}
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
@@ -184,10 +184,10 @@ const LandingPage = () => {
         <div className="absolute top-1/4 right-1/4 w-96 h-96 rounded-full bg-purple-200/30 blur-[100px]" />
         <div className="absolute bottom-1/4 left-1/4 w-80 h-80 rounded-full bg-pink-200/30 blur-[100px]" />
 
-        <div className="relative z-10 w-full max-w-[1400px] mx-auto px-6 lg:px-12 xl:px-20 py-16">
-          <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center lg:pl-28">
+        <div className="relative z-10 w-full max-w-[1400px] mx-auto px-6 md:px-10 lg:px-12 py-20 lg:py-28">
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             {/* Left Column - Text Content */}
-            <div className="max-w-xl">
+            <div className="max-w-xl lg:pl-16">
               <div className="hero-badge inline-flex items-center gap-2 px-4 py-2 bg-purple-100 rounded-full mb-6">
                 <Heart size={16} className="text-purple-600" fill="currentColor" />
                 <span className="text-sm font-medium text-purple-700">Trusted by 100,000+ singles</span>
@@ -292,8 +292,8 @@ const LandingPage = () => {
       </section>
 
       {/* ===== FEATURES SECTION ===== */}
-      <section id="features" className="py-24 bg-gradient-to-b from-white via-purple-50/50 to-white">
-        <div className="max-w-7xl mx-auto px-6 lg:px-16 lg:ml-24">
+      <section id="features" className="py-20 lg:py-28 bg-gradient-to-b from-white via-purple-50/50 to-white">
+        <div className="max-w-[1400px] mx-auto px-6 md:px-10 lg:px-12">
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">
               Powerful <span className="gradient-text">Features</span>
@@ -335,8 +335,8 @@ const LandingPage = () => {
       </section>
 
       {/* ===== SAFETY SECTION ===== */}
-      <section id="safety" className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-6 lg:px-16 lg:ml-24">
+      <section id="safety" className="py-20 lg:py-28 bg-white">
+        <div className="max-w-[1400px] mx-auto px-6 md:px-10 lg:px-12">
           <div className="text-center mb-4">
             <span className="text-sm font-medium text-purple-600 uppercase tracking-wide">Your safety matters</span>
           </div>
@@ -407,8 +407,8 @@ const LandingPage = () => {
       </section>
 
       {/* ===== SUPPORT SECTION ===== */}
-      <section id="support" className="py-24 bg-gradient-to-b from-purple-50/50 via-white to-white">
-        <div className="max-w-7xl mx-auto px-6 lg:px-16 lg:ml-24">
+      <section id="support" className="py-20 lg:py-28 bg-gradient-to-b from-purple-50/50 via-white to-white">
+        <div className="max-w-[1400px] mx-auto px-6 md:px-10 lg:px-12">
           <div className="text-center mb-12">
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">
               How can we <span className="gradient-text">help you?</span>
@@ -514,8 +514,8 @@ const LandingPage = () => {
       </section>
 
       {/* ===== PRICING SECTION ===== */}
-      <section id="pricing" className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-6 lg:px-16 lg:ml-24">
+      <section id="pricing" className="py-20 lg:py-28 bg-white">
+        <div className="max-w-[1400px] mx-auto px-6 md:px-10 lg:px-12">
           <div className="text-center mb-12">
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">
               Find love at <span className="gradient-text">any price</span>
@@ -572,7 +572,7 @@ const LandingPage = () => {
       </section>
 
       {/* ===== CONNECT SECTION ===== */}
-      <section id="connect" className="py-24 relative overflow-hidden">
+      <section id="connect" className="py-20 lg:py-28 relative overflow-hidden">
         <div className="absolute inset-0">
           <img
             src="https://customer-assets.emergentagent.com/job_bond-match/artifacts/7u34ylxt_WhatsApp%20Image%202025-12-15%20at%2015.05.44%20%282%29.jpeg"
@@ -582,7 +582,7 @@ const LandingPage = () => {
           <div className="absolute inset-0 bg-gradient-to-t from-purple-900/90 via-purple-800/70 to-purple-900/50" />
         </div>
 
-        <div className="relative z-10 max-w-4xl mx-auto px-6 text-center py-12">
+        <div className="relative z-10 max-w-[1400px] mx-auto px-6 md:px-10 lg:px-12 text-center">
           <Heart size={56} className="mx-auto mb-6 text-pink-400" fill="currentColor" />
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-6 text-white">
             Let's get connected
@@ -601,8 +601,8 @@ const LandingPage = () => {
       </section>
 
       {/* ===== FOOTER ===== */}
-      <footer className="bg-gray-900 py-10 px-6">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      <footer className="bg-gray-900 py-10 px-6 md:px-10 lg:px-12">
+        <div className="max-w-[1400px] mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
               <Heart size={20} className="text-white" fill="white" />
