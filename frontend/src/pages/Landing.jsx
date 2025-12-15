@@ -32,60 +32,158 @@ const Landing = () => {
       <Navbar />
 
       {/* Hero Section */}
-      <section className="pt-24 pb-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center max-w-4xl mx-auto mb-16">
-            <Badge className="mb-6 bg-violet-100 text-violet-700 hover:bg-violet-100 px-4 py-2 text-sm">
-              <Sparkles className="h-4 w-4 mr-2 inline" />
-              Making meaningful connections since 2024
-            </Badge>
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold leading-tight mb-6">
-              We exist to bring people
-              <span className="block bg-gradient-to-r from-violet-600 via-fuchsia-500 to-pink-500 bg-clip-text text-transparent">
-                closer to love.
-              </span>
-            </h1>
-            <p className="text-xl text-slate-600 leading-relaxed max-w-2xl mx-auto mb-8">
-              We want our members to find meaningful and authentic relationships 
-              that ignite confidence and joy.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button
-                size="lg"
-                onClick={() => navigate('/signup')}
-                className="bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-lg px-8 py-6 rounded-full shadow-lg shadow-violet-500/25"
-              >
-                Get Started Free
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="text-lg px-8 py-6 rounded-full border-2 border-slate-300 hover:border-violet-400"
-              >
-                <Play className="mr-2 h-5 w-5" />
-                Watch Demo
-              </Button>
-            </div>
-          </div>
+      <section className="relative min-h-[90vh] flex items-center px-4 sm:px-6 lg:px-8 overflow-hidden">
+        {/* Background atmosphere */}
+        <div className="absolute inset-0 -z-10">
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-violet-300/20 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-fuchsia-300/20 rounded-full blur-3xl"></div>
+        </div>
 
-          {/* Lifestyle Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {lifestyles.map((item, index) => (
-              <div key={index} className="relative group cursor-pointer">
-                <div className="aspect-square rounded-3xl overflow-hidden shadow-xl">
-                  <img 
-                    src={item.image} 
-                    alt={item.label}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent" />
-                  <Badge className="absolute bottom-4 left-4 bg-white/90 text-slate-800 backdrop-blur-sm">
-                    {item.label}
-                  </Badge>
+        <div className="max-w-[1400px] mx-auto w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            {/* Left Column - Content */}
+            <div className="text-center lg:text-left">
+              <Badge className="mb-6 bg-violet-100 text-violet-700 hover:bg-violet-100 px-4 py-2 text-sm inline-flex items-center">
+                <Sparkles className="h-4 w-4 mr-2" />
+                <span>Making meaningful <span className="bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent font-semibold">connections</span> since 2024</span>
+              </Badge>
+              
+              <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold leading-[1.1] mb-6">
+                We exist to bring people
+                <span className="block mt-2 bg-gradient-to-r from-violet-600 via-fuchsia-500 to-pink-500 bg-clip-text text-transparent">
+                  closer to love.
+                </span>
+              </h1>
+              
+              <p className="text-xl text-slate-600 leading-relaxed mb-8 max-w-xl lg:mx-0 mx-auto">
+                We want our members to find meaningful and authentic relationships 
+                that ignite confidence and joy.
+              </p>
+              
+              <div className="flex flex-col sm:flex-row gap-4 lg:justify-start justify-center mb-4">
+                <Button
+                  size="lg"
+                  onClick={() => navigate('/signup')}
+                  className="relative bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-lg px-10 py-7 rounded-full shadow-xl shadow-violet-500/30 hover:shadow-2xl hover:shadow-violet-500/40 transition-all duration-300"
+                >
+                  Get Started Free
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-r from-violet-400 to-fuchsia-400 blur-xl opacity-40 group-hover:opacity-60 transition-opacity -z-10"></div>
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="text-lg px-10 py-7 rounded-full border border-slate-200 hover:border-violet-300 hover:bg-violet-50 text-slate-700 transition-all"
+                >
+                  <Play className="mr-2 h-5 w-5" />
+                  Watch Demo
+                </Button>
+              </div>
+              
+              <p className="text-sm text-slate-500">
+                No credit card required · 10 free coins
+              </p>
+            </div>
+
+            {/* Right Column - Phone Mockup with Floating Cards */}
+            <div className="relative lg:block hidden">
+              {/* Radial glow behind phone */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-80 h-80 bg-gradient-to-br from-violet-400/30 to-fuchsia-400/30 rounded-full blur-3xl"></div>
+              </div>
+
+              {/* Phone mockup */}
+              <div className="relative z-10 flex justify-center">
+                <div className="w-72 h-[580px] bg-slate-900 rounded-[3rem] shadow-2xl overflow-hidden border-8 border-slate-800 transform scale-105">
+                  <div className="w-full h-full bg-gradient-to-b from-violet-500 to-fuchsia-500 p-6">
+                    <div className="w-full h-full bg-white/10 rounded-3xl backdrop-blur-sm flex flex-col items-center justify-center gap-4 p-6">
+                      <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
+                        <Heart className="h-10 w-10 text-white" />
+                      </div>
+                      <div className="text-center text-white space-y-2">
+                        <h3 className="font-bold text-lg">Find Your Match</h3>
+                        <p className="text-sm opacity-90">Start meaningful connections today</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-            ))}
+
+              {/* Floating cards */}
+              <style dangerouslySetInnerHTML={{__html: `
+                @keyframes float-slow {
+                  0%, 100% { transform: translateY(0px); }
+                  50% { transform: translateY(-20px); }
+                }
+                @keyframes float-medium {
+                  0%, 100% { transform: translateY(0px); }
+                  50% { transform: translateY(-15px); }
+                }
+                @keyframes float-fast {
+                  0%, 100% { transform: translateY(0px); }
+                  50% { transform: translateY(-10px); }
+                }
+                .float-slow { animation: float-slow 6s ease-in-out infinite; }
+                .float-medium { animation: float-medium 5s ease-in-out infinite; }
+                .float-fast { animation: float-fast 4s ease-in-out infinite; }
+              `}} />
+
+              {/* Top left card */}
+              <div className="absolute top-12 -left-8 float-slow z-20">
+                <div className="bg-white rounded-2xl shadow-xl p-4 w-48 border border-slate-100">
+                  <div className="flex items-center gap-3 mb-2">
+                    <img 
+                      src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop" 
+                      alt="User"
+                      className="w-12 h-12 rounded-full"
+                    />
+                    <div className="flex-1">
+                      <p className="font-semibold text-sm text-slate-900">Emma</p>
+                      <p className="text-xs text-slate-500">0.3 mi away</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
+                    {[1,2,3,4,5].map((i) => (
+                      <Star key={i} className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Top right card */}
+              <div className="absolute top-32 -right-12 float-medium z-20">
+                <div className="bg-gradient-to-br from-violet-500 to-fuchsia-500 rounded-2xl shadow-xl p-4 w-44">
+                  <div className="flex items-center gap-2 text-white mb-2">
+                    <CheckCircle className="h-5 w-5" />
+                    <p className="font-semibold text-sm">Verified</p>
+                  </div>
+                  <p className="text-xs text-white/90">ID verified profiles for safer dating</p>
+                </div>
+              </div>
+
+              {/* Bottom left card */}
+              <div className="absolute bottom-24 -left-12 float-fast z-20">
+                <div className="bg-white rounded-2xl shadow-xl p-4 w-44 border border-slate-100">
+                  <MessageSquare className="h-6 w-6 text-fuchsia-500 mb-2" />
+                  <p className="font-semibold text-sm text-slate-900 mb-1">2.5M+</p>
+                  <p className="text-xs text-slate-500">Conversations started</p>
+                </div>
+              </div>
+
+              {/* Bottom right card */}
+              <div className="absolute bottom-12 -right-8 float-medium z-20" style={{animationDelay: '1s'}}>
+                <div className="bg-white rounded-2xl shadow-xl p-3 w-40 border border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <div className="flex -space-x-2">
+                      <img src="https://i.pravatar.cc/40?img=1" className="w-8 h-8 rounded-full border-2 border-white" alt="" />
+                      <img src="https://i.pravatar.cc/40?img=2" className="w-8 h-8 rounded-full border-2 border-white" alt="" />
+                      <img src="https://i.pravatar.cc/40?img=3" className="w-8 h-8 rounded-full border-2 border-white" alt="" />
+                    </div>
+                    <p className="text-xs text-slate-600 font-medium">+50K online</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
