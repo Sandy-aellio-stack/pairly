@@ -35,7 +35,7 @@ api.interceptors.response.use(
   }
 );
 
-// Auth APIs
+// Auth APIs - matches /api/auth/*
 export const authAPI = {
   signup: (data) => api.post('/auth/signup', data),
   login: (data) => api.post('/auth/login', data),
@@ -45,7 +45,7 @@ export const authAPI = {
   verifyOTP: (mobile_number, otp_code) => api.post('/auth/otp/verify', { mobile_number, otp_code }),
 };
 
-// User APIs
+// User APIs - matches /api/users/*
 export const userAPI = {
   getProfile: (userId) => api.get(`/users/profile/${userId}`),
   updateProfile: (data) => api.put('/users/profile', data),
@@ -53,20 +53,20 @@ export const userAPI = {
   getCredits: () => api.get('/users/credits'),
 };
 
-// Credits APIs
+// Credits APIs - matches /api/credits/*
 export const creditsAPI = {
   getBalance: () => api.get('/credits/balance'),
   getHistory: (limit = 50) => api.get(`/credits/history?limit=${limit}`),
 };
 
-// Location APIs
+// Location APIs - matches /api/location/*
 export const locationAPI = {
   update: (latitude, longitude) => api.post('/location/update', { latitude, longitude }),
   getNearby: (lat, lng, radius_km = 50) => 
     api.get(`/location/nearby?lat=${lat}&lng=${lng}&radius_km=${radius_km}`),
 };
 
-// Messages APIs
+// Messages APIs - matches /api/messages/*
 export const messagesAPI = {
   send: (receiver_id, content) => api.post('/messages/send', { receiver_id, content }),
   getConversations: () => api.get('/messages/conversations'),
@@ -74,7 +74,7 @@ export const messagesAPI = {
   markRead: (userId) => api.post(`/messages/read/${userId}`),
 };
 
-// Payments APIs
+// Payments APIs - matches /api/payments/*
 export const paymentsAPI = {
   getPackages: () => api.get('/payments/packages'),
   createOrder: (package_id) => api.post('/payments/order', { package_id }),
