@@ -1,50 +1,108 @@
 import { useState, useEffect } from 'react';
-import { Heart, MessageCircle, MapPin, Sparkles, ChevronRight, X, Check } from 'lucide-react';
+import { Heart, MessageCircle, MapPin, Sparkles, ChevronRight, X, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import useAuthStore from '@/store/authStore';
-
-// Mock suggested profiles
-const mockProfiles = [
-  {
-    id: '1',
-    name: 'Priya',
-    age: 26,
-    bio: 'Coffee lover ☕ | Travel enthusiast ✈️ | Looking for genuine connections',
-    profile_pictures: ['https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400'],
-    intent: 'serious',
-    distance_km: 2.5,
-    interests: ['Travel', 'Photography', 'Coffee']
-  },
-  {
-    id: '2',
-    name: 'Arjun',
-    age: 28,
-    bio: 'Software engineer by day, musician by night 🎸',
-    profile_pictures: ['https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400'],
-    intent: 'dating',
-    distance_km: 3.2,
-    interests: ['Music', 'Tech', 'Hiking']
-  },
-  {
-    id: '3',
-    name: 'Ananya',
-    age: 24,
-    bio: 'Art lover 🎨 | Yoga practitioner 🧘‍♀️ | Let\'s have meaningful conversations',
-    profile_pictures: ['https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400'],
-    intent: 'friendship',
-    distance_km: 4.1,
-    interests: ['Art', 'Yoga', 'Reading']
-  },
-];
+import { locationAPI } from '@/services/api';
+import { toast } from 'sonner';
 
 const HomePage = () => {
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [profiles, setProfiles] = useState(mockProfiles);
+  const [profiles, setProfiles] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [userLocation, setUserLocation] = useState(null);
+
+  // Get user's location and fetch nearby profiles
+  useEffect(() => {
+    const fetchNearbyProfiles = async () => {
+      setIsLoading(true);
+      try {
+        // Try to get user's current location
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            async (position) => {
+              const { latitude, longitude } = position.coords;
+              setUserLocation({ lat: latitude, lng: longitude });
+              
+              // Update user location in backend
+              try {
+                await locationAPI.update(latitude, longitude);
+              } catch (e) {
+                console.log('Could not update location');
+              }
+              
+              // Fetch nearby users
+              try {
+                const response = await locationAPI.getNearby(latitude, longitude, 50);
+                if (response.data.users && response.data.users.length > 0) {
+                  setProfiles(response.data.users);
+                } else {
+                  // Use mock data if no real users nearby
+                  setProfiles(getMockProfiles());
+                }
+              } catch (e) {
+                setProfiles(getMockProfiles());
+              }
+              setIsLoading(false);
+            },
+            () => {
+              // Geolocation denied, use default location (Bangalore)
+              setUserLocation({ lat: 12.9716, lng: 77.5946 });
+              setProfiles(getMockProfiles());
+              setIsLoading(false);
+            }
+          );
+        } else {
+          setProfiles(getMockProfiles());
+          setIsLoading(false);
+        }
+      } catch (error) {
+        setProfiles(getMockProfiles());
+        setIsLoading(false);
+      }
+    };
+
+    fetchNearbyProfiles();
+  }, []);
+
+  const getMockProfiles = () => [
+    {
+      id: '1',
+      name: 'Priya',
+      age: 26,
+      bio: 'Coffee lover ☕ | Travel enthusiast ✈️ | Looking for genuine connections',
+      profile_pictures: ['https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400'],
+      intent: 'serious',
+      distance_km: 2.5,
+      interests: ['Travel', 'Photography', 'Coffee']
+    },
+    {
+      id: '2',
+      name: 'Arjun',
+      age: 28,
+      bio: 'Software engineer by day, musician by night 🎸',
+      profile_pictures: ['https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400'],
+      intent: 'dating',
+      distance_km: 3.2,
+      interests: ['Music', 'Tech', 'Hiking']
+    },
+    {
+      id: '3',
+      name: 'Ananya',
+      age: 24,
+      bio: 'Art lover 🎨 | Yoga practitioner 🧘‍♀️ | Let\'s have meaningful conversations',
+      profile_pictures: ['https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400'],
+      intent: 'friendship',
+      distance_km: 4.1,
+      interests: ['Art', 'Yoga', 'Reading']
+    },
+  ];
 
   const currentProfile = profiles[currentIndex];
 
   const handleLike = () => {
-    // TODO: Implement like functionality
+    toast.success(`You liked ${currentProfile?.name}!`);
     if (currentIndex < profiles.length - 1) {
       setCurrentIndex(currentIndex + 1);
     }
@@ -57,8 +115,24 @@ const HomePage = () => {
   };
 
   const handleMessage = () => {
-    // TODO: Navigate to chat
+    if (user?.credits_balance > 0) {
+      navigate('/dashboard/chat');
+    } else {
+      toast.error('You need coins to send messages!');
+      navigate('/dashboard/credits');
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 flex items-center justify-center h-[60vh]">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-[#0F172A] mx-auto mb-4" />
+          <p className="text-gray-600">Finding people nearby...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto px-4">
@@ -80,7 +154,7 @@ const HomePage = () => {
                 {/* Image */}
                 <div className="relative h-[500px]">
                   <img
-                    src={currentProfile.profile_pictures[0]}
+                    src={currentProfile.profile_pictures?.[0] || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400'}
                     alt={currentProfile.name}
                     className="w-full h-full object-cover"
                   />
@@ -97,21 +171,23 @@ const HomePage = () => {
                     
                     <div className="flex items-center gap-2 text-sm text-white/80 mb-3">
                       <MapPin size={14} />
-                      <span>{currentProfile.distance_km} km away</span>
+                      <span>{currentProfile.distance_km?.toFixed(1) || '?'} km away</span>
                     </div>
                     
-                    <p className="text-white/90 mb-4">{currentProfile.bio}</p>
+                    <p className="text-white/90 mb-4">{currentProfile.bio || 'No bio yet'}</p>
                     
-                    <div className="flex flex-wrap gap-2">
-                      {currentProfile.interests.map((interest, idx) => (
-                        <span
-                          key={idx}
-                          className="px-3 py-1 bg-white/20 rounded-full text-xs backdrop-blur-sm"
-                        >
-                          {interest}
-                        </span>
-                      ))}
-                    </div>
+                    {currentProfile.interests && (
+                      <div className="flex flex-wrap gap-2">
+                        {currentProfile.interests.map((interest, idx) => (
+                          <span
+                            key={idx}
+                            className="px-3 py-1 bg-white/20 rounded-full text-xs backdrop-blur-sm"
+                          >
+                            {interest}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -168,12 +244,12 @@ const HomePage = () => {
             <h3 className="font-semibold text-[#0F172A] mb-4">Your Activity</h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="text-center p-4 bg-[#E9D5FF]/20 rounded-xl">
-                <p className="text-3xl font-bold text-[#0F172A]">12</p>
-                <p className="text-xs text-gray-600">Likes Received</p>
+                <p className="text-3xl font-bold text-[#0F172A]">{user?.credits_balance || 10}</p>
+                <p className="text-xs text-gray-600">Coins Left</p>
               </div>
               <div className="text-center p-4 bg-[#FCE7F3]/50 rounded-xl">
-                <p className="text-3xl font-bold text-[#0F172A]">5</p>
-                <p className="text-xs text-gray-600">Matches</p>
+                <p className="text-3xl font-bold text-[#0F172A]">{profiles.length}</p>
+                <p className="text-xs text-gray-600">People Nearby</p>
               </div>
             </div>
           </div>
@@ -182,22 +258,27 @@ const HomePage = () => {
           <div className="bg-white rounded-2xl p-6 shadow-md">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-[#0F172A]">People Nearby</h3>
-              <a href="/dashboard/nearby" className="text-sm text-[#0F172A] font-medium flex items-center gap-1">
+              <button
+                onClick={() => navigate('/dashboard/nearby')}
+                className="text-sm text-[#0F172A] font-medium flex items-center gap-1 hover:underline"
+              >
                 View All <ChevronRight size={16} />
-              </a>
+              </button>
             </div>
             <div className="flex -space-x-3">
-              {mockProfiles.slice(0, 4).map((profile, idx) => (
+              {profiles.slice(0, 4).map((profile, idx) => (
                 <img
                   key={idx}
-                  src={profile.profile_pictures[0]}
+                  src={profile.profile_pictures?.[0] || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100'}
                   alt={profile.name}
                   className="w-12 h-12 rounded-full border-2 border-white object-cover"
                 />
               ))}
-              <div className="w-12 h-12 rounded-full bg-[#0F172A] border-2 border-white flex items-center justify-center">
-                <span className="text-white text-xs font-semibold">+20</span>
-              </div>
+              {profiles.length > 4 && (
+                <div className="w-12 h-12 rounded-full bg-[#0F172A] border-2 border-white flex items-center justify-center">
+                  <span className="text-white text-xs font-semibold">+{profiles.length - 4}</span>
+                </div>
+              )}
             </div>
           </div>
 

@@ -1,47 +1,130 @@
-import { useState } from 'react';
-import { Coins, Check, Sparkles, CreditCard, History, Gift } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Coins, Check, Sparkles, CreditCard, History, Gift, Loader2 } from 'lucide-react';
 import useAuthStore from '@/store/authStore';
+import { creditsAPI, paymentsAPI } from '@/services/api';
 import { toast } from 'sonner';
 
-const pricingTiers = [
-  {
-    name: 'Starter',
-    coins: 100,
-    price: 100,
-    pricePerCoin: 1,
-    discount: 0,
-  },
-  {
-    name: 'Popular',
-    coins: 500,
-    price: 450,
-    pricePerCoin: 0.9,
-    discount: 10,
-    popular: true,
-  },
-  {
-    name: 'Premium',
-    coins: 1000,
-    price: 800,
-    pricePerCoin: 0.8,
-    discount: 20,
-  },
-];
-
-const transactionHistory = [
-  { id: 1, type: 'purchase', amount: 100, coins: 100, date: '2024-12-18', description: 'Starter Pack' },
-  { id: 2, type: 'bonus', amount: 0, coins: 10, date: '2024-12-17', description: 'Welcome Bonus' },
-  { id: 3, type: 'spent', amount: 0, coins: -5, date: '2024-12-16', description: 'Messages sent' },
-];
-
 const CreditsPage = () => {
-  const { user } = useAuthStore();
+  const { user, refreshCredits } = useAuthStore();
   const [selectedTier, setSelectedTier] = useState(1);
+  const [transactions, setTransactions] = useState([]);
+  const [packages, setPackages] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isPurchasing, setIsPurchasing] = useState(false);
 
-  const handlePurchase = (tier) => {
-    toast.success(`Processing purchase of ${tier.coins} coins for ₹${tier.price}`);
-    // TODO: Implement Razorpay payment
+  // Default pricing tiers (fallback)
+  const defaultTiers = [
+    { id: 'starter', name: 'Starter', coins: 100, price: 100, pricePerCoin: 1, discount: 0 },
+    { id: 'popular', name: 'Popular', coins: 500, price: 450, pricePerCoin: 0.9, discount: 10, popular: true },
+    { id: 'premium', name: 'Premium', coins: 1000, price: 800, pricePerCoin: 0.8, discount: 20 },
+  ];
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      // Fetch packages and transaction history in parallel
+      const [packagesRes, historyRes] = await Promise.all([
+        paymentsAPI.getPackages().catch(() => ({ data: { packages: [] } })),
+        creditsAPI.getHistory().catch(() => ({ data: { transactions: [] } }))
+      ]);
+
+      // Process packages
+      if (packagesRes.data.packages && packagesRes.data.packages.length > 0) {
+        const formattedPackages = packagesRes.data.packages.map((pkg, idx) => ({
+          id: pkg.id,
+          name: pkg.name,
+          coins: pkg.credits,
+          price: pkg.price_inr,
+          pricePerCoin: pkg.price_inr / pkg.credits,
+          discount: pkg.discount_percent || 0,
+          popular: idx === 1, // Middle package is popular
+        }));
+        setPackages(formattedPackages);
+      } else {
+        setPackages(defaultTiers);
+      }
+
+      // Process transactions
+      if (historyRes.data.transactions) {
+        const formattedTx = historyRes.data.transactions.map(tx => ({
+          id: tx.id,
+          type: tx.reason === 'SIGNUP_BONUS' ? 'bonus' : tx.reason === 'PURCHASE' ? 'purchase' : 'spent',
+          amount: tx.amount > 0 ? tx.amount : 0,
+          coins: tx.amount,
+          date: new Date(tx.created_at).toLocaleDateString(),
+          description: tx.description || tx.reason
+        }));
+        setTransactions(formattedTx);
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      setPackages(defaultTiers);
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  const handlePurchase = async (tier) => {
+    setIsPurchasing(true);
+    try {
+      const response = await paymentsAPI.createOrder(tier.id);
+      
+      if (response.data.order_id && window.Razorpay) {
+        const options = {
+          key: response.data.key_id || 'rzp_test_key',
+          amount: tier.price * 100, // Razorpay expects amount in paise
+          currency: 'INR',
+          name: 'TrueBond',
+          description: `${tier.coins} Coins - ${tier.name} Pack`,
+          order_id: response.data.order_id,
+          handler: async function(razorpayResponse) {
+            try {
+              await paymentsAPI.verifyPayment({
+                razorpay_order_id: razorpayResponse.razorpay_order_id,
+                razorpay_payment_id: razorpayResponse.razorpay_payment_id,
+                razorpay_signature: razorpayResponse.razorpay_signature,
+              });
+              toast.success(`Successfully purchased ${tier.coins} coins!`);
+              refreshCredits();
+              fetchData(); // Refresh transaction history
+            } catch (err) {
+              toast.error('Payment verification failed');
+            }
+          },
+          prefill: {
+            email: user?.email || '',
+            contact: user?.mobile_number || '',
+          },
+          theme: {
+            color: '#0F172A'
+          }
+        };
+        
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+      } else {
+        toast.info(`Demo: Would purchase ${tier.coins} coins for ₹${tier.price}`);
+      }
+    } catch (error) {
+      toast.error('Failed to create order. Please try again.');
+    } finally {
+      setIsPurchasing(false);
+    }
+  };
+
+  const pricingTiers = packages.length > 0 ? packages : defaultTiers;
+
+  if (isLoading) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 flex items-center justify-center h-[60vh]">
+        <Loader2 className="w-12 h-12 animate-spin text-[#0F172A]" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4">
@@ -52,7 +135,7 @@ const CreditsPage = () => {
             <p className="text-white/70 text-sm mb-1">Your Balance</p>
             <div className="flex items-center gap-3">
               <Coins size={40} className="text-yellow-400" />
-              <span className="text-5xl font-bold">{user?.credits_balance || 10}</span>
+              <span className="text-5xl font-bold">{user?.credits_balance || 0}</span>
               <span className="text-white/70">coins</span>
             </div>
           </div>
@@ -70,7 +153,7 @@ const CreditsPage = () => {
         <div className="grid md:grid-cols-3 gap-4">
           {pricingTiers.map((tier, index) => (
             <button
-              key={index}
+              key={tier.id || index}
               onClick={() => setSelectedTier(index)}
               className={`rounded-2xl p-6 transition-all text-left relative ${
                 tier.popular
@@ -119,9 +202,9 @@ const CreditsPage = () => {
                   tier.popular
                     ? 'bg-white text-[#0F172A] hover:bg-gray-100'
                     : 'bg-[#0F172A] text-white hover:bg-gray-800'
-                }`}
+                } ${isPurchasing ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                Buy Now
+                {isPurchasing ? 'Processing...' : 'Buy Now'}
               </div>
             </button>
           ))}
@@ -167,39 +250,46 @@ const CreditsPage = () => {
         </h2>
         
         <div className="bg-white rounded-2xl shadow-md overflow-hidden">
-          {transactionHistory.map((tx, index) => (
-            <div
-              key={tx.id}
-              className={`flex items-center justify-between p-4 ${
-                index < transactionHistory.length - 1 ? 'border-b border-gray-100' : ''
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                  tx.type === 'purchase' ? 'bg-green-100' :
-                  tx.type === 'bonus' ? 'bg-[#E9D5FF]' : 'bg-gray-100'
-                }`}>
-                  {tx.type === 'purchase' ? <CreditCard size={18} className="text-green-600" /> :
-                   tx.type === 'bonus' ? <Gift size={18} className="text-[#0F172A]" /> :
-                   <Coins size={18} className="text-gray-600" />}
-                </div>
-                <div>
-                  <p className="font-medium text-[#0F172A]">{tx.description}</p>
-                  <p className="text-xs text-gray-500">{tx.date}</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className={`font-semibold ${
-                  tx.coins > 0 ? 'text-green-600' : 'text-gray-600'
-                }`}>
-                  {tx.coins > 0 ? '+' : ''}{tx.coins} coins
-                </p>
-                {tx.amount > 0 && (
-                  <p className="text-xs text-gray-500">₹{tx.amount}</p>
-                )}
-              </div>
+          {transactions.length === 0 ? (
+            <div className="p-8 text-center text-gray-500">
+              <History size={32} className="mx-auto mb-2 text-gray-300" />
+              <p>No transactions yet</p>
             </div>
-          ))}
+          ) : (
+            transactions.map((tx, index) => (
+              <div
+                key={tx.id}
+                className={`flex items-center justify-between p-4 ${
+                  index < transactions.length - 1 ? 'border-b border-gray-100' : ''
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    tx.type === 'purchase' ? 'bg-green-100' :
+                    tx.type === 'bonus' ? 'bg-[#E9D5FF]' : 'bg-gray-100'
+                  }`}>
+                    {tx.type === 'purchase' ? <CreditCard size={18} className="text-green-600" /> :
+                     tx.type === 'bonus' ? <Gift size={18} className="text-[#0F172A]" /> :
+                     <Coins size={18} className="text-gray-600" />}
+                  </div>
+                  <div>
+                    <p className="font-medium text-[#0F172A]">{tx.description}</p>
+                    <p className="text-xs text-gray-500">{tx.date}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className={`font-semibold ${
+                    tx.coins > 0 ? 'text-green-600' : 'text-gray-600'
+                  }`}>
+                    {tx.coins > 0 ? '+' : ''}{tx.coins} coins
+                  </p>
+                  {tx.amount > 0 && (
+                    <p className="text-xs text-gray-500">₹{tx.amount}</p>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>
