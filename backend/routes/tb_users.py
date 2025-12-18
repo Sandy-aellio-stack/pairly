@@ -109,3 +109,39 @@ async def deactivate_account(user: TBUser = Depends(get_current_user)):
     await user.save()
     
     return {"message": "Account deactivated"}
+
+
+@router.post("/upload-photo")
+async def upload_photo(file: UploadFile = File(...), user: TBUser = Depends(get_current_user)):
+    """Upload a profile photo"""
+    # Validate file type
+    if not file.content_type.startswith('image/'):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    
+    # Read file content
+    content = await file.read()
+    
+    # Validate file size (max 5MB)
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File must be less than 5MB")
+    
+    # Convert to base64 data URL
+    base64_content = base64.b64encode(content).decode('utf-8')
+    data_url = f"data:{file.content_type};base64,{base64_content}"
+    
+    # Add to user's profile pictures (keep only last 5)
+    if user.profile_pictures is None:
+        user.profile_pictures = []
+    
+    # Add new photo at the beginning
+    user.profile_pictures.insert(0, data_url)
+    
+    # Keep only 5 photos max
+    user.profile_pictures = user.profile_pictures[:5]
+    
+    await user.save()
+    
+    return {
+        "message": "Photo uploaded successfully",
+        "profile_pictures": user.profile_pictures
+    }
