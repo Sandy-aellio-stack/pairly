@@ -1,66 +1,99 @@
-import { useEffect, useRef } from 'react';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { Heart, ArrowRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Heart, ArrowRight, Check, Sparkles } from 'lucide-react';
 
-gsap.registerPlugin(ScrollTrigger);
-
-const CTASection = ({ onJoinClick }) => {
-  const sectionRef = useRef(null);
-  const contentRef = useRef(null);
+const CTASection = ({ onGetStarted }) => {
+  const [timeLeft, setTimeLeft] = useState({
+    days: 7,
+    hours: 12,
+    minutes: 30,
+    seconds: 0,
+  });
 
   useEffect(() => {
-    const ctx = gsap.context(() => {
-      gsap.from(contentRef.current, {
-        y: 80,
-        opacity: 0,
-        duration: 1,
-        ease: 'power3.out',
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          start: 'top 70%',
-        },
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev.seconds > 0) {
+          return { ...prev, seconds: prev.seconds - 1 };
+        } else if (prev.minutes > 0) {
+          return { ...prev, minutes: prev.minutes - 1, seconds: 59 };
+        } else if (prev.hours > 0) {
+          return { ...prev, hours: prev.hours - 1, minutes: 59, seconds: 59 };
+        } else if (prev.days > 0) {
+          return { ...prev, days: prev.days - 1, hours: 23, minutes: 59, seconds: 59 };
+        }
+        return prev;
       });
-    }, sectionRef);
+    }, 1000);
 
-    return () => ctx.revert();
+    return () => clearInterval(timer);
   }, []);
 
   return (
-    <section ref={sectionRef} className="section py-32 px-6 relative overflow-hidden">
-      {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-t from-purple-900/30 via-transparent to-transparent" />
-      
+    <section
+      id="cta"
+      className="relative py-28 bg-[#0F172A] overflow-hidden"
+    >
       {/* Decorative elements */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl" />
-      <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-pink-500/10 rounded-full blur-3xl" />
-
-      <div ref={contentRef} className="max-w-4xl mx-auto text-center relative z-10">
-        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 mb-8 animate-pulse-purple">
-          <Heart size={40} className="text-white" fill="white" />
+      <div className="absolute top-0 left-0 w-64 h-64 bg-[#E9D5FF]/10 rounded-full blur-3xl"></div>
+      <div className="absolute bottom-0 right-0 w-80 h-80 bg-[#FCE7F3]/10 rounded-full blur-3xl"></div>
+      
+      <div className="container mx-auto px-6 relative z-10">
+        <div className="max-w-4xl mx-auto text-center text-white space-y-8">
+          <div className="inline-flex items-center space-x-2 px-4 py-2 bg-white/20 rounded-full backdrop-blur-sm mb-4">
+            <Sparkles size={20} />
+            <span className="text-sm font-medium">Limited Time Offer</span>
+          </div>
+          
+          <Heart size={56} className="mx-auto text-rose-400" fill="currentColor" />
+          
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold">
+            Ready to Meet Someone Real?
+          </h2>
+          
+          <p className="text-xl text-white/90 max-w-2xl mx-auto">
+            Join TrueBond and experience a calmer, more meaningful way to connect.
+            No pressure. No noise. Just honest conversations and real bonds.
+          </p>
+          
+          {/* Countdown timer */}
+          <div className="grid grid-cols-4 gap-4 max-w-md mx-auto py-8">
+            {[
+              { label: 'Days', value: timeLeft.days },
+              { label: 'Hours', value: timeLeft.hours },
+              { label: 'Minutes', value: timeLeft.minutes },
+              { label: 'Seconds', value: timeLeft.seconds },
+            ].map((item) => (
+              <div key={item.label} className="bg-white/20 backdrop-blur-sm rounded-xl p-4">
+                <div className="text-3xl md:text-4xl font-bold">{item.value.toString().padStart(2, '0')}</div>
+                <div className="text-sm opacity-80">{item.label}</div>
+              </div>
+            ))}
+          </div>
+          
+          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+            <button
+              onClick={onGetStarted}
+              className="px-8 py-4 bg-white text-[#0F172A] rounded-full font-semibold shadow-lg hover:bg-gray-100 transition-all hover:scale-105 flex items-center justify-center space-x-2 group"
+            >
+              <span>Download Free App</span>
+              <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+            </button>
+            <button className="px-8 py-4 bg-transparent text-white border-2 border-white rounded-full font-semibold hover:bg-white/10 transition-all">
+              Learn More
+            </button>
+          </div>
+          
+          <div className="flex items-center justify-center space-x-6 pt-6 text-sm opacity-80">
+            <div className="flex items-center space-x-2">
+              <Check size={18} />
+              <span>No credit card required</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Check size={18} />
+              <span>10 free conversation coins</span>
+            </div>
+          </div>
         </div>
-
-        <h2 className="text-4xl md:text-5xl lg:text-7xl font-bold mb-6">
-          Create your
-          <br />
-          <span className="gradient-text">TrueBond</span>
-        </h2>
-
-        <p className="text-xl text-white/60 max-w-xl mx-auto mb-12">
-          Join thousands of people finding meaningful connections every day. Your perfect match might be just around the corner.
-        </p>
-
-        <button
-          onClick={onJoinClick}
-          className="btn-primary text-xl px-12 py-6 inline-flex items-center gap-3 group"
-        >
-          Get Started Free
-          <ArrowRight size={24} className="group-hover:translate-x-2 transition-transform" />
-        </button>
-
-        <p className="text-white/40 mt-6">
-          10 free coins • No credit card required
-        </p>
       </div>
     </section>
   );
