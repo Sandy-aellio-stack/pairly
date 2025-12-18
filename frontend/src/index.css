@@ -27,16 +27,25 @@
   --error: #EF4444;
 }
 
-* {
-  cursor: none !important;
+/* Custom cursor - hide default on desktop */
+@media (min-width: 1024px) {
+  * {
+    cursor: none !important;
+  }
+  
+  a, button, input, textarea, select, [role="button"] {
+    cursor: none !important;
+  }
 }
 
+/* Show default cursor on touch devices */
 @media (pointer: coarse) {
   * {
     cursor: auto !important;
   }
 }
 
+/* Show default cursor for users who prefer reduced motion */
 @media (prefers-reduced-motion: reduce) {
   * {
     cursor: auto !important;
