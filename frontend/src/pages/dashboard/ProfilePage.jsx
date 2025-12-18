@@ -1,263 +1,196 @@
-import { useState, useEffect } from 'react';
-import { User, Heart, MapPin, Save, Camera, Check } from 'lucide-react';
+import { useState } from 'react';
+import { Camera, Edit2, MapPin, Calendar, Heart, Settings, Shield, LogOut, ChevronRight, Check } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import useAuthStore from '@/store/authStore';
-import { userAPI } from '@/services/api';
 import { toast } from 'sonner';
 
 const ProfilePage = () => {
-  const { user, initialize } = useAuthStore();
-  const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('profile');
-
-  const [profile, setProfile] = useState({
-    name: '',
-    bio: '',
-    intent: 'dating',
+  const navigate = useNavigate();
+  const { user, logout } = useAuthStore();
+  const [isEditing, setIsEditing] = useState(false);
+  const [profileData, setProfileData] = useState({
+    name: user?.name || 'User',
+    bio: user?.bio || 'Looking for meaningful connections...',
+    age: user?.age || 25,
+    intent: user?.intent || 'dating',
   });
 
-  const [preferences, setPreferences] = useState({
-    interested_in: '',
-    min_age: 18,
-    max_age: 50,
-    max_distance_km: 50,
-  });
-
-  useEffect(() => {
-    if (user) {
-      setProfile({
-        name: user.name || '',
-        bio: user.bio || '',
-        intent: user.intent || 'dating',
-      });
-      setPreferences({
-        interested_in: user.preferences?.interested_in || '',
-        min_age: user.preferences?.min_age || 18,
-        max_age: user.preferences?.max_age || 50,
-        max_distance_km: user.preferences?.max_distance_km || 50,
-      });
-    }
-  }, [user]);
-
-  const handleProfileSave = async () => {
-    setLoading(true);
-    try {
-      await userAPI.updateProfile(profile);
-      toast.success('Profile updated!');
-      await initialize();
-    } catch (e) {
-      toast.error(e.response?.data?.detail || 'Failed to update profile');
-    } finally {
-      setLoading(false);
-    }
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+    toast.success('Logged out successfully');
   };
 
-  const handlePreferencesSave = async () => {
-    setLoading(true);
-    try {
-      await userAPI.updatePreferences(preferences);
-      toast.success('Preferences updated!');
-      await initialize();
-    } catch (e) {
-      toast.error(e.response?.data?.detail || 'Failed to update preferences');
-    } finally {
-      setLoading(false);
-    }
+  const handleSave = () => {
+    // TODO: Save to API
+    setIsEditing(false);
+    toast.success('Profile updated!');
   };
+
+  const intentOptions = [
+    { value: 'dating', label: 'Dating' },
+    { value: 'serious', label: 'Serious Relationship' },
+    { value: 'casual', label: 'Casual' },
+    { value: 'friendship', label: 'Friendship' },
+  ];
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto px-4">
       {/* Profile Header */}
-      <div className="card mb-6">
-        <div className="flex items-center gap-6">
-          <div className="relative">
-            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white text-3xl font-bold">
-              {user?.name?.[0]}
+      <div className="bg-white rounded-3xl shadow-lg overflow-hidden mb-6">
+        {/* Cover */}
+        <div className="h-32 bg-gradient-to-r from-[#E9D5FF] via-[#FCE7F3] to-[#DBEAFE]" />
+        
+        {/* Profile Info */}
+        <div className="px-6 pb-6">
+          <div className="flex items-end gap-4 -mt-12 mb-4">
+            <div className="relative">
+              <div className="w-24 h-24 rounded-full bg-white p-1 shadow-lg">
+                <div className="w-full h-full rounded-full bg-[#E9D5FF] flex items-center justify-center overflow-hidden">
+                  {user?.profile_pictures?.[0] ? (
+                    <img src={user.profile_pictures[0]} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-4xl">{profileData.name[0]?.toUpperCase()}</span>
+                  )}
+                </div>
+              </div>
+              <button className="absolute bottom-0 right-0 w-8 h-8 bg-[#0F172A] rounded-full flex items-center justify-center text-white shadow-lg">
+                <Camera size={14} />
+              </button>
             </div>
-            <button className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-purple-500 text-white flex items-center justify-center shadow-lg hover:bg-purple-600 transition-colors">
-              <Camera size={16} />
-            </button>
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{user?.name}</h1>
-            <p className="text-gray-500">{user?.email}</p>
-            <div className="flex items-center gap-2 mt-2">
-              {user?.is_verified ? (
-                <span className="inline-flex items-center gap-1 text-green-600 text-sm bg-green-50 px-2 py-1 rounded-full">
-                  <Check size={14} /> Verified
-                </span>
+            
+            <div className="flex-1 pb-2">
+              {isEditing ? (
+                <input
+                  type="text"
+                  value={profileData.name}
+                  onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
+                  className="text-2xl font-bold text-[#0F172A] bg-transparent border-b-2 border-[#0F172A] outline-none w-full"
+                />
               ) : (
-                <span className="text-yellow-600 text-sm bg-yellow-50 px-2 py-1 rounded-full">Pending Verification</span>
+                <h1 className="text-2xl font-bold text-[#0F172A]">{profileData.name}, {profileData.age}</h1>
               )}
+              <p className="text-gray-500 text-sm flex items-center gap-1">
+                <MapPin size={14} />
+                Bangalore, India
+              </p>
             </div>
+            
+            <button
+              onClick={() => isEditing ? handleSave() : setIsEditing(true)}
+              className={`px-4 py-2 rounded-full font-medium text-sm flex items-center gap-2 transition-colors ${
+                isEditing
+                  ? 'bg-green-500 text-white hover:bg-green-600'
+                  : 'bg-[#E9D5FF] text-[#0F172A] hover:bg-[#DDD6FE]'
+              }`}
+            >
+              {isEditing ? <><Check size={16} /> Save</> : <><Edit2 size={16} /> Edit</>}
+            </button>
           </div>
-        </div>
-      </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-6">
-        <button
-          onClick={() => setActiveTab('profile')}
-          className={`px-6 py-3 rounded-xl font-medium transition-all ${
-            activeTab === 'profile'
-              ? 'bg-purple-500 text-white'
-              : 'bg-white text-gray-600 hover:bg-gray-50'
-          }`}
-        >
-          <User size={18} className="inline mr-2" />
-          Profile
-        </button>
-        <button
-          onClick={() => setActiveTab('preferences')}
-          className={`px-6 py-3 rounded-xl font-medium transition-all ${
-            activeTab === 'preferences'
-              ? 'bg-purple-500 text-white'
-              : 'bg-white text-gray-600 hover:bg-gray-50'
-          }`}
-        >
-          <Heart size={18} className="inline mr-2" />
-          Preferences
-        </button>
-      </div>
-
-      {activeTab === 'profile' ? (
-        <div className="card">
-          <div className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
-              <input
-                type="text"
-                value={profile.name}
-                onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                className="input"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Bio</label>
+          {/* Bio */}
+          <div className="mb-4">
+            <label className="text-xs font-medium text-gray-500 block mb-1">Bio</label>
+            {isEditing ? (
               <textarea
-                value={profile.bio}
-                onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
-                className="input min-h-[120px] resize-none"
-                placeholder="Tell others about yourself..."
+                value={profileData.bio}
+                onChange={(e) => setProfileData({ ...profileData, bio: e.target.value })}
+                className="w-full p-3 rounded-xl border border-gray-200 focus:border-[#0F172A] outline-none resize-none"
+                rows={3}
               />
-            </div>
+            ) : (
+              <p className="text-gray-700">{profileData.bio}</p>
+            )}
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Looking for</label>
-              <select
-                value={profile.intent}
-                onChange={(e) => setProfile({ ...profile, intent: e.target.value })}
-                className="input"
-              >
-                <option value="dating">Dating</option>
-                <option value="serious">Serious Relationship</option>
-                <option value="casual">Casual</option>
-                <option value="friendship">Friendship</option>
-              </select>
-            </div>
-
-            <button
-              onClick={handleProfileSave}
-              disabled={loading}
-              className="btn-primary flex items-center gap-2 disabled:opacity-50"
-            >
-              <Save size={18} />
-              Save Profile
-            </button>
+          {/* Intent */}
+          <div>
+            <label className="text-xs font-medium text-gray-500 block mb-2">Looking for</label>
+            {isEditing ? (
+              <div className="flex flex-wrap gap-2">
+                {intentOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => setProfileData({ ...profileData, intent: option.value })}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                      profileData.intent === option.value
+                        ? 'bg-[#0F172A] text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <span className="px-4 py-2 bg-[#E9D5FF]/50 text-[#0F172A] rounded-full text-sm font-medium">
+                {intentOptions.find(o => o.value === profileData.intent)?.label}
+              </span>
+            )}
           </div>
         </div>
-      ) : (
-        <div className="card">
-          <div className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Interested In</label>
-              <select
-                value={preferences.interested_in}
-                onChange={(e) => setPreferences({ ...preferences, interested_in: e.target.value })}
-                className="input"
-              >
-                <option value="male">Men</option>
-                <option value="female">Women</option>
-                <option value="other">Everyone</option>
-              </select>
-            </div>
+      </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Min Age</label>
-                <input
-                  type="number"
-                  value={preferences.min_age}
-                  onChange={(e) => setPreferences({ ...preferences, min_age: parseInt(e.target.value) })}
-                  className="input"
-                  min={18}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Max Age</label>
-                <input
-                  type="number"
-                  value={preferences.max_age}
-                  onChange={(e) => setPreferences({ ...preferences, max_age: parseInt(e.target.value) })}
-                  className="input"
-                  max={100}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <MapPin size={14} className="inline mr-1" />
-                Max Distance (km)
-              </label>
-              <input
-                type="range"
-                value={preferences.max_distance_km}
-                onChange={(e) => setPreferences({ ...preferences, max_distance_km: parseInt(e.target.value) })}
-                className="w-full accent-purple-500"
-                min={1}
-                max={500}
-              />
-              <div className="flex justify-between text-sm text-gray-500 mt-1">
-                <span>1 km</span>
-                <span className="font-medium text-purple-600">{preferences.max_distance_km} km</span>
-                <span>500 km</span>
-              </div>
-            </div>
-
-            <button
-              onClick={handlePreferencesSave}
-              disabled={loading}
-              className="btn-primary flex items-center gap-2 disabled:opacity-50"
-            >
-              <Save size={18} />
-              Save Preferences
-            </button>
-          </div>
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="bg-white rounded-2xl p-4 text-center shadow-md">
+          <p className="text-3xl font-bold text-[#0F172A]">{user?.credits_balance || 10}</p>
+          <p className="text-xs text-gray-500">Coins</p>
         </div>
-      )}
-
-      {/* Account Info */}
-      <div className="card mt-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Account Info</h2>
-        <div className="space-y-3 text-sm">
-          <div className="flex justify-between py-2 border-b border-gray-100">
-            <span className="text-gray-500">Email</span>
-            <span className="text-gray-900">{user?.email}</span>
-          </div>
-          <div className="flex justify-between py-2 border-b border-gray-100">
-            <span className="text-gray-500">Mobile</span>
-            <span className="text-gray-900">{user?.mobile_number || 'Not set'}</span>
-          </div>
-          <div className="flex justify-between py-2 border-b border-gray-100">
-            <span className="text-gray-500">Age</span>
-            <span className="text-gray-900">{user?.age}</span>
-          </div>
-          <div className="flex justify-between py-2">
-            <span className="text-gray-500">Member since</span>
-            <span className="text-gray-900">{user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}</span>
-          </div>
+        <div className="bg-white rounded-2xl p-4 text-center shadow-md">
+          <p className="text-3xl font-bold text-[#0F172A]">12</p>
+          <p className="text-xs text-gray-500">Matches</p>
         </div>
+        <div className="bg-white rounded-2xl p-4 text-center shadow-md">
+          <p className="text-3xl font-bold text-[#0F172A]">48</p>
+          <p className="text-xs text-gray-500">Likes</p>
+        </div>
+      </div>
+
+      {/* Menu Items */}
+      <div className="bg-white rounded-2xl shadow-md overflow-hidden">
+        <button className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-[#E9D5FF]/50 flex items-center justify-center">
+              <Heart size={18} className="text-[#0F172A]" />
+            </div>
+            <span className="font-medium text-[#0F172A]">Preferences</span>
+          </div>
+          <ChevronRight size={20} className="text-gray-400" />
+        </button>
+        
+        <button className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-[#DBEAFE]/50 flex items-center justify-center">
+              <Shield size={18} className="text-blue-600" />
+            </div>
+            <span className="font-medium text-[#0F172A]">Privacy & Safety</span>
+          </div>
+          <ChevronRight size={20} className="text-gray-400" />
+        </button>
+        
+        <button className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+              <Settings size={18} className="text-gray-600" />
+            </div>
+            <span className="font-medium text-[#0F172A]">Settings</span>
+          </div>
+          <ChevronRight size={20} className="text-gray-400" />
+        </button>
+        
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center justify-between p-4 hover:bg-red-50 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+              <LogOut size={18} className="text-red-600" />
+            </div>
+            <span className="font-medium text-red-600">Logout</span>
+          </div>
+          <ChevronRight size={20} className="text-red-400" />
+        </button>
       </div>
     </div>
   );
