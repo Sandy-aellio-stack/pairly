@@ -4,6 +4,8 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Heart, Home, Star, Shield, HelpCircle, CreditCard, Sparkles, MapPin, MessageCircle, Video, BadgeCheck, Bell, Lock, Eye, UserCheck, Flag, ChevronDown, ChevronUp, Mail, MessageSquare, Headphones, Coins, ArrowRight, Phone, Users, Zap, Filter, ThumbsUp, UserPlus, Search, AlertTriangle, Check } from 'lucide-react';
 import CustomCursor from '@/components/CustomCursor';
 import AuthModal from '@/components/AuthModal';
+import ProblemSection from '@/components/landing/ProblemSection';
+import PhilosophySection from '@/components/landing/PhilosophySection';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -327,6 +329,12 @@ const LandingPage = () => {
           </div>
         </div>
       </section>
+
+      {/* ===== PROBLEM SECTION ===== */}
+      <ProblemSection />
+
+      {/* ===== PHILOSOPHY SECTION ===== */}
+      <PhilosophySection />
 
       {/* ===== FEATURES SECTION ===== */}
       <section id="features" className="py-20 lg:py-28 bg-gradient-to-b from-white via-purple-50/50 to-white">
