@@ -6,7 +6,7 @@ const CTASection = ({ onGetStarted }) => {
       id="cta"
       className="relative py-28 overflow-hidden"
       style={{
-        backgroundImage: `linear-gradient(rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.9)), url('https://customer-assets.emergentagent.com/job_datebond/artifacts/urcyl3fg_WhatsApp%20Image%202025-12-15%20at%2015.05.44%20%282%29.jpeg')`,
+        backgroundImage: `linear-gradient(rgba(15, 23, 42, 0.6), rgba(15, 23, 42, 0.7)), url('https://customer-assets.emergentagent.com/job_datebond/artifacts/urcyl3fg_WhatsApp%20Image%202025-12-15%20at%2015.05.44%20%282%29.jpeg')`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
       }}
