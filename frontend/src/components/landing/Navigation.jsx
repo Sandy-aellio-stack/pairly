@@ -40,7 +40,7 @@ export function Navigation({ activeSection, onNavigate }) {
               )}
             </div>
           );
-        })}>
+        })}
       </div>
     </nav>
   );
