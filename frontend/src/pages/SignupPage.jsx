@@ -76,6 +76,8 @@ const SignupPage = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex">
+      <HeartCursor />
+      
       {/* Left Side - Image */}
       <div className="hidden lg:flex flex-1 bg-gradient-to-br from-[#E9D5FF] via-[#FCE7F3] to-[#DBEAFE] items-center justify-center p-12">
         <div className="max-w-lg text-center">
