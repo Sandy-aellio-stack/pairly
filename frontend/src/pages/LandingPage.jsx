@@ -150,7 +150,7 @@ const LandingPage = () => {
               key={item.id}
               onClick={() => scrollToSection(item.id)}
               className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-colors ${
-                activeSection === item.id ? 'text-rose-500' : 'text-gray-400'
+                activeSection === item.id ? 'text-[#7C3AED]' : 'text-gray-400'
               }`}
             >
               <item.icon size={20} />
