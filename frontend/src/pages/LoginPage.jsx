@@ -4,6 +4,7 @@ import { Heart, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import useAuthStore from '@/store/authStore';
 import api from '@/services/api';
+import HeartCursor from '@/components/HeartCursor';
 
 const LoginPage = () => {
   const navigate = useNavigate();
