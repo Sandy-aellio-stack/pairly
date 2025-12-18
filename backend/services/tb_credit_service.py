@@ -115,8 +115,34 @@ class CreditService:
             for t in transactions
         ]
 
+    # Credit costs
+    MESSAGE_COST = 1  # 1 coin per message
+    AUDIO_CALL_COST_PER_MIN = 5  # 5 coins per minute voice call
+    VIDEO_CALL_COST_PER_MIN = 10  # 10 coins per minute video call
+
     @staticmethod
     async def can_send_message(user_id: str) -> bool:
-        """Check if user has enough credits to send a message"""
+        """Check if user has enough credits to send a message (1 coin)"""
         balance = await CreditService.get_balance(user_id)
-        return balance >= 1
+        return balance >= CreditService.MESSAGE_COST
+
+    @staticmethod
+    async def can_start_audio_call(user_id: str, minutes: int = 1) -> bool:
+        """Check if user has enough credits for audio call (5 coins per minute)"""
+        balance = await CreditService.get_balance(user_id)
+        return balance >= (CreditService.AUDIO_CALL_COST_PER_MIN * minutes)
+
+    @staticmethod
+    async def can_start_video_call(user_id: str, minutes: int = 1) -> bool:
+        """Check if user has enough credits for video call (10 coins per minute)"""
+        balance = await CreditService.get_balance(user_id)
+        return balance >= (CreditService.VIDEO_CALL_COST_PER_MIN * minutes)
+
+    @staticmethod
+    def get_pricing() -> dict:
+        """Get current pricing structure"""
+        return {
+            "message_cost": CreditService.MESSAGE_COST,
+            "audio_call_cost_per_min": CreditService.AUDIO_CALL_COST_PER_MIN,
+            "video_call_cost_per_min": CreditService.VIDEO_CALL_COST_PER_MIN
+        }
