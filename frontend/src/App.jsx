@@ -120,7 +120,15 @@ function App() {
           <Route path="nearby" element={<NearbyPage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="credits" element={<CreditsPage />} />
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
+        
+        {/* Call Page - Full Screen */}
+        <Route path="/call/:userId" element={
+          <ProtectedRoute>
+            <CallPage />
+          </ProtectedRoute>
+        } />
         
         {/* Catch all - redirect to home */}
         <Route path="*" element={<Navigate to="/" replace />} />
