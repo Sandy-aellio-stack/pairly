@@ -12,7 +12,7 @@ from typing import Dict, Any, Optional, List
 import secrets
 
 # Configuration
-BACKEND_URL = "https://truebond-frontend.preview.emergentagent.com/api"
+BACKEND_URL = "https://datebond.preview.emergentagent.com/api"
 
 class MessagingV2Tester:
     def __init__(self):
