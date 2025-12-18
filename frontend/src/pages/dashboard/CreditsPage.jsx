@@ -135,7 +135,7 @@ const CreditsPage = () => {
     <div className="max-w-4xl mx-auto px-4">
       {/* Balance Card */}
       <div className="bg-gradient-to-r from-[#0F172A] to-[#1E293B] rounded-3xl p-8 text-white mb-8">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-6">
           <div>
             <p className="text-white/70 text-sm mb-1">Your Balance</p>
             <div className="flex items-center gap-3">
@@ -144,9 +144,29 @@ const CreditsPage = () => {
               <span className="text-white/70">coins</span>
             </div>
           </div>
-          <div className="text-right">
-            <p className="text-white/70 text-sm">1 coin = 1 message</p>
-            <p className="text-white/70 text-sm">₹1 = 1 coin</p>
+        </div>
+        {/* Coin Usage */}
+        <div className="grid grid-cols-3 gap-4 pt-4 border-t border-white/20">
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <MessageCircle size={18} className="text-white/80" />
+              <span className="text-lg font-bold">{MESSAGE_COST}</span>
+            </div>
+            <p className="text-xs text-white/60">coin/message</p>
+          </div>
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <Phone size={18} className="text-white/80" />
+              <span className="text-lg font-bold">{AUDIO_COST}</span>
+            </div>
+            <p className="text-xs text-white/60">coins/min audio</p>
+          </div>
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <Video size={18} className="text-white/80" />
+              <span className="text-lg font-bold">{VIDEO_COST}</span>
+            </div>
+            <p className="text-xs text-white/60">coins/min video</p>
           </div>
         </div>
       </div>
