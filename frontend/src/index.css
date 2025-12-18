@@ -56,6 +56,17 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Custom text selection color - soft purple instead of pink */
+::selection {
+  background-color: #E9D5FF;
+  color: #0F172A;
+}
+
+::-moz-selection {
+  background-color: #E9D5FF;
+  color: #0F172A;
+}
+
 body {
   background-color: var(--bg-misty);
   color: var(--text-navy);
