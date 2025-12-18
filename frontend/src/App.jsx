@@ -28,6 +28,8 @@ import ChatPage from '@/pages/dashboard/ChatPage';
 import NearbyPage from '@/pages/dashboard/NearbyPage';
 import ProfilePage from '@/pages/dashboard/ProfilePage';
 import CreditsPage from '@/pages/dashboard/CreditsPage';
+import SettingsPage from '@/pages/dashboard/SettingsPage';
+import CallPage from '@/pages/dashboard/CallPage';
 
 // Scroll to top on route change
 function ScrollToTop() {
