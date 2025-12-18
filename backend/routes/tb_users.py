@@ -1,6 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from pydantic import BaseModel, Field
 from typing import Optional, List
+import base64
+import uuid
+from datetime import datetime
 
 from backend.models.tb_user import TBUser, Gender, Intent, Preferences
 from backend.routes.tb_auth import get_current_user
