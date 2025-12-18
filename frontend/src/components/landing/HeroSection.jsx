@@ -25,24 +25,23 @@ const HeroSection = ({ onGetStarted, onWaitlist }) => {
             
             <div className="space-y-6">
               <p className="text-xl md:text-2xl text-gray-700 leading-relaxed">
-                TrueBond is built for people who are tired of surface-level matches and endless swiping. 
-                We help you connect with <span className="font-semibold text-[#0F172A]">real humans, 
-                real intentions, and real emotions</span> — all in a calm, safe, and welcoming space.
+                TrueBond helps you connect with people who share your values and intentions. 
+                <span className="font-semibold text-[#0F172A]">Real conversations, genuine bonds</span> — 
+                all in a calm, welcoming space.
               </p>
               
               <p className="text-lg text-gray-600 leading-relaxed">
-                Whether you're looking for love, meaningful friendship, or someone who truly understands you, 
-                TrueBond makes connection feel natural again. <span className="font-medium">No pressure. No noise.</span> Just genuine conversations that matter.
+                Whether you're looking for love, friendship, or someone who gets you, 
+                we make it easy to find your people. <span className="font-medium">No pressure. No noise.</span>
               </p>
               
               <div className="bg-[#E9D5FF]/30 border-l-4 border-[#0F172A] p-6 rounded-r-lg">
                 <p className="text-base text-gray-700 leading-relaxed mb-3">
-                  We believe every connection starts with trust. That's why TrueBond focuses on{' '}
-                  <span className="font-semibold text-[#0F172A]">quality over quantity</span>, 
-                  thoughtful design over distraction, and human emotion over algorithms that rush decisions.
+                  We focus on <span className="font-semibold text-[#0F172A]">quality over quantity</span>. 
+                  Every feature is designed to help you build meaningful relationships, not collect matches.
                 </p>
                 <p className="text-base text-[#0F172A] font-semibold">
-                  💬 Start slow. Talk honestly. Build something real.
+                  Start slow. Talk honestly. Build something real.
                 </p>
               </div>
             </div>
@@ -74,66 +73,44 @@ const HeroSection = ({ onGetStarted, onWaitlist }) => {
                 <span className="text-sm text-gray-600 font-medium">Secure & Private</span>
               </div>
               <div className="flex items-center space-x-2">
-                <Heart size={20} className="text-rose-500" fill="currentColor" />
+                <Users size={20} className="text-[#0F172A]" />
                 <span className="text-sm text-gray-600 font-medium">Real People</span>
               </div>
             </div>
           </div>
           
-          {/* Right content - Blob profile images */}
+          {/* Right content - Single hero image */}
           <div className="relative h-[500px] lg:h-[600px] hidden lg:block">
-            {/* Profile 1 - Top Left */}
-            <div className="relative w-32 h-32 md:w-40 md:h-40 absolute top-0 left-8 animate-float-slow">
-              <div className="absolute inset-0 bg-blob-peach blob-shape-2 scale-110"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
               <img 
-                src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400" 
-                alt="Happy user" 
-                className="relative w-full h-full object-cover blob-shape-2"
-              />
-            </div>
-            
-            {/* Profile 2 - Top Right */}
-            <div className="relative w-40 h-40 md:w-52 md:h-52 absolute top-20 right-0 animate-float-delay-1">
-              <div className="absolute inset-0 bg-blob-blue blob-shape-3 scale-110"></div>
-              <img 
-                src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400" 
-                alt="Happy user" 
-                className="relative w-full h-full object-cover blob-shape-3"
-              />
-            </div>
-            
-            {/* Profile 3 - Bottom Center */}
-            <div className="relative w-40 h-40 md:w-52 md:h-52 absolute bottom-0 left-1/4 animate-float-delay-2">
-              <div className="absolute inset-0 bg-blob-purple blob-shape scale-110"></div>
-              <img 
-                src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400" 
-                alt="Happy user" 
-                className="relative w-full h-full object-cover blob-shape"
+                src="https://customer-assets.emergentagent.com/job_datebond/artifacts/zn3pqli0_Gemini_Generated_Image_ttgcrgttgcrgttgc.png" 
+                alt="TrueBond - Connect with real people" 
+                className="max-w-full max-h-full object-contain rounded-3xl shadow-2xl"
               />
             </div>
             
             {/* Floating stats card */}
-            <div className="absolute bottom-32 right-8 bg-white rounded-2xl p-4 shadow-xl animate-float">
+            <div className="absolute bottom-8 right-0 bg-white rounded-2xl p-4 shadow-xl animate-float">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 bg-[#E9D5FF] rounded-full flex items-center justify-center">
                   <Users size={20} className="text-[#0F172A]" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-[#0F172A]">10K+</p>
-                  <p className="text-xs text-gray-500">Daily Conversations</p>
+                  <p className="text-xs text-gray-500">Active Users</p>
                 </div>
               </div>
             </div>
             
             {/* Floating match card */}
-            <div className="absolute top-1/2 left-0 bg-white rounded-2xl p-4 shadow-xl animate-float-delay-1">
+            <div className="absolute top-1/3 left-0 bg-white rounded-2xl p-4 shadow-xl animate-float-delay-1">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-[#FCE7F3] rounded-full flex items-center justify-center">
-                  <Heart size={20} className="text-rose-500" fill="currentColor" />
+                <div className="w-10 h-10 bg-[#DBEAFE] rounded-full flex items-center justify-center">
+                  <Heart size={20} className="text-[#0F172A]" fill="currentColor" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-[#0F172A]">New match!</p>
-                  <p className="text-xs text-gray-500">Say hello 👋</p>
+                  <p className="text-sm font-bold text-[#0F172A]">New connection!</p>
+                  <p className="text-xs text-gray-500">Say hello</p>
                 </div>
               </div>
             </div>
