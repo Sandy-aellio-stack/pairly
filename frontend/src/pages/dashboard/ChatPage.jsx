@@ -6,6 +6,7 @@ import useAuthStore from '@/store/authStore';
 import { toast } from 'sonner';
 
 const ChatPage = () => {
+  const navigate = useNavigate();
   const { user, refreshCredits } = useAuthStore();
   const [conversations, setConversations] = useState([]);
   const [selectedChat, setSelectedChat] = useState(null);
