@@ -250,11 +250,33 @@ const ChatPage = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button className="p-2 hover:bg-gray-100 rounded-full">
+                  <button 
+                    onClick={() => {
+                      if ((user?.credits_balance || 0) < 5) {
+                        toast.error('You need at least 5 coins for a voice call');
+                        navigate('/dashboard/credits');
+                      } else {
+                        navigate(`/call/${selectedChat.id}?type=audio`);
+                      }
+                    }}
+                    className="p-2 hover:bg-gray-100 rounded-full group relative"
+                  >
                     <Phone size={20} className="text-gray-600" />
+                    <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-[#0F172A] text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">5 coins/min</span>
                   </button>
-                  <button className="p-2 hover:bg-gray-100 rounded-full">
+                  <button 
+                    onClick={() => {
+                      if ((user?.credits_balance || 0) < 10) {
+                        toast.error('You need at least 10 coins for a video call');
+                        navigate('/dashboard/credits');
+                      } else {
+                        navigate(`/call/${selectedChat.id}?type=video`);
+                      }
+                    }}
+                    className="p-2 hover:bg-gray-100 rounded-full group relative"
+                  >
                     <Video size={20} className="text-gray-600" />
+                    <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-[#0F172A] text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">10 coins/min</span>
                   </button>
                   <button className="p-2 hover:bg-gray-100 rounded-full">
                     <MoreVertical size={20} className="text-gray-600" />
