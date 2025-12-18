@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { Home, MessageCircle, MapPin, User, Coins, LogOut, Heart, Bell, Search } from 'lucide-react';
+import { Home, MessageCircle, MapPin, User, Coins, LogOut, Heart, Bell, Search, Settings } from 'lucide-react';
 import useAuthStore from '@/store/authStore';
 import HeartCursor from '@/components/HeartCursor';
 
@@ -18,6 +18,7 @@ const DashboardLayout = () => {
     { path: '/dashboard/chat', icon: MessageCircle, label: 'Messages' },
     { path: '/dashboard/credits', icon: Coins, label: 'Coins' },
     { path: '/dashboard/profile', icon: User, label: 'Profile' },
+    { path: '/dashboard/settings', icon: Settings, label: 'Settings' },
   ];
 
   return (
