@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Heart, Home, AlertTriangle, Lightbulb, Star, RotateCcw, Shield, CreditCard, HelpCircle, Rocket } from 'lucide-react';
-import CustomCursor from '@/components/CustomCursor';
+import HeartCursor from '@/components/HeartCursor';
 import AuthModal from '@/components/AuthModal';
 
 // Landing sections
@@ -33,6 +34,7 @@ const navItems = [
 ];
 
 const LandingPage = () => {
+  const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState('hero');
   const [authModal, setAuthModal] = useState({ open: false, mode: 'login' });
   const containerRef = useRef(null);
@@ -49,11 +51,19 @@ const LandingPage = () => {
   };
 
   const handleGetStarted = () => {
-    setAuthModal({ open: true, mode: 'signup' });
+    navigate('/signup');
   };
 
   const handleWaitlist = () => {
-    alert('Join our waitlist!\n\nEmail: waitlist@truebond.com\n\nIn production, this would open an email capture form.');
+    setAuthModal({ open: true, mode: 'signup' });
+  };
+
+  const handleLogin = () => {
+    navigate('/login');
+  };
+
+  const handleSignup = () => {
+    navigate('/signup');
   };
 
   useEffect(() => {
@@ -98,7 +108,7 @@ const LandingPage = () => {
 
   return (
     <div ref={containerRef} className="min-h-screen bg-[#F8FAFC]">
-      <CustomCursor />
+      <HeartCursor />
 
       {/* TOP HEADER - App Name Left, Auth Right */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-xl border-b border-gray-100">
@@ -114,13 +124,13 @@ const LandingPage = () => {
           {/* Auth Buttons - Right */}
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setAuthModal({ open: true, mode: 'login' })}
+              onClick={handleLogin}
               className="px-5 py-2 text-gray-700 font-medium hover:text-[#0F172A] transition-colors"
             >
               Login
             </button>
             <button
-              onClick={() => setAuthModal({ open: true, mode: 'signup' })}
+              onClick={handleSignup}
               className="px-5 py-2 bg-[#0F172A] text-white font-medium rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105"
             >
               Sign Up
