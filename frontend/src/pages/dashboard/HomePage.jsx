@@ -232,7 +232,7 @@ const HomePage = () => {
           ) : (
             <div className="bg-white rounded-3xl shadow-xl p-12 text-center">
               <Sparkles size={48} className="text-[#E9D5FF] mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-[#0F172A] mb-2">You've seen everyone!</h2>
+              <h2 className="text-2xl font-bold text-[#0F172A] mb-2">You&apos;ve seen everyone!</h2>
               <p className="text-gray-600">Check back later for more matches</p>
             </div>
           )}
