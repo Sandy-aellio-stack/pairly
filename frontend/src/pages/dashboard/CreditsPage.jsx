@@ -242,12 +242,26 @@ const CreditsPage = () => {
           <Gift size={20} />
           How Coins Work
         </h3>
-        <div className="grid md:grid-cols-3 gap-4 text-sm">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
           <div className="flex items-start gap-3">
-            <Check size={18} className="text-green-600 flex-shrink-0 mt-0.5" />
+            <MessageCircle size={18} className="text-[#0F172A] flex-shrink-0 mt-0.5" />
             <div>
               <p className="font-medium text-[#0F172A]">1 Coin = 1 Message</p>
               <p className="text-gray-600">Send thoughtful messages</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <Phone size={18} className="text-[#0F172A] flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium text-[#0F172A]">5 Coins = 1 Min Audio</p>
+              <p className="text-gray-600">Voice calls with matches</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <Video size={18} className="text-[#0F172A] flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium text-[#0F172A]">10 Coins = 1 Min Video</p>
+              <p className="text-gray-600">Face-to-face video calls</p>
             </div>
           </div>
           <div className="flex items-start gap-3">
@@ -255,13 +269,6 @@ const CreditsPage = () => {
             <div>
               <p className="font-medium text-[#0F172A]">Coins Never Expire</p>
               <p className="text-gray-600">Use them whenever you want</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <Check size={18} className="text-green-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-medium text-[#0F172A]">Bulk Discounts</p>
-              <p className="text-gray-600">Save up to 20% on larger packs</p>
             </div>
           </div>
         </div>
