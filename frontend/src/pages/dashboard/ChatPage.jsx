@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, Send, MoreVertical, Phone, Video, ArrowLeft, Image, Smile, Coins, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { messagesAPI } from '@/services/api';
 import useAuthStore from '@/store/authStore';
 import { toast } from 'sonner';
