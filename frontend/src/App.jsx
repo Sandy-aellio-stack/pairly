@@ -138,6 +138,20 @@ function App() {
             <CallPage />
           </ProtectedRoute>
         } />
+
+        {/* Admin Routes */}
+        <Route path="/admin" element={
+          <ProtectedRoute>
+            <AdminLayout />
+          </ProtectedRoute>
+        }>
+          <Route index element={<AdminDashboardPage />} />
+          <Route path="users" element={<UserManagementPage />} />
+          <Route path="moderation" element={<ModerationPage />} />
+          <Route path="analytics" element={<AnalyticsPage />} />
+          <Route path="settings" element={<AdminSettingsPage />} />
+          <Route path="logs" element={<AdminLogPage />} />
+        </Route>
         
         {/* Catch all - redirect to home */}
         <Route path="*" element={<Navigate to="/" replace />} />
