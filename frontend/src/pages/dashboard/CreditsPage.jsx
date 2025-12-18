@@ -36,12 +36,12 @@ const CreditsPage = () => {
       if (packagesRes.data.packages && packagesRes.data.packages.length > 0) {
         const formattedPackages = packagesRes.data.packages.map((pkg, idx) => ({
           id: pkg.id,
-          name: pkg.name,
+          name: pkg.label || `${pkg.credits} Coins`,
           coins: pkg.credits,
-          price: pkg.price_inr,
-          pricePerCoin: pkg.price_inr / pkg.credits,
-          discount: pkg.discount_percent || 0,
-          popular: idx === 1, // Middle package is popular
+          price: pkg.amount_inr,
+          pricePerCoin: pkg.amount_inr / pkg.credits,
+          discount: Math.round((1 - (pkg.amount_inr / pkg.credits)) * 100), // Calculate discount
+          popular: idx === 1, // Second package is popular
         }));
         setPackages(formattedPackages);
       } else {
