@@ -141,15 +141,26 @@ const ProfilePage = () => {
             <div className="relative">
               <div className="w-24 h-24 rounded-full bg-white p-1 shadow-lg">
                 <div className="w-full h-full rounded-full bg-[#E9D5FF] flex items-center justify-center overflow-hidden">
-                  {user?.profile_pictures?.[0] ? (
-                    <img src={user.profile_pictures[0]} alt="Profile" className="w-full h-full object-cover" />
+                  {profileImage || user?.profile_pictures?.[0] ? (
+                    <img src={profileImage || user.profile_pictures[0]} alt="Profile" className="w-full h-full object-cover" />
                   ) : (
                     <span className="text-4xl">{profileData.name[0]?.toUpperCase() || 'U'}</span>
                   )}
                 </div>
               </div>
-              <button className="absolute bottom-0 right-0 w-8 h-8 bg-[#0F172A] rounded-full flex items-center justify-center text-white shadow-lg">
-                <Camera size={14} />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="hidden"
+              />
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="absolute bottom-0 right-0 w-8 h-8 bg-[#0F172A] rounded-full flex items-center justify-center text-white shadow-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
+              >
+                {isUploading ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
               </button>
             </div>
             
