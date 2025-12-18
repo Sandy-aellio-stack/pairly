@@ -160,10 +160,10 @@ const ProblemSection = () => {
         {/* Bottom message */}
         <div className="max-w-3xl mx-auto mt-16 text-center">
           <p className="text-xl text-gray-700 font-medium">
-            The problem isn't people — it's how platforms are designed.
+            The problem isn&apos;t people — it&apos;s how platforms are designed.
           </p>
           <p className="text-lg text-[#0F172A] font-semibold mt-4">
-            There's a better way.
+            There&apos;s a better way.
           </p>
         </div>
       </div>
