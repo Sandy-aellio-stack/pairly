@@ -51,6 +51,9 @@ export const userAPI = {
   updateProfile: (data) => api.put('/users/profile', data),
   updatePreferences: (data) => api.put('/users/preferences', data),
   getCredits: () => api.get('/users/credits'),
+  uploadPhoto: (formData) => api.post('/users/upload-photo', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
 };
 
 // Credits APIs - matches /api/credits/*
