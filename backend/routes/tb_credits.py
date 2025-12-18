@@ -11,8 +11,15 @@ async def get_balance(user: TBUser = Depends(get_current_user)):
     """Get current credit balance"""
     balance = await CreditService.get_balance(str(user.id))
     return {
-        "credits_balance": balance
+        "credits_balance": balance,
+        "pricing": CreditService.get_pricing()
     }
+
+
+@router.get("/pricing")
+async def get_pricing():
+    """Get current pricing structure"""
+    return CreditService.get_pricing()
 
 
 @router.get("/history")
