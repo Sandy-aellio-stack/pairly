@@ -322,7 +322,7 @@ const ChatPage = () => {
                 </div>
                 <p className="text-xs text-gray-400 text-center mt-2 flex items-center justify-center gap-1">
                   <Coins size={12} />
-                  1 coin per message • You have {user?.credits_balance || 0} coins
+                  1 coin/msg • 5 coins/min audio • 10 coins/min video • You have {user?.credits_balance || 0} coins
                 </p>
               </div>
             </>
