@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Camera, Edit2, MapPin, Heart, Settings, Shield, LogOut, ChevronRight, Check, Loader2, Save } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Camera, Edit2, MapPin, Heart, Settings, Shield, LogOut, ChevronRight, Check, Loader2, Save, Upload, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '@/store/authStore';
 import { userAPI } from '@/services/api';
@@ -10,6 +10,9 @@ const ProfilePage = () => {
   const { user, logout, initialize } = useAuthStore();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [profileImage, setProfileImage] = useState(null);
+  const fileInputRef = useRef(null);
   const [profileData, setProfileData] = useState({
     name: '',
     bio: '',
@@ -21,6 +24,46 @@ const ProfilePage = () => {
     max_age: 50,
     max_distance_km: 50,
   });
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be less than 5MB');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setProfileImage(e.target.result);
+      };
+      reader.readAsDataURL(file);
+
+      // Upload to backend
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      await userAPI.uploadPhoto(formData);
+      await initialize(); // Refresh user data
+      toast.success('Profile picture updated!');
+    } catch (error) {
+      toast.error('Failed to upload image');
+      setProfileImage(null);
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   // Initialize profile data from user
   useEffect(() => {
