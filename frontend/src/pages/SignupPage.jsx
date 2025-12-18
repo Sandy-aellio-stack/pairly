@@ -8,7 +8,7 @@ import HeartCursor from '@/components/HeartCursor';
 
 const SignupPage = () => {
   const navigate = useNavigate();
-  const { login } = useAuthStore();
+  const { signup } = useAuthStore();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     // Step 1: Basic Info
@@ -132,18 +132,7 @@ const SignupPage = () => {
         pincode: formData.pincode || '000000',
       };
 
-      const response = await api.post('/auth/signup', signupData);
-      
-      // Store auth data
-      login(
-        { 
-          id: response.data.user_id, 
-          name: formData.name,
-          email: formData.email,
-          credits_balance: response.data.credits_balance 
-        }, 
-        response.data.tokens.access_token
-      );
+      await signup(signupData);
       
       toast.success('Welcome to TrueBond! 🎉 You received 10 free coins!');
       navigate('/dashboard');
