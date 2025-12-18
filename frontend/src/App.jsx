@@ -63,6 +63,21 @@ function PublicRoute({ children }) {
 }
 
 function App() {
+  const { initialize, isLoading } = useAuthStore();
+  
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
+
+  // Show loading while checking auth
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
+        <div className="w-12 h-12 border-4 border-[#E9D5FF] border-t-[#0F172A] rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
   return (
     <BrowserRouter>
       <ScrollToTop />
