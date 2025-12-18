@@ -31,6 +31,15 @@ import CreditsPage from '@/pages/dashboard/CreditsPage';
 import SettingsPage from '@/pages/dashboard/SettingsPage';
 import CallPage from '@/pages/dashboard/CallPage';
 
+// Admin Pages
+import AdminLayout from '@/pages/admin/AdminLayout';
+import AdminDashboardPage from '@/pages/admin/DashboardPage';
+import UserManagementPage from '@/pages/admin/UserManagementPage';
+import ModerationPage from '@/pages/admin/ModerationPage';
+import AnalyticsPage from '@/pages/admin/AnalyticsPage';
+import AdminSettingsPage from '@/pages/admin/AdminSettingsPage';
+import AdminLogPage from '@/pages/admin/AdminLogPage';
+
 // Scroll to top on route change
 function ScrollToTop() {
   const { pathname } = useLocation();
