@@ -55,6 +55,7 @@ const blogPosts = [
 const BlogPage = () => {
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
+      <HeartCursor />
       {/* Header */}
       <header className="bg-white border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
