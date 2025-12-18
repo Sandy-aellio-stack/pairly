@@ -1,24 +1,24 @@
-import { Shield, Eye, Lock, UserCheck, Flag, UserPlus, Check } from 'lucide-react';
+import { Shield, Eye, Lock, UserCheck, Flag, Check } from 'lucide-react';
 
 const safetyFeatures = [
   {
     title: 'Profile Verification',
-    description: 'Every user goes through identity verification to ensure authenticity and reduce fake accounts.',
+    description: 'Every user goes through identity verification to ensure authenticity.',
     Icon: UserCheck,
   },
   {
     title: '24/7 Moderation',
-    description: 'Our team monitors conversations and profiles to maintain a safe, respectful environment.',
+    description: 'Our team monitors to maintain a safe, respectful environment.',
     Icon: Eye,
   },
   {
     title: 'Privacy Controls',
-    description: 'You control who sees your profile and personal information with privacy-first data handling.',
+    description: 'You control who sees your profile and personal information.',
     Icon: Lock,
   },
   {
     title: 'Report & Block',
-    description: 'Easy tools to report inappropriate behavior and block unwanted contacts instantly.',
+    description: 'Easy tools to report and block unwanted contacts instantly.',
     Icon: Flag,
   },
 ];
@@ -31,12 +31,12 @@ const SafetySection = () => {
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 mb-6">
             <Shield size={40} className="text-green-600" />
           </div>
-          <span className="text-sm font-semibold text-green-600 uppercase tracking-wider">🛡️ Safety First</span>
+          <span className="text-sm font-semibold text-green-600 uppercase tracking-wider">Safety First</span>
           <h2 className="text-4xl md:text-5xl font-bold text-[#0F172A] mt-4 mb-4">
-            Your Safety is Foundational
+            Your Safety Matters
           </h2>
           <p className="text-xl text-gray-600">
-            Your safety is not optional — it's foundational. TrueBond is built with multiple layers of protection to ensure a respectful environment.
+            TrueBond is built with multiple layers of protection. Your safety is not optional—it's foundational.
           </p>
         </div>
         
@@ -58,11 +58,8 @@ const SafetySection = () => {
         <div className="max-w-4xl mx-auto bg-white rounded-2xl p-8 shadow-lg">
           <div className="text-center mb-6">
             <h3 className="text-2xl font-bold text-[#0F172A] mb-2">
-              We actively work to create a space where kindness, consent, and comfort come first — always.
+              Kindness, consent, and comfort come first—always.
             </h3>
-            <p className="text-gray-600">
-              Clear community guidelines focused on respect guide every interaction.
-            </p>
           </div>
           
           <div className="flex flex-wrap gap-4 justify-center">

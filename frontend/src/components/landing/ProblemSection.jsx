@@ -73,16 +73,16 @@ const ProblemSection = () => {
       <div className="container mx-auto px-6">
         {/* Header */}
         <div className="text-center max-w-4xl mx-auto space-y-6 mb-16">
-          <span className="text-sm font-semibold text-rose-500 uppercase tracking-wider">⚠️ The Problem</span>
+          <span className="text-sm font-semibold text-[#DC2626] uppercase tracking-wider">The Problem</span>
           <h2 className="text-4xl md:text-5xl font-bold text-[#0F172A]">
-            Modern Dating Apps Are Too Fast
+            Modern Dating Apps Are Broken
           </h2>
-          <p className="text-xl md:text-2xl text-gray-700 leading-relaxed">
-            They push people into endless swiping, shallow judgments, and instant decisions based on photos alone. 
-            Conversations feel disposable. Matches feel meaningless. And genuine people often feel lost in the noise.
+          <p className="text-xl text-gray-700 leading-relaxed">
+            Endless swiping, shallow judgments, and instant decisions based on photos alone. 
+            Conversations feel disposable. Matches feel meaningless.
           </p>
           <p className="text-lg text-gray-600">
-            Dating should not feel like a game or a competition. <span className="font-semibold text-rose-500">It should feel human.</span>
+            Dating should feel <span className="font-semibold text-[#0F172A]">human</span>, not like a game.
           </p>
         </div>
         
@@ -95,26 +95,25 @@ const ProblemSection = () => {
                 <div
                   key={index}
                   className={`bg-white rounded-2xl p-8 shadow-lg transition-all duration-500 hover:shadow-xl ${
-                    activeIndex === index ? 'scale-105 shadow-2xl border-2 border-rose-400 ring-4 ring-rose-100' : ''
+                    activeIndex === index ? 'scale-105 shadow-2xl border-2 border-[#7C3AED] ring-4 ring-[#E9D5FF]' : ''
                   }`}
                 >
                   <div className="flex justify-center mb-4">
                     <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all ${
-                      activeIndex === index ? 'bg-rose-100 scale-110' : 'bg-gray-100'
+                      activeIndex === index ? 'bg-[#E9D5FF] scale-110' : 'bg-gray-100'
                     }`}>
                       <IconComponent
                         size={36}
-                        className={activeIndex === index ? 'text-rose-500' : 'text-gray-400'}
+                        className={activeIndex === index ? 'text-[#7C3AED]' : 'text-gray-400'}
                       />
                     </div>
                   </div>
-                  <div className="text-5xl font-bold text-rose-500 mb-3 text-center">{stat.percentage}</div>
+                  <div className="text-5xl font-bold text-[#7C3AED] mb-3 text-center">{stat.percentage}</div>
                   <p className="text-gray-800 font-semibold text-center mb-2">{stat.label}</p>
                   <p className="text-sm text-gray-600 text-center">{stat.description}</p>
                 </div>
               );
-            })}
-          </div>
+            })}n          </div>
           
           <div className="flex justify-center space-x-3 mt-8">
             {statistics.map((_, index) => (
@@ -122,7 +121,7 @@ const ProblemSection = () => {
                 key={index}
                 onClick={() => setActiveIndex(index)}
                 className={`h-2.5 rounded-full transition-all duration-300 ${
-                  activeIndex === index ? 'bg-rose-500 w-12' : 'bg-gray-300 w-2.5'
+                  activeIndex === index ? 'bg-[#7C3AED] w-12' : 'bg-gray-300 w-2.5'
                 }`}
                 aria-label={`View statistic ${index + 1}`}
               />
@@ -133,7 +132,7 @@ const ProblemSection = () => {
         {/* Common problems grid */}
         <div className="max-w-6xl mx-auto">
           <h3 className="text-3xl font-bold text-[#0F172A] text-center mb-12">
-            Many Users Experience:
+            Sound Familiar?
           </h3>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {commonProblems.map((problem, index) => {
@@ -144,8 +143,8 @@ const ProblemSection = () => {
                   className="bg-white rounded-xl p-6 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-gray-100"
                 >
                   <div className="flex items-start space-x-4">
-                    <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <IconComponent size={24} className="text-red-600" />
+                    <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <IconComponent size={24} className="text-orange-600" />
                     </div>
                     <div className="flex-1">
                       <h4 className="text-lg font-semibold text-[#0F172A] mb-2">{problem.title}</h4>
@@ -164,7 +163,7 @@ const ProblemSection = () => {
             The problem isn't people — it's how platforms are designed.
           </p>
           <p className="text-lg text-[#0F172A] font-semibold mt-4">
-            It's time for a better way to connect.
+            There's a better way.
           </p>
         </div>
       </div>
