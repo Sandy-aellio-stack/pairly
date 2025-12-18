@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Coins, Check, Sparkles, CreditCard, History, Gift, Loader2 } from 'lucide-react';
+import { Coins, Check, Sparkles, CreditCard, History, Gift, Loader2, MessageCircle, Phone, Video } from 'lucide-react';
 import useAuthStore from '@/store/authStore';
 import { creditsAPI, paymentsAPI } from '@/services/api';
 import { toast } from 'sonner';
@@ -18,6 +18,11 @@ const CreditsPage = () => {
     { id: 'popular', name: 'Popular', coins: 500, price: 450, pricePerCoin: 0.9, discount: 10, popular: true },
     { id: 'premium', name: 'Premium', coins: 1000, price: 800, pricePerCoin: 0.8, discount: 20 },
   ];
+
+  // Pricing constants
+  const MESSAGE_COST = 1;
+  const AUDIO_COST = 5;
+  const VIDEO_COST = 10;
 
   useEffect(() => {
     fetchData();
