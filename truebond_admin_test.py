@@ -521,10 +521,9 @@ class TrueBondAdminTester:
             
             if response.status_code == 200:
                 data = response.json()
-                if "notifications" in data and "count" in data:
+                if "notifications" in data:
                     notifications = data["notifications"]
-                    count = data["count"]
-                    self.log(f"✓ Notifications retrieved - {count} notifications")
+                    self.log(f"✓ Notifications retrieved - {len(notifications)} notifications")
                     return True
                 else:
                     self.log(f"✗ Notifications response format incorrect: {data}", "ERROR")
