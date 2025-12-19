@@ -487,10 +487,10 @@ class TrueBondAdminTester:
             
             if response.status_code == 200:
                 data = response.json()
-                if "users" in data and "count" in data:
-                    users = data["users"]
-                    count = data["count"]
-                    self.log(f"✓ User search successful - Found {count} users matching 'john'")
+                if "results" in data and "total" in data:
+                    results = data["results"]
+                    total = data["total"]
+                    self.log(f"✓ User search successful - Found {total} users matching 'john'")
                     return True
                 else:
                     self.log(f"✗ User search response format incorrect: {data}", "ERROR")
