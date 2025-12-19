@@ -60,10 +60,11 @@ class TrueBondAdminTester:
             
             if response.status_code == 200:
                 data = response.json()
-                if "access_token" in data and "admin" in data:
+                if "access_token" in data:
                     self.admin_token = data["access_token"]
-                    admin_info = data["admin"]
-                    self.log(f"✓ Super Admin login successful - Role: {admin_info.get('role', 'N/A')}")
+                    admin_role = data.get("admin_role", "N/A")
+                    admin_name = data.get("admin_name", "N/A")
+                    self.log(f"✓ Super Admin login successful - Name: {admin_name}, Role: {admin_role}")
                     
                     # Test Moderator login
                     mod_login_data = {
@@ -77,8 +78,9 @@ class TrueBondAdminTester:
                         mod_data = mod_response.json()
                         if "access_token" in mod_data:
                             self.moderator_token = mod_data["access_token"]
-                            mod_info = mod_data["admin"]
-                            self.log(f"✓ Moderator login successful - Role: {mod_info.get('role', 'N/A')}")
+                            mod_role = mod_data.get("admin_role", "N/A")
+                            mod_name = mod_data.get("admin_name", "N/A")
+                            self.log(f"✓ Moderator login successful - Name: {mod_name}, Role: {mod_role}")
                             return True
                         else:
                             self.log(f"✗ Moderator login response format incorrect: {mod_data}", "ERROR")
