@@ -8,6 +8,7 @@ import {
 } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import useAuthStore from '@/store/authStore';
+import useAdminStore from '@/store/adminStore';
 
 // Pages
 import LandingPage from '@/pages/LandingPage';
@@ -33,6 +34,7 @@ import CallPage from '@/pages/dashboard/CallPage';
 
 // Admin Pages
 import AdminLayout from '@/pages/admin/AdminLayout';
+import AdminLoginPage from '@/pages/admin/AdminLoginPage';
 import AdminDashboardPage from '@/pages/admin/DashboardPage';
 import UserManagementPage from '@/pages/admin/UserManagementPage';
 import ModerationPage from '@/pages/admin/ModerationPage';
@@ -73,12 +75,25 @@ function PublicRoute({ children }) {
   return children;
 }
 
+// Admin Protected Route wrapper
+function AdminProtectedRoute({ children }) {
+  const { isAuthenticated } = useAdminStore();
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/admin/login" replace />;
+  }
+  
+  return children;
+}
+
 function App() {
   const { initialize, isLoading } = useAuthStore();
+  const { initialize: initializeAdmin } = useAdminStore();
   
   useEffect(() => {
     initialize();
-  }, [initialize]);
+    initializeAdmin();
+  }, [initialize, initializeAdmin]);
 
   // Show loading while checking auth
   if (isLoading) {
@@ -139,11 +154,14 @@ function App() {
           </ProtectedRoute>
         } />
 
+        {/* Admin Login */}
+        <Route path="/admin/login" element={<AdminLoginPage />} />
+        
         {/* Admin Routes */}
         <Route path="/admin" element={
-          <ProtectedRoute>
+          <AdminProtectedRoute>
             <AdminLayout />
-          </ProtectedRoute>
+          </AdminProtectedRoute>
         }>
           <Route index element={<AdminDashboardPage />} />
           <Route path="users" element={<UserManagementPage />} />
