@@ -1,14 +1,14 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Users, Shield, BarChart3, Settings, FileText, LogOut, Heart, Bell } from 'lucide-react';
-import useAuthStore from '@/store/authStore';
+import useAdminStore from '@/store/adminStore';
 
 const AdminLayout = () => {
   const navigate = useNavigate();
-  const { user, logout } = useAuthStore();
+  const { admin, logout } = useAdminStore();
 
   const handleLogout = () => {
     logout();
-    navigate('/');
+    navigate('/admin/login');
   };
 
   const navItems = [
@@ -62,11 +62,11 @@ const AdminLayout = () => {
         <div className="p-4 border-t border-white/10">
           <div className="flex items-center gap-3 mb-4 px-2">
             <div className="w-10 h-10 rounded-full bg-[#E9D5FF] flex items-center justify-center">
-              <span className="text-[#0F172A] font-bold">{user?.name?.[0] || 'A'}</span>
+              <span className="text-[#0F172A] font-bold">{admin?.name?.[0] || 'A'}</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm truncate">{user?.name || 'Admin'}</p>
-              <p className="text-xs text-white/60">Administrator</p>
+              <p className="font-medium text-sm truncate">{admin?.name || 'Admin'}</p>
+              <p className="text-xs text-white/60 capitalize">{admin?.role?.replace('_', ' ') || 'Administrator'}</p>
             </div>
           </div>
           <button
