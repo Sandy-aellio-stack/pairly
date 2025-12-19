@@ -1,46 +1,66 @@
-import { useState } from 'react';
-import { Settings, Globe, CreditCard, Bell, Shield, Save, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Globe, CreditCard, Shield, Save, Loader2, Settings } from 'lucide-react';
 import { toast } from 'sonner';
+import { adminSettingsAPI } from '@/services/adminApi';
 
 const AdminSettingsPage = () => {
+  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [settings, setSettings] = useState({
-    // General
     appName: 'TrueBond',
     tagline: 'Real connections, meaningful bonds',
     maintenanceMode: false,
-
-    // Matching
     defaultSearchRadius: 50,
     maxSearchRadius: 500,
     minAge: 18,
     maxAge: 100,
-
-    // Credits
     signupBonus: 10,
     messageCost: 1,
     audioCallCost: 5,
     videoCallCost: 10,
-
-    // Subscriptions
-    starterCoins: 100,
-    starterPrice: 100,
-    popularCoins: 500,
-    popularPrice: 450,
-    premiumCoins: 1000,
-    premiumPrice: 800,
-
-    // Safety
     autoModeration: true,
     profanityFilter: true,
-    photoVerification: true,
+    photoVerification: false,
   });
+
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const response = await adminSettingsAPI.get();
+      setSettings(response.data);
+    } catch (error) {
+      toast.error('Failed to fetch settings');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSave = async () => {
     setIsSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsSaving(false);
-    toast.success('Settings saved successfully!');
+    try {
+      await adminSettingsAPI.update({
+        message_cost: settings.messageCost,
+        audio_call_cost_per_min: settings.audioCallCost,
+        video_call_cost_per_min: settings.videoCallCost,
+        signup_bonus: settings.signupBonus,
+        default_search_radius: settings.defaultSearchRadius,
+        max_search_radius: settings.maxSearchRadius,
+        min_age: settings.minAge,
+        max_age: settings.maxAge,
+        auto_moderation: settings.autoModeration,
+        profanity_filter: settings.profanityFilter,
+        photo_verification: settings.photoVerification,
+        maintenance_mode: settings.maintenanceMode,
+      });
+      toast.success('Settings saved successfully!');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to save settings');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const ToggleSwitch = ({ enabled, onChange }) => (
@@ -57,6 +77,14 @@ const AdminSettingsPage = () => {
       />
     </button>
   );
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 size={24} className="animate-spin text-gray-400" />
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -90,8 +118,8 @@ const AdminSettingsPage = () => {
               <input
                 type="text"
                 value={settings.appName}
-                onChange={(e) => setSettings({ ...settings, appName: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-[#0F172A] outline-none"
+                disabled
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-500"
               />
             </div>
             <div>
@@ -99,8 +127,8 @@ const AdminSettingsPage = () => {
               <input
                 type="text"
                 value={settings.tagline}
-                onChange={(e) => setSettings({ ...settings, tagline: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-[#0F172A] outline-none"
+                disabled
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-500"
               />
             </div>
             <div className="flex items-center justify-between py-2">
@@ -130,7 +158,7 @@ const AdminSettingsPage = () => {
               <input
                 type="number"
                 value={settings.defaultSearchRadius}
-                onChange={(e) => setSettings({ ...settings, defaultSearchRadius: parseInt(e.target.value) })}
+                onChange={(e) => setSettings({ ...settings, defaultSearchRadius: parseInt(e.target.value) || 0 })}
                 className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-[#0F172A] outline-none"
               />
             </div>
@@ -139,7 +167,7 @@ const AdminSettingsPage = () => {
               <input
                 type="number"
                 value={settings.maxSearchRadius}
-                onChange={(e) => setSettings({ ...settings, maxSearchRadius: parseInt(e.target.value) })}
+                onChange={(e) => setSettings({ ...settings, maxSearchRadius: parseInt(e.target.value) || 0 })}
                 className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-[#0F172A] outline-none"
               />
             </div>
@@ -149,7 +177,7 @@ const AdminSettingsPage = () => {
                 <input
                   type="number"
                   value={settings.minAge}
-                  onChange={(e) => setSettings({ ...settings, minAge: parseInt(e.target.value) })}
+                  onChange={(e) => setSettings({ ...settings, minAge: parseInt(e.target.value) || 18 })}
                   className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-[#0F172A] outline-none"
                 />
               </div>
@@ -158,7 +186,7 @@ const AdminSettingsPage = () => {
                 <input
                   type="number"
                   value={settings.maxAge}
-                  onChange={(e) => setSettings({ ...settings, maxAge: parseInt(e.target.value) })}
+                  onChange={(e) => setSettings({ ...settings, maxAge: parseInt(e.target.value) || 100 })}
                   className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-[#0F172A] outline-none"
                 />
               </div>
@@ -180,7 +208,7 @@ const AdminSettingsPage = () => {
               <input
                 type="number"
                 value={settings.signupBonus}
-                onChange={(e) => setSettings({ ...settings, signupBonus: parseInt(e.target.value) })}
+                onChange={(e) => setSettings({ ...settings, signupBonus: parseInt(e.target.value) || 0 })}
                 className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-[#0F172A] outline-none"
               />
             </div>
@@ -190,7 +218,7 @@ const AdminSettingsPage = () => {
                 <input
                   type="number"
                   value={settings.messageCost}
-                  onChange={(e) => setSettings({ ...settings, messageCost: parseInt(e.target.value) })}
+                  onChange={(e) => setSettings({ ...settings, messageCost: parseInt(e.target.value) || 1 })}
                   className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-[#0F172A] outline-none"
                 />
               </div>
@@ -199,7 +227,7 @@ const AdminSettingsPage = () => {
                 <input
                   type="number"
                   value={settings.audioCallCost}
-                  onChange={(e) => setSettings({ ...settings, audioCallCost: parseInt(e.target.value) })}
+                  onChange={(e) => setSettings({ ...settings, audioCallCost: parseInt(e.target.value) || 5 })}
                   className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-[#0F172A] outline-none"
                 />
               </div>
@@ -208,7 +236,7 @@ const AdminSettingsPage = () => {
                 <input
                   type="number"
                   value={settings.videoCallCost}
-                  onChange={(e) => setSettings({ ...settings, videoCallCost: parseInt(e.target.value) })}
+                  onChange={(e) => setSettings({ ...settings, videoCallCost: parseInt(e.target.value) || 10 })}
                   className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-[#0F172A] outline-none"
                 />
               </div>

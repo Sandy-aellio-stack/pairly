@@ -1,52 +1,81 @@
-import { useState } from 'react';
-import { Search, Filter, MoreVertical, Edit, Ban, Eye, UserX, CheckCircle, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, Eye, UserX, Ban, CheckCircle, XCircle, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-
-const mockUsers = [
-  { id: '1', name: 'Priya Sharma', email: 'priya@example.com', age: 26, gender: 'female', status: 'active', verified: true, joinedDate: '2024-01-15', credits: 150 },
-  { id: '2', name: 'Rahul Kumar', email: 'rahul@example.com', age: 28, gender: 'male', status: 'active', verified: true, joinedDate: '2024-01-14', credits: 75 },
-  { id: '3', name: 'Ananya Mehta', email: 'ananya@example.com', age: 24, gender: 'female', status: 'suspended', verified: false, joinedDate: '2024-01-13', credits: 0 },
-  { id: '4', name: 'Arjun Patel', email: 'arjun@example.com', age: 30, gender: 'male', status: 'active', verified: true, joinedDate: '2024-01-12', credits: 200 },
-  { id: '5', name: 'Sneha Das', email: 'sneha@example.com', age: 27, gender: 'female', status: 'banned', verified: false, joinedDate: '2024-01-11', credits: 10 },
-  { id: '6', name: 'Vikram Singh', email: 'vikram@example.com', age: 29, gender: 'male', status: 'active', verified: true, joinedDate: '2024-01-10', credits: 500 },
-  { id: '7', name: 'Kavita Reddy', email: 'kavita@example.com', age: 25, gender: 'female', status: 'active', verified: false, joinedDate: '2024-01-09', credits: 25 },
-  { id: '8', name: 'Amit Shah', email: 'amit@example.com', age: 31, gender: 'male', status: 'active', verified: true, joinedDate: '2024-01-08', credits: 350 },
-];
+import { adminUsersAPI } from '@/services/adminApi';
 
 const UserManagementPage = () => {
-  const [users, setUsers] = useState(mockUsers);
+  const [users, setUsers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedUser, setSelectedUser] = useState(null);
   const [showUserModal, setShowUserModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || user.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  useEffect(() => {
+    fetchUsers();
+  }, [currentPage, statusFilter]);
 
-  const handleSuspend = (userId) => {
-    setUsers(users.map(u => u.id === userId ? { ...u, status: 'suspended' } : u));
-    toast.success('User suspended');
-  };
-
-  const handleBan = (userId) => {
-    if (window.confirm('Are you sure you want to ban this user? This action is severe.')) {
-      setUsers(users.map(u => u.id === userId ? { ...u, status: 'banned' } : u));
-      toast.success('User banned');
+  const fetchUsers = async () => {
+    setIsLoading(true);
+    try {
+      const params = { page: currentPage, limit: 20 };
+      if (statusFilter !== 'all') params.status = statusFilter;
+      if (searchQuery) params.search = searchQuery;
+      
+      const response = await adminUsersAPI.list(params);
+      setUsers(response.data.users);
+      setTotalPages(response.data.pages);
+      setTotal(response.data.total);
+    } catch (error) {
+      toast.error('Failed to fetch users');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleReactivate = (userId) => {
-    setUsers(users.map(u => u.id === userId ? { ...u, status: 'active' } : u));
-    toast.success('User reactivated');
+  const handleSearch = (e) => {
+    e.preventDefault();
+    setCurrentPage(1);
+    fetchUsers();
   };
 
-  const viewUser = (user) => {
-    setSelectedUser(user);
-    setShowUserModal(true);
+  const handleSuspend = async (userId) => {
+    try {
+      await adminUsersAPI.suspend(userId);
+      toast.success('User suspended');
+      fetchUsers();
+    } catch (error) {
+      toast.error('Failed to suspend user');
+    }
+  };
+
+  const handleReactivate = async (userId) => {
+    try {
+      await adminUsersAPI.reactivate(userId);
+      toast.success('User reactivated');
+      fetchUsers();
+    } catch (error) {
+      toast.error('Failed to reactivate user');
+    }
+  };
+
+  const handleBan = async (userId) => {
+    if (window.confirm('Are you sure you want to ban this user? This action is severe.')) {
+      handleSuspend(userId); // Use suspend for now
+    }
+  };
+
+  const viewUser = async (user) => {
+    try {
+      const response = await adminUsersAPI.get(user.id);
+      setSelectedUser(response.data);
+      setShowUserModal(true);
+    } catch (error) {
+      toast.error('Failed to fetch user details');
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -71,7 +100,7 @@ const UserManagementPage = () => {
 
       {/* Filters */}
       <div className="bg-white rounded-2xl shadow-md p-6 mb-6">
-        <div className="flex flex-col md:flex-row gap-4">
+        <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 relative">
             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
@@ -83,10 +112,11 @@ const UserManagementPage = () => {
             />
           </div>
           <div className="flex gap-2">
-            {['all', 'active', 'suspended', 'banned'].map((status) => (
+            {['all', 'active', 'suspended'].map((status) => (
               <button
                 key={status}
-                onClick={() => setStatusFilter(status)}
+                type="button"
+                onClick={() => { setStatusFilter(status); setCurrentPage(1); }}
                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
                   statusFilter === status
                     ? 'bg-[#0F172A] text-white'
@@ -97,142 +127,173 @@ const UserManagementPage = () => {
               </button>
             ))}
           </div>
-        </div>
+        </form>
       </div>
 
       {/* Users Table */}
       <div className="bg-white rounded-2xl shadow-md overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-100">
-              <tr>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-[#0F172A]">User</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-[#0F172A]">Status</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-[#0F172A]">Verified</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-[#0F172A]">Credits</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-[#0F172A]">Joined</th>
-                <th className="text-right py-4 px-6 text-sm font-semibold text-[#0F172A]">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="py-4 px-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-[#E9D5FF] flex items-center justify-center font-bold text-[#0F172A]">
-                        {user.name[0]}
-                      </div>
-                      <div>
-                        <p className="font-medium text-[#0F172A]">{user.name}</p>
-                        <p className="text-sm text-gray-500">{user.email}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="py-4 px-6">{getStatusBadge(user.status)}</td>
-                  <td className="py-4 px-6">
-                    {user.verified ? (
-                      <CheckCircle size={20} className="text-green-500" />
-                    ) : (
-                      <XCircle size={20} className="text-gray-300" />
-                    )}
-                  </td>
-                  <td className="py-4 px-6">
-                    <span className="font-medium text-[#0F172A]">{user.credits}</span>
-                  </td>
-                  <td className="py-4 px-6 text-gray-500 text-sm">{user.joinedDate}</td>
-                  <td className="py-4 px-6">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => viewUser(user)}
-                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                        title="View Details"
-                      >
-                        <Eye size={18} className="text-gray-600" />
-                      </button>
-                      {user.status === 'active' && (
-                        <button
-                          onClick={() => handleSuspend(user.id)}
-                          className="p-2 hover:bg-yellow-100 rounded-lg transition-colors"
-                          title="Suspend"
-                        >
-                          <UserX size={18} className="text-yellow-600" />
-                        </button>
-                      )}
-                      {user.status !== 'banned' && (
-                        <button
-                          onClick={() => handleBan(user.id)}
-                          className="p-2 hover:bg-red-100 rounded-lg transition-colors"
-                          title="Ban"
-                        >
-                          <Ban size={18} className="text-red-600" />
-                        </button>
-                      )}
-                      {(user.status === 'suspended' || user.status === 'banned') && (
-                        <button
-                          onClick={() => handleReactivate(user.id)}
-                          className="p-2 hover:bg-green-100 rounded-lg transition-colors"
-                          title="Reactivate"
-                        >
-                          <CheckCircle size={18} className="text-green-600" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
-          <p className="text-sm text-gray-500">Showing {filteredUsers.length} of {users.length} users</p>
-          <div className="flex gap-2">
-            <button className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50" disabled>
-              <ChevronLeft size={18} />
-            </button>
-            <button className="px-3 py-1 bg-[#0F172A] text-white rounded-lg text-sm">1</button>
-            <button className="px-3 py-1 hover:bg-gray-100 rounded-lg text-sm">2</button>
-            <button className="px-3 py-1 hover:bg-gray-100 rounded-lg text-sm">3</button>
-            <button className="p-2 hover:bg-gray-100 rounded-lg">
-              <ChevronRight size={18} />
-            </button>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 size={24} className="animate-spin text-gray-400" />
           </div>
-        </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-100">
+                  <tr>
+                    <th className="text-left py-4 px-6 text-sm font-semibold text-[#0F172A]">User</th>
+                    <th className="text-left py-4 px-6 text-sm font-semibold text-[#0F172A]">Status</th>
+                    <th className="text-left py-4 px-6 text-sm font-semibold text-[#0F172A]">Verified</th>
+                    <th className="text-left py-4 px-6 text-sm font-semibold text-[#0F172A]">Credits</th>
+                    <th className="text-left py-4 px-6 text-sm font-semibold text-[#0F172A]">Joined</th>
+                    <th className="text-right py-4 px-6 text-sm font-semibold text-[#0F172A]">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {users.map((user) => (
+                    <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-[#E9D5FF] flex items-center justify-center font-bold text-[#0F172A]">
+                            {user.name[0]}
+                          </div>
+                          <div>
+                            <p className="font-medium text-[#0F172A]">{user.name}</p>
+                            <p className="text-sm text-gray-500">{user.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-6">{getStatusBadge(user.status)}</td>
+                      <td className="py-4 px-6">
+                        {user.verified ? (
+                          <CheckCircle size={20} className="text-green-500" />
+                        ) : (
+                          <XCircle size={20} className="text-gray-300" />
+                        )}
+                      </td>
+                      <td className="py-4 px-6">
+                        <span className="font-medium text-[#0F172A]">{user.credits}</span>
+                      </td>
+                      <td className="py-4 px-6 text-gray-500 text-sm">{user.joinedDate}</td>
+                      <td className="py-4 px-6">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => viewUser(user)}
+                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            title="View Details"
+                          >
+                            <Eye size={18} className="text-gray-600" />
+                          </button>
+                          {user.status === 'active' && (
+                            <button
+                              onClick={() => handleSuspend(user.id)}
+                              className="p-2 hover:bg-yellow-100 rounded-lg transition-colors"
+                              title="Suspend"
+                            >
+                              <UserX size={18} className="text-yellow-600" />
+                            </button>
+                          )}
+                          {user.status !== 'banned' && user.status === 'active' && (
+                            <button
+                              onClick={() => handleBan(user.id)}
+                              className="p-2 hover:bg-red-100 rounded-lg transition-colors"
+                              title="Ban"
+                            >
+                              <Ban size={18} className="text-red-600" />
+                            </button>
+                          )}
+                          {user.status === 'suspended' && (
+                            <button
+                              onClick={() => handleReactivate(user.id)}
+                              className="p-2 hover:bg-green-100 rounded-lg transition-colors"
+                              title="Reactivate"
+                            >
+                              <CheckCircle size={18} className="text-green-600" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
+              <p className="text-sm text-gray-500">Showing {users.length} of {total} users</p>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <span className="px-3 py-2 text-sm">Page {currentPage} of {totalPages}</span>
+                <button 
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* User Detail Modal */}
       {showUserModal && selectedUser && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 max-h-[80vh] overflow-y-auto">
             <div className="flex items-center gap-4 mb-6">
               <div className="w-16 h-16 rounded-full bg-[#E9D5FF] flex items-center justify-center font-bold text-2xl text-[#0F172A]">
-                {selectedUser.name[0]}
+                {selectedUser.user.name[0]}
               </div>
               <div>
-                <h3 className="text-xl font-bold text-[#0F172A]">{selectedUser.name}</h3>
-                <p className="text-gray-500">{selectedUser.email}</p>
+                <h3 className="text-xl font-bold text-[#0F172A]">{selectedUser.user.name}</h3>
+                <p className="text-gray-500">{selectedUser.user.email}</p>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div className="p-4 bg-gray-50 rounded-xl">
                 <p className="text-sm text-gray-500">Age</p>
-                <p className="font-semibold text-[#0F172A]">{selectedUser.age}</p>
+                <p className="font-semibold text-[#0F172A]">{selectedUser.user.age}</p>
               </div>
               <div className="p-4 bg-gray-50 rounded-xl">
                 <p className="text-sm text-gray-500">Gender</p>
-                <p className="font-semibold text-[#0F172A] capitalize">{selectedUser.gender}</p>
+                <p className="font-semibold text-[#0F172A] capitalize">{selectedUser.user.gender}</p>
               </div>
               <div className="p-4 bg-gray-50 rounded-xl">
                 <p className="text-sm text-gray-500">Credits</p>
-                <p className="font-semibold text-[#0F172A]">{selectedUser.credits}</p>
+                <p className="font-semibold text-[#0F172A]">{selectedUser.user.credits}</p>
               </div>
               <div className="p-4 bg-gray-50 rounded-xl">
                 <p className="text-sm text-gray-500">Status</p>
-                {getStatusBadge(selectedUser.status)}
+                {getStatusBadge(selectedUser.user.status)}
               </div>
             </div>
+
+            {/* Recent Transactions */}
+            {selectedUser.transactions?.length > 0 && (
+              <div className="mb-6">
+                <h4 className="font-medium text-[#0F172A] mb-3">Recent Transactions</h4>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {selectedUser.transactions.map((t, i) => (
+                    <div key={i} className="flex justify-between text-sm p-2 bg-gray-50 rounded-lg">
+                      <span className="text-gray-600">{t.description}</span>
+                      <span className={t.amount > 0 ? 'text-green-600' : 'text-red-600'}>
+                        {t.amount > 0 ? '+' : ''}{t.amount}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="flex gap-3">
               <button
@@ -240,9 +301,6 @@ const UserManagementPage = () => {
                 className="flex-1 py-3 bg-gray-100 text-[#0F172A] rounded-xl font-medium hover:bg-gray-200 transition-colors"
               >
                 Close
-              </button>
-              <button className="flex-1 py-3 bg-[#0F172A] text-white rounded-xl font-medium hover:bg-gray-800 transition-colors">
-                Edit User
               </button>
             </div>
           </div>
