@@ -101,9 +101,9 @@ async def get_user_details(
         "transactions": [
             {
                 "id": str(t.id),
-                "type": t.transaction_type,
+                "type": t.reason,
                 "amount": t.amount,
-                "description": t.description,
+                "description": t.description or t.reason,
                 "created_at": t.created_at.isoformat()
             }
             for t in transactions
