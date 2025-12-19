@@ -189,12 +189,12 @@ class TrueBondAdminTester:
             
             if response.status_code == 200:
                 data = response.json()
-                if "recent_signups" in data:
-                    signups = data["recent_signups"]
-                    self.log(f"✓ Analytics activity - {len(signups)} recent signups")
+                if "activities" in data:
+                    activities = data["activities"]
+                    self.log(f"✓ Analytics activity - {len(activities)} recent activities")
                     return True
                 else:
-                    self.log(f"✗ Analytics activity missing 'recent_signups': {data}", "ERROR")
+                    self.log(f"✗ Analytics activity missing 'activities': {data}", "ERROR")
                     return False
             else:
                 self.log(f"✗ Analytics activity failed: {response.status_code}", "ERROR")
