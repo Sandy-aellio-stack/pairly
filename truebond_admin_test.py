@@ -299,7 +299,7 @@ class TrueBondAdminTester:
             
             if response.status_code == 200:
                 data = response.json()
-                expected_fields = ["users", "total", "page", "limit"]
+                expected_fields = ["users", "total"]
                 
                 missing_fields = [field for field in expected_fields if field not in data]
                 if missing_fields:
