@@ -1,56 +1,64 @@
-import { useState } from 'react';
-import { TrendingUp, Users, Calendar, Activity } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { TrendingUp, Users, Calendar, Activity, Loader2 } from 'lucide-react';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-
-const userGrowthData = [
-  { month: 'Jan', users: 2400 },
-  { month: 'Feb', users: 3200 },
-  { month: 'Mar', users: 4100 },
-  { month: 'Apr', users: 5300 },
-  { month: 'May', users: 6800 },
-  { month: 'Jun', users: 8200 },
-  { month: 'Jul', users: 9600 },
-  { month: 'Aug', users: 10800 },
-  { month: 'Sep', users: 11500 },
-  { month: 'Oct', users: 12100 },
-  { month: 'Nov', users: 12800 },
-  { month: 'Dec', users: 13500 },
-];
-
-const dauMauData = [
-  { day: 'Mon', dau: 4200, mau: 8500 },
-  { day: 'Tue', dau: 4500, mau: 8700 },
-  { day: 'Wed', dau: 4800, mau: 8900 },
-  { day: 'Thu', dau: 5100, mau: 9100 },
-  { day: 'Fri', dau: 5500, mau: 9400 },
-  { day: 'Sat', dau: 6200, mau: 9800 },
-  { day: 'Sun', dau: 5800, mau: 9600 },
-];
-
-const demographicsData = [
-  { name: '18-24', value: 35, color: '#E9D5FF' },
-  { name: '25-34', value: 40, color: '#0F172A' },
-  { name: '35-44', value: 18, color: '#DBEAFE' },
-  { name: '45+', value: 7, color: '#FCE7F3' },
-];
-
-const genderData = [
-  { name: 'Male', value: 48, color: '#DBEAFE' },
-  { name: 'Female', value: 49, color: '#FCE7F3' },
-  { name: 'Other', value: 3, color: '#E9D5FF' },
-];
-
-const revenueData = [
-  { month: 'Jan', revenue: 12000 },
-  { month: 'Feb', revenue: 15000 },
-  { month: 'Mar', revenue: 18000 },
-  { month: 'Apr', revenue: 22000 },
-  { month: 'May', revenue: 28000 },
-  { month: 'Jun', revenue: 35000 },
-];
+import { adminAnalyticsAPI } from '@/services/adminApi';
 
 const AnalyticsPage = () => {
   const [timeRange, setTimeRange] = useState('year');
+  const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState({ totalUsers: 0, activeUsers: 0, revenue: 0, dauMauRatio: 0 });
+  const [userGrowthData, setUserGrowthData] = useState([]);
+  const [demographics, setDemographics] = useState({ ageDistribution: [], genderDistribution: [] });
+  const [revenueData, setRevenueData] = useState([]);
+
+  useEffect(() => {
+    fetchData();
+  }, [timeRange]);
+
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const [overviewRes, growthRes, demoRes, revenueRes] = await Promise.all([
+        adminAnalyticsAPI.getOverview(),
+        adminAnalyticsAPI.getUserGrowth(timeRange),
+        adminAnalyticsAPI.getDemographics(),
+        adminAnalyticsAPI.getRevenue(timeRange)
+      ]);
+      
+      setStats({
+        totalUsers: overviewRes.data.totalUsers,
+        activeUsers: overviewRes.data.activeUsers,
+        revenue: revenueRes.data.totalRevenue,
+        dauMauRatio: Math.round((overviewRes.data.activeUsers / Math.max(overviewRes.data.totalUsers, 1)) * 100)
+      });
+      setUserGrowthData(growthRes.data.data);
+      setDemographics(demoRes.data);
+      setRevenueData(revenueRes.data.data);
+    } catch (error) {
+      console.error('Failed to fetch analytics:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Static DAU/MAU data for visualization
+  const dauMauData = [
+    { day: 'Mon', dau: 4200, mau: 8500 },
+    { day: 'Tue', dau: 4500, mau: 8700 },
+    { day: 'Wed', dau: 4800, mau: 8900 },
+    { day: 'Thu', dau: 5100, mau: 9100 },
+    { day: 'Fri', dau: 5500, mau: 9400 },
+    { day: 'Sat', dau: 6200, mau: 9800 },
+    { day: 'Sun', dau: 5800, mau: 9600 },
+  ];
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 size={24} className="animate-spin text-gray-400" />
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -84,9 +92,8 @@ const AnalyticsPage = () => {
               <Users size={20} className="text-[#0F172A]" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-[#0F172A]">13.5K</p>
+          <p className="text-2xl font-bold text-[#0F172A]">{stats.totalUsers.toLocaleString()}</p>
           <p className="text-sm text-gray-500">Total Users</p>
-          <p className="text-xs text-green-600 mt-1">+12% from last month</p>
         </div>
         <div className="bg-white rounded-2xl p-6 shadow-md">
           <div className="flex items-center gap-3 mb-2">
@@ -94,9 +101,8 @@ const AnalyticsPage = () => {
               <Activity size={20} className="text-blue-600" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-[#0F172A]">5.2K</p>
-          <p className="text-sm text-gray-500">Daily Active</p>
-          <p className="text-xs text-green-600 mt-1">+8% from last week</p>
+          <p className="text-2xl font-bold text-[#0F172A]">{stats.activeUsers.toLocaleString()}</p>
+          <p className="text-sm text-gray-500">Active Users (7d)</p>
         </div>
         <div className="bg-white rounded-2xl p-6 shadow-md">
           <div className="flex items-center gap-3 mb-2">
@@ -104,9 +110,8 @@ const AnalyticsPage = () => {
               <TrendingUp size={20} className="text-green-600" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-[#0F172A]">₹35K</p>
-          <p className="text-sm text-gray-500">Revenue (Month)</p>
-          <p className="text-xs text-green-600 mt-1">+25% from last month</p>
+          <p className="text-2xl font-bold text-[#0F172A">₹{stats.revenue.toLocaleString()}</p>
+          <p className="text-sm text-gray-500">Revenue ({timeRange})</p>
         </div>
         <div className="bg-white rounded-2xl p-6 shadow-md">
           <div className="flex items-center gap-3 mb-2">
@@ -114,9 +119,8 @@ const AnalyticsPage = () => {
               <Calendar size={20} className="text-rose-600" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-[#0F172A]">38%</p>
-          <p className="text-sm text-gray-500">DAU/MAU Ratio</p>
-          <p className="text-xs text-green-600 mt-1">+3% from last month</p>
+          <p className="text-2xl font-bold text-[#0F172A]">{stats.dauMauRatio}%</p>
+          <p className="text-sm text-gray-500">Active/Total Ratio</p>
         </div>
       </div>
 
@@ -125,20 +129,26 @@ const AnalyticsPage = () => {
         {/* User Growth */}
         <div className="bg-white rounded-2xl p-6 shadow-md">
           <h3 className="text-lg font-bold text-[#0F172A] mb-6">User Growth</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={userGrowthData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} />
-              <YAxis stroke="#94a3b8" fontSize={12} />
-              <Tooltip />
-              <Area type="monotone" dataKey="users" stroke="#0F172A" fill="#E9D5FF" />
-            </AreaChart>
-          </ResponsiveContainer>
+          {userGrowthData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={userGrowthData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="period" stroke="#94a3b8" fontSize={12} />
+                <YAxis stroke="#94a3b8" fontSize={12} />
+                <Tooltip />
+                <Area type="monotone" dataKey="users" stroke="#0F172A" fill="#E9D5FF" />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[300px] flex items-center justify-center text-gray-500">
+              No growth data available
+            </div>
+          )}
         </div>
 
         {/* DAU/MAU */}
         <div className="bg-white rounded-2xl p-6 shadow-md">
-          <h3 className="text-lg font-bold text-[#0F172A] mb-6">DAU vs MAU</h3>
+          <h3 className="text-lg font-bold text-[#0F172A] mb-6">DAU vs MAU (Sample)</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={dauMauData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -158,77 +168,99 @@ const AnalyticsPage = () => {
         {/* Age Demographics */}
         <div className="bg-white rounded-2xl p-6 shadow-md">
           <h3 className="text-lg font-bold text-[#0F172A] mb-6">Age Distribution</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <PieChart>
-              <Pie
-                data={demographicsData}
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={100}
-                paddingAngle={5}
-                dataKey="value"
-              >
-                {demographicsData.map((entry, index) => (
-                  <Cell key={index} fill={entry.color} />
+          {demographics.ageDistribution.length > 0 ? (
+            <>
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie
+                    data={demographics.ageDistribution}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {demographics.ageDistribution.map((entry, index) => (
+                      <Cell key={index} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex flex-wrap justify-center gap-4 mt-4">
+                {demographics.ageDistribution.map((item, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                    <span className="text-sm text-gray-600">{item.name}: {item.value}%</span>
+                  </div>
                 ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="flex flex-wrap justify-center gap-4 mt-4">
-            {demographicsData.map((item, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                <span className="text-sm text-gray-600">{item.name}: {item.value}%</span>
               </div>
-            ))}
-          </div>
+            </>
+          ) : (
+            <div className="h-[250px] flex items-center justify-center text-gray-500">
+              No data available
+            </div>
+          )}
         </div>
 
         {/* Gender Distribution */}
         <div className="bg-white rounded-2xl p-6 shadow-md">
           <h3 className="text-lg font-bold text-[#0F172A] mb-6">Gender Distribution</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <PieChart>
-              <Pie
-                data={genderData}
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={100}
-                paddingAngle={5}
-                dataKey="value"
-              >
-                {genderData.map((entry, index) => (
-                  <Cell key={index} fill={entry.color} />
+          {demographics.genderDistribution.length > 0 ? (
+            <>
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie
+                    data={demographics.genderDistribution}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {demographics.genderDistribution.map((entry, index) => (
+                      <Cell key={index} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex flex-wrap justify-center gap-4 mt-4">
+                {demographics.genderDistribution.map((item, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                    <span className="text-sm text-gray-600">{item.name}: {item.value}%</span>
+                  </div>
                 ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="flex flex-wrap justify-center gap-4 mt-4">
-            {genderData.map((item, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                <span className="text-sm text-gray-600">{item.name}: {item.value}%</span>
               </div>
-            ))}
-          </div>
+            </>
+          ) : (
+            <div className="h-[250px] flex items-center justify-center text-gray-500">
+              No data available
+            </div>
+          )}
         </div>
 
         {/* Revenue Trend */}
         <div className="bg-white rounded-2xl p-6 shadow-md">
           <h3 className="text-lg font-bold text-[#0F172A] mb-6">Revenue Trend</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={revenueData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} />
-              <YAxis stroke="#94a3b8" fontSize={12} />
-              <Tooltip formatter={(value) => [`₹${value}`, 'Revenue']} />
-              <Line type="monotone" dataKey="revenue" stroke="#0F172A" strokeWidth={2} dot={{ fill: '#0F172A' }} />
-            </LineChart>
-          </ResponsiveContainer>
+          {revenueData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={revenueData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="period" stroke="#94a3b8" fontSize={12} />
+                <YAxis stroke="#94a3b8" fontSize={12} />
+                <Tooltip formatter={(value) => [`₹${value}`, 'Revenue']} />
+                <Line type="monotone" dataKey="revenue" stroke="#0F172A" strokeWidth={2} dot={{ fill: '#0F172A' }} />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[250px] flex items-center justify-center text-gray-500">
+              No revenue data
+            </div>
+          )}
         </div>
       </div>
     </div>

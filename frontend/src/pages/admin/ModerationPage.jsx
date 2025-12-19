@@ -1,73 +1,63 @@
-import { useState } from 'react';
-import { AlertTriangle, CheckCircle, XCircle, Flag, Image, MessageSquare, User, Clock } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { AlertTriangle, CheckCircle, XCircle, Flag, Image, MessageSquare, User, Clock, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-
-const mockReports = [
-  {
-    id: '1',
-    type: 'photo',
-    reportedUser: 'User123',
-    reportedBy: 'User456',
-    reason: 'Inappropriate content',
-    timestamp: '2024-01-15 10:30',
-    content: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200',
-    status: 'pending'
-  },
-  {
-    id: '2',
-    type: 'profile',
-    reportedUser: 'User789',
-    reportedBy: 'User012',
-    reason: 'Fake profile suspected',
-    timestamp: '2024-01-15 09:45',
-    content: 'Profile bio contains suspicious links',
-    status: 'pending'
-  },
-  {
-    id: '3',
-    type: 'message',
-    reportedUser: 'User345',
-    reportedBy: 'User678',
-    reason: 'Harassment',
-    timestamp: '2024-01-15 08:20',
-    content: 'Reported message content...',
-    status: 'pending'
-  },
-  {
-    id: '4',
-    type: 'photo',
-    reportedUser: 'User901',
-    reportedBy: 'User234',
-    reason: 'Not a real photo',
-    timestamp: '2024-01-14 22:15',
-    content: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
-    status: 'pending'
-  },
-];
+import { adminModerationAPI } from '@/services/adminApi';
 
 const ModerationPage = () => {
-  const [reports, setReports] = useState(mockReports);
+  const [reports, setReports] = useState([]);
+  const [stats, setStats] = useState({ pending: 0, photoReports: 0, profileReports: 0, messageReports: 0 });
   const [filter, setFilter] = useState('all');
+  const [isLoading, setIsLoading] = useState(true);
 
-  const filteredReports = reports.filter(r => {
-    if (filter === 'all') return r.status === 'pending';
-    return r.type === filter && r.status === 'pending';
-  });
+  useEffect(() => {
+    fetchData();
+  }, [filter]);
 
-  const handleApprove = (reportId) => {
-    setReports(reports.map(r => r.id === reportId ? { ...r, status: 'approved' } : r));
-    toast.success('Content approved - no action taken');
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const [reportsRes, statsRes] = await Promise.all([
+        adminModerationAPI.listReports({ status: filter === 'all' ? 'pending' : 'pending', report_type: filter !== 'all' ? filter : undefined }),
+        adminModerationAPI.getStats()
+      ]);
+      setReports(reportsRes.data.reports);
+      setStats(statsRes.data);
+    } catch (error) {
+      console.error('Failed to fetch moderation data:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleRemove = (reportId) => {
-    setReports(reports.map(r => r.id === reportId ? { ...r, status: 'removed' } : r));
-    toast.success('Content removed and user warned');
+  const handleApprove = async (reportId) => {
+    try {
+      await adminModerationAPI.approveReport(reportId);
+      toast.success('Content approved - no action taken');
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to approve');
+    }
   };
 
-  const handleBanUser = (reportId) => {
+  const handleRemove = async (reportId) => {
+    try {
+      await adminModerationAPI.removeContent(reportId);
+      toast.success('Content removed and user warned');
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to remove');
+    }
+  };
+
+  const handleBan = async (reportId) => {
     if (window.confirm('Ban this user? This is a severe action.')) {
-      setReports(reports.map(r => r.id === reportId ? { ...r, status: 'banned' } : r));
-      toast.success('User has been banned');
+      try {
+        await adminModerationAPI.banUser(reportId);
+        toast.success('User has been banned');
+        fetchData();
+      } catch (error) {
+        toast.error('Failed to ban user');
+      }
     }
   };
 
@@ -94,7 +84,7 @@ const ModerationPage = () => {
             <div className="w-10 h-10 bg-yellow-100 rounded-xl flex items-center justify-center">
               <Clock size={20} className="text-yellow-600" />
             </div>
-            <span className="text-2xl font-bold text-[#0F172A]">{reports.filter(r => r.status === 'pending').length}</span>
+            <span className="text-2xl font-bold text-[#0F172A]">{stats.pending}</span>
           </div>
           <p className="text-sm text-gray-500">Pending Review</p>
         </div>
@@ -103,7 +93,7 @@ const ModerationPage = () => {
             <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
               <Image size={20} className="text-blue-600" />
             </div>
-            <span className="text-2xl font-bold text-[#0F172A]">{reports.filter(r => r.type === 'photo' && r.status === 'pending').length}</span>
+            <span className="text-2xl font-bold text-[#0F172A]">{stats.photoReports}</span>
           </div>
           <p className="text-sm text-gray-500">Photo Reports</p>
         </div>
@@ -112,7 +102,7 @@ const ModerationPage = () => {
             <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
               <User size={20} className="text-purple-600" />
             </div>
-            <span className="text-2xl font-bold text-[#0F172A]">{reports.filter(r => r.type === 'profile' && r.status === 'pending').length}</span>
+            <span className="text-2xl font-bold text-[#0F172A]">{stats.profileReports}</span>
           </div>
           <p className="text-sm text-gray-500">Profile Reports</p>
         </div>
@@ -121,7 +111,7 @@ const ModerationPage = () => {
             <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
               <MessageSquare size={20} className="text-green-600" />
             </div>
-            <span className="text-2xl font-bold text-[#0F172A]">{reports.filter(r => r.type === 'message' && r.status === 'pending').length}</span>
+            <span className="text-2xl font-bold text-[#0F172A]">{stats.messageReports}</span>
           </div>
           <p className="text-sm text-gray-500">Message Reports</p>
         </div>
@@ -145,72 +135,79 @@ const ModerationPage = () => {
       </div>
 
       {/* Review Queue */}
-      <div className="grid md:grid-cols-2 gap-6">
-        {filteredReports.length === 0 ? (
-          <div className="col-span-2 bg-white rounded-2xl p-12 shadow-md text-center">
-            <CheckCircle size={48} className="text-green-500 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-[#0F172A] mb-2">All caught up!</h3>
-            <p className="text-gray-500">No pending reports to review.</p>
-          </div>
-        ) : (
-          filteredReports.map((report) => (
-            <div key={report.id} className="bg-white rounded-2xl shadow-md overflow-hidden">
-              <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {getTypeIcon(report.type)}
-                  <div>
-                    <p className="font-medium text-[#0F172A]">{report.reason}</p>
-                    <p className="text-xs text-gray-500">Reported by {report.reportedBy}</p>
-                  </div>
-                </div>
-                <span className="text-xs text-gray-400">{report.timestamp}</span>
-              </div>
-
-              {/* Content Preview */}
-              <div className="p-4">
-                {report.type === 'photo' ? (
-                  <img
-                    src={report.content}
-                    alt="Reported content"
-                    className="w-full h-48 object-cover rounded-xl mb-4"
-                  />
-                ) : (
-                  <div className="bg-gray-50 rounded-xl p-4 mb-4">
-                    <p className="text-gray-700 text-sm">{report.content}</p>
-                  </div>
-                )}
-
-                <p className="text-sm text-gray-500 mb-4">
-                  <strong>User:</strong> {report.reportedUser}
-                </p>
-
-                {/* Actions */}
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleApprove(report.id)}
-                    className="flex-1 py-2 bg-green-100 text-green-700 rounded-xl font-medium hover:bg-green-200 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <CheckCircle size={18} /> Approve
-                  </button>
-                  <button
-                    onClick={() => handleRemove(report.id)}
-                    className="flex-1 py-2 bg-yellow-100 text-yellow-700 rounded-xl font-medium hover:bg-yellow-200 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <XCircle size={18} /> Remove
-                  </button>
-                  <button
-                    onClick={() => handleBanUser(report.id)}
-                    className="py-2 px-4 bg-red-100 text-red-700 rounded-xl font-medium hover:bg-red-200 transition-colors"
-                    title="Ban User"
-                  >
-                    Ban
-                  </button>
-                </div>
-              </div>
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 size={24} className="animate-spin text-gray-400" />
+        </div>
+      ) : (
+        <div className="grid md:grid-cols-2 gap-6">
+          {reports.length === 0 ? (
+            <div className="col-span-2 bg-white rounded-2xl p-12 shadow-md text-center">
+              <CheckCircle size={48} className="text-green-500 mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-[#0F172A] mb-2">All caught up!</h3>
+              <p className="text-gray-500">No pending reports to review.</p>
             </div>
-          ))
-        )}
-      </div>
+          ) : (
+            reports.map((report) => (
+              <div key={report.id} className="bg-white rounded-2xl shadow-md overflow-hidden">
+                <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {getTypeIcon(report.type)}
+                    <div>
+                      <p className="font-medium text-[#0F172A]">{report.reason}</p>
+                      <p className="text-xs text-gray-500">Reported by {report.reportedBy}</p>
+                    </div>
+                  </div>
+                  <span className="text-xs text-gray-400">{report.timestamp}</span>
+                </div>
+
+                {/* Content Preview */}
+                <div className="p-4">
+                  {report.type === 'photo' && report.content ? (
+                    <img
+                      src={report.content}
+                      alt="Reported content"
+                      className="w-full h-48 object-cover rounded-xl mb-4"
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                  ) : (
+                    <div className="bg-gray-50 rounded-xl p-4 mb-4">
+                      <p className="text-gray-700 text-sm">{report.content || 'No content available'}</p>
+                    </div>
+                  )}
+
+                  <p className="text-sm text-gray-500 mb-4">
+                    <strong>User:</strong> {report.reportedUser}
+                  </p>
+
+                  {/* Actions */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleApprove(report.id)}
+                      className="flex-1 py-2 bg-green-100 text-green-700 rounded-xl font-medium hover:bg-green-200 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <CheckCircle size={18} /> Approve
+                    </button>
+                    <button
+                      onClick={() => handleRemove(report.id)}
+                      className="flex-1 py-2 bg-yellow-100 text-yellow-700 rounded-xl font-medium hover:bg-yellow-200 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <XCircle size={18} /> Remove
+                    </button>
+                    <button
+                      onClick={() => handleBan(report.id)}
+                      className="py-2 px-4 bg-red-100 text-red-700 rounded-xl font-medium hover:bg-red-200 transition-colors"
+                      title="Ban User"
+                    >
+                      Ban
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 };
