@@ -24,9 +24,12 @@ ws_rate_limiter = WSRateLimiter()
 @router.websocket("/ws/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, user_id: str):
     await websocket.accept()
-    connection_id = f\"ws_{user_id}_{int(datetime.now(timezone.utc).timestamp())}\"
+    connection_id = f"ws_{user_id}_{int(datetime.now(timezone.utc).timestamp())}"
     
-    logger.info(        \"WebSocket connection initiated\",\n        extra={\"event\": \"ws_connect\", \"user_id\": user_id, \"connection_id\": connection_id}\n    )
+    logger.info(
+        "WebSocket connection initiated",
+        extra={"event": "ws_connect", "user_id": user_id, "connection_id": connection_id}
+    )
     
     try:
         # Authenticate via first message
@@ -35,26 +38,33 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
         token = auth_json.get("token")
         
         if not token:
-            logger.warning(\"WebSocket auth failed: no token\", extra={\"user_id\": user_id})\n            await websocket.close(code=1008)
+            logger.warning("WebSocket auth failed: no token", extra={"user_id": user_id})
+            await websocket.close(code=1008)
             return
         
         # Verify JWT token properly
         try:
-            payload = verify_token(token, \"access\")
-            token_user_id = payload.get(\"sub\")
+            payload = verify_token(token, "access")
+            token_user_id = payload.get("sub")
             
             # Match token user_id to websocket user_id
             if token_user_id != user_id:
-                logger.warning(                    \"WebSocket auth failed: user_id mismatch\",\n                    extra={\"token_user_id\": token_user_id, \"ws_user_id\": user_id}\n                )\n                await websocket.close(code=1008)
+                logger.warning(
+                    "WebSocket auth failed: user_id mismatch",
+                    extra={"token_user_id": token_user_id, "ws_user_id": user_id}
+                )
+                await websocket.close(code=1008)
                 return
         except HTTPException as e:
-            logger.warning(f\"WebSocket auth failed: {e.detail}\", extra={\"user_id\": user_id})\n            await websocket.close(code=1008)
+            logger.warning(f"WebSocket auth failed: {e.detail}", extra={"user_id": user_id})
+            await websocket.close(code=1008)
             return
         
         # Get user from database
         user = await User.get(PydanticObjectId(user_id))
         if not user:
-            logger.warning(\"WebSocket auth failed: user not found\", extra={\"user_id\": user_id})\n            await websocket.close(code=1008)
+            logger.warning("WebSocket auth failed: user not found", extra={"user_id": user_id})
+            await websocket.close(code=1008)
             return
         
         # Store connection
@@ -66,7 +76,7 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
         )
         
         # Send confirmation
-        await websocket.send_json({\"type\": \"connected\", \"user_id\": user_id})
+        await websocket.send_json({"type": "connected", "user_id": user_id})
         
         while True:
             data = await websocket.receive_text()
@@ -74,24 +84,28 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
             
             # Rate limit check
             if not await ws_rate_limiter.allow_message(user_id):
-                logger.warning(\"WebSocket rate limit exceeded\", extra={\"user_id\": user_id})\n                await websocket.send_json({
-                    \"type\": \"error\",
-                    \"message\": \"Rate limit exceeded\"
+                logger.warning("WebSocket rate limit exceeded", extra={"user_id": user_id})
+                await websocket.send_json({
+                    "type": "error",
+                    "message": "Rate limit exceeded"
                 })
                 continue
             
             # Process message
-            if message_data.get(\"type\") == \"chat_message\":
-                recipient_id = message_data.get(\"recipient_id\")
-                content = message_data.get(\"content\")
+            if message_data.get("type") == "chat_message":
+                recipient_id = message_data.get("recipient_id")
+                content = message_data.get("content")
                 
                 # Use CreditsService for credit handling
-                success = await CreditsService.charge_for_message(\n                    PydanticObjectId(user_id),\n                    PydanticObjectId(recipient_id)\n                )
+                success = await CreditsService.charge_for_message(
+                    PydanticObjectId(user_id),
+                    PydanticObjectId(recipient_id)
+                )
                 
                 if not success:
                     await websocket.send_json({
-                        \"type\": \"error\",
-                        \"message\": \"Insufficient credits\"
+                        "type": "error",
+                        "message": "Insufficient credits"
                     })
                     continue
                 
