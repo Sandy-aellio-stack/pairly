@@ -190,7 +190,12 @@ async def get_recent_activity(
     
     activities = []
     for user in recent_users:
-        time_diff = now - user.created_at
+        # Handle timezone-aware/naive datetime comparison
+        created_at = user.created_at
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        
+        time_diff = now - created_at
         if time_diff.total_seconds() < 60:
             time_str = "Just now"
         elif time_diff.total_seconds() < 3600:
