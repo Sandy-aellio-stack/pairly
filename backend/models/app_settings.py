@@ -43,7 +43,7 @@ class AppSettings(Document):
         name = "app_settings"
 
     @classmethod
-    async def get_settings(cls) -> "AppSettings":
+    async def get_or_create(cls) -> "AppSettings":
         """Get or create app settings singleton"""
         settings = await cls.find_one()
         if not settings:

@@ -48,7 +48,7 @@ async def get_settings(
     admin: dict = Depends(get_current_admin)
 ):
     """Get current app settings"""
-    settings = await AppSettings.get_settings()
+    settings = await AppSettings.get_or_create()
     
     return {
         # General
@@ -88,7 +88,7 @@ async def update_settings(
     if admin["role"] != "super_admin":
         raise HTTPException(status_code=403, detail="Only super admins can update settings")
     
-    settings = await AppSettings.get_settings()
+    settings = await AppSettings.get_or_create()
     
     # Update provided fields
     update_data = updates.model_dump(exclude_none=True)
@@ -111,7 +111,7 @@ async def update_settings(
 @router.get("/pricing")
 async def get_pricing():
     """Public endpoint to get pricing info (for frontend)"""
-    settings = await AppSettings.get_settings()
+    settings = await AppSettings.get_or_create()
     
     return {
         "messageCost": settings.message_cost,
