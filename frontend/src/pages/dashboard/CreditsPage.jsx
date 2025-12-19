@@ -1,230 +1,329 @@
 import { useState, useEffect } from 'react';
-import { Coins, CreditCard, History, Check, IndianRupee, Sparkles, TrendingUp } from 'lucide-react';
+import { Coins, Check, Sparkles, CreditCard, History, Gift, Loader2, MessageCircle, Phone, Video } from 'lucide-react';
 import useAuthStore from '@/store/authStore';
-import { paymentsAPI, creditsAPI } from '@/services/api';
+import { creditsAPI, paymentsAPI } from '@/services/api';
 import { toast } from 'sonner';
 
 const CreditsPage = () => {
-  const { credits, refreshCredits } = useAuthStore();
+  const { user, refreshCredits } = useAuthStore();
+  const [selectedTier, setSelectedTier] = useState(1);
+  const [transactions, setTransactions] = useState([]);
   const [packages, setPackages] = useState([]);
-  const [history, setHistory] = useState([]);
-  const [selectedPackage, setSelectedPackage] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState('buy');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isPurchasing, setIsPurchasing] = useState(false);
+
+  // Default pricing tiers (fallback)
+  const defaultTiers = [
+    { id: 'starter', name: 'Starter', coins: 100, price: 100, pricePerCoin: 1, discount: 0 },
+    { id: 'popular', name: 'Popular', coins: 500, price: 450, pricePerCoin: 0.9, discount: 10, popular: true },
+    { id: 'premium', name: 'Premium', coins: 1000, price: 800, pricePerCoin: 0.8, discount: 20 },
+  ];
+
+  // Pricing constants
+  const MESSAGE_COST = 1;
+  const AUDIO_COST = 5;
+  const VIDEO_COST = 10;
 
   useEffect(() => {
-    loadData();
+    fetchData();
   }, []);
 
-  const loadData = async () => {
+  const fetchData = async () => {
+    setIsLoading(true);
     try {
+      // Fetch packages and transaction history in parallel
       const [packagesRes, historyRes] = await Promise.all([
-        paymentsAPI.getPackages(),
-        creditsAPI.getHistory(20),
+        paymentsAPI.getPackages().catch(() => ({ data: { packages: [] } })),
+        creditsAPI.getHistory().catch(() => ({ data: { transactions: [] } }))
       ]);
-      setPackages(packagesRes.data.packages || []);
-      setHistory(historyRes.data.transactions || []);
-    } catch (e) {
-      // Mock packages
-      setPackages([
-        { id: '1', credits: 50, amount_inr: 49 },
-        { id: '2', credits: 100, amount_inr: 89 },
-        { id: '3', credits: 250, amount_inr: 199 },
-        { id: '4', credits: 500, amount_inr: 349 },
-      ]);
-    }
-  };
 
-  const handlePurchase = async () => {
-    if (!selectedPackage) return;
-    setLoading(true);
-
-    try {
-      const orderResponse = await paymentsAPI.createOrder(selectedPackage.id);
-      const { order_id, amount, key_id } = orderResponse.data;
-
-      const options = {
-        key: key_id,
-        amount: amount,
-        currency: 'INR',
-        name: 'TrueBond',
-        description: `Purchase ${selectedPackage.credits} coins`,
-        order_id: order_id,
-        handler: async (response) => {
-          try {
-            await paymentsAPI.verifyPayment({
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            });
-            await refreshCredits();
-            await loadData();
-            setSelectedPackage(null);
-            toast.success('Payment successful! Coins added.');
-          } catch (e) {
-            toast.error('Payment verification failed');
-          }
-        },
-        theme: {
-          color: '#7B5CFF',
-        },
-      };
-
-      if (typeof window.Razorpay !== 'undefined') {
-        const razorpay = new window.Razorpay(options);
-        razorpay.open();
+      // Process packages
+      if (packagesRes.data.packages && packagesRes.data.packages.length > 0) {
+        const formattedPackages = packagesRes.data.packages.map((pkg, idx) => ({
+          id: pkg.id,
+          name: pkg.label || `${pkg.credits} Coins`,
+          coins: pkg.credits,
+          price: pkg.amount_inr,
+          pricePerCoin: pkg.amount_inr / pkg.credits,
+          discount: Math.round((1 - (pkg.amount_inr / pkg.credits)) * 100), // Calculate discount
+          popular: idx === 1, // Second package is popular
+        }));
+        setPackages(formattedPackages);
       } else {
-        toast.error('Razorpay not loaded. Please refresh.');
+        setPackages(defaultTiers);
       }
-    } catch (e) {
-      toast.error('Failed to initiate payment');
+
+      // Process transactions
+      if (historyRes.data.transactions) {
+        const formattedTx = historyRes.data.transactions.map(tx => ({
+          id: tx.id,
+          type: tx.reason === 'SIGNUP_BONUS' ? 'bonus' : tx.reason === 'PURCHASE' ? 'purchase' : 'spent',
+          amount: tx.amount > 0 ? tx.amount : 0,
+          coins: tx.amount,
+          date: new Date(tx.created_at).toLocaleDateString(),
+          description: tx.description || tx.reason
+        }));
+        setTransactions(formattedTx);
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      setPackages(defaultTiers);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
+
+  const handlePurchase = async (tier) => {
+    setIsPurchasing(true);
+    try {
+      const response = await paymentsAPI.createOrder(tier.id);
+      
+      if (response.data.order_id && window.Razorpay) {
+        const options = {
+          key: response.data.key_id || 'rzp_test_key',
+          amount: tier.price * 100, // Razorpay expects amount in paise
+          currency: 'INR',
+          name: 'TrueBond',
+          description: `${tier.coins} Coins - ${tier.name} Pack`,
+          order_id: response.data.order_id,
+          handler: async function(razorpayResponse) {
+            try {
+              await paymentsAPI.verifyPayment({
+                razorpay_order_id: razorpayResponse.razorpay_order_id,
+                razorpay_payment_id: razorpayResponse.razorpay_payment_id,
+                razorpay_signature: razorpayResponse.razorpay_signature,
+              });
+              toast.success(`Successfully purchased ${tier.coins} coins!`);
+              refreshCredits();
+              fetchData(); // Refresh transaction history
+            } catch (err) {
+              toast.error('Payment verification failed');
+            }
+          },
+          prefill: {
+            email: user?.email || '',
+            contact: user?.mobile_number || '',
+          },
+          theme: {
+            color: '#0F172A'
+          }
+        };
+        
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+      } else {
+        toast.info(`Demo: Would purchase ${tier.coins} coins for ₹${tier.price}`);
+      }
+    } catch (error) {
+      toast.error('Failed to create order. Please try again.');
+    } finally {
+      setIsPurchasing(false);
+    }
+  };
+
+  const pricingTiers = packages.length > 0 ? packages : defaultTiers;
+
+  if (isLoading) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 flex items-center justify-center h-[60vh]">
+        <Loader2 className="w-12 h-12 animate-spin text-[#0F172A]" />
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Wallet</h1>
-
+    <div className="max-w-4xl mx-auto px-4">
       {/* Balance Card */}
-      <div className="card bg-gradient-to-br from-purple-500 to-pink-500 text-white mb-8">
-        <div className="flex items-center justify-between">
+      <div className="bg-gradient-to-r from-[#0F172A] to-[#1E293B] rounded-3xl p-8 text-white mb-8">
+        <div className="flex items-center justify-between mb-6">
           <div>
-            <p className="text-white/80 mb-1">Current Balance</p>
-            <div className="text-5xl font-bold">{credits}</div>
-            <p className="text-white/60 text-sm mt-1">coins available</p>
+            <p className="text-white/70 text-sm mb-1">Your Balance</p>
+            <div className="flex items-center gap-3">
+              <Coins size={40} className="text-yellow-400" />
+              <span className="text-5xl font-bold">{user?.credits_balance || 0}</span>
+              <span className="text-white/70">coins</span>
+            </div>
           </div>
-          <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center">
-            <Coins size={40} className="text-white" />
+        </div>
+        {/* Coin Usage */}
+        <div className="grid grid-cols-3 gap-4 pt-4 border-t border-white/20">
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <MessageCircle size={18} className="text-white/80" />
+              <span className="text-lg font-bold">{MESSAGE_COST}</span>
+            </div>
+            <p className="text-xs text-white/60">coin/message</p>
+          </div>
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <Phone size={18} className="text-white/80" />
+              <span className="text-lg font-bold">{AUDIO_COST}</span>
+            </div>
+            <p className="text-xs text-white/60">coins/min audio</p>
+          </div>
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <Video size={18} className="text-white/80" />
+              <span className="text-lg font-bold">{VIDEO_COST}</span>
+            </div>
+            <p className="text-xs text-white/60">coins/min video</p>
           </div>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-6">
-        <button
-          onClick={() => setTab('buy')}
-          className={`px-6 py-3 rounded-xl font-medium transition-all ${
-            tab === 'buy'
-              ? 'bg-purple-500 text-white'
-              : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
-          }`}
-        >
-          <CreditCard size={18} className="inline mr-2" />
-          Buy Coins
-        </button>
-        <button
-          onClick={() => setTab('history')}
-          className={`px-6 py-3 rounded-xl font-medium transition-all ${
-            tab === 'history'
-              ? 'bg-purple-500 text-white'
-              : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
-          }`}
-        >
-          <History size={18} className="inline mr-2" />
-          History
-        </button>
+      {/* Buy Coins */}
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold text-[#0F172A] mb-6">Buy Coins</h2>
+        
+        <div className="grid md:grid-cols-3 gap-4">
+          {pricingTiers.map((tier, index) => (
+            <button
+              key={tier.id || index}
+              onClick={() => setSelectedTier(index)}
+              className={`rounded-2xl p-6 transition-all text-left relative ${
+                tier.popular
+                  ? 'bg-[#0F172A] text-white shadow-2xl scale-105'
+                  : selectedTier === index
+                  ? 'bg-white border-2 border-[#0F172A] shadow-xl'
+                  : 'bg-white border-2 border-gray-200 hover:border-[#0F172A]'
+              }`}
+            >
+              {tier.popular && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#FCE7F3] text-[#0F172A] text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
+                  <Sparkles size={12} />
+                  BEST VALUE
+                </div>
+              )}
+              
+              {tier.discount > 0 && (
+                <span className={`inline-block px-2 py-1 rounded text-xs font-bold mb-2 ${
+                  tier.popular ? 'bg-green-400 text-green-900' : 'bg-green-100 text-green-700'
+                }`}>
+                  {tier.discount}% OFF
+                </span>
+              )}
+              
+              <h3 className={`text-lg font-bold mb-1 ${tier.popular ? 'text-white' : 'text-[#0F172A]'}`}>
+                {tier.name}
+              </h3>
+              
+              <div className="flex items-baseline gap-1 mb-1">
+                <Coins size={20} className={tier.popular ? 'text-yellow-400' : 'text-yellow-500'} />
+                <span className={`text-3xl font-bold ${tier.popular ? 'text-white' : 'text-[#0F172A]'}`}>
+                  {tier.coins}
+                </span>
+              </div>
+              
+              <p className={`text-sm mb-4 ${tier.popular ? 'text-white/70' : 'text-gray-500'}`}>
+                ₹{tier.price} • ₹{tier.pricePerCoin.toFixed(2)}/coin
+              </p>
+              
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handlePurchase(tier);
+                }}
+                className={`w-full py-2.5 rounded-xl font-semibold text-center transition-all cursor-pointer ${
+                  tier.popular
+                    ? 'bg-white text-[#0F172A] hover:bg-gray-100'
+                    : 'bg-[#0F172A] text-white hover:bg-gray-800'
+                } ${isPurchasing ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                {isPurchasing ? 'Processing...' : 'Buy Now'}
+              </div>
+            </button>
+          ))}
+        </div>
       </div>
 
-      {tab === 'buy' ? (
-        <>
-          {/* Packages */}
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            {packages.map((pkg, i) => (
-              <button
-                key={pkg.id}
-                onClick={() => setSelectedPackage(pkg)}
-                className={`card text-left transition-all relative overflow-hidden ${
-                  selectedPackage?.id === pkg.id
-                    ? 'border-purple-500 ring-2 ring-purple-200'
-                    : 'hover:border-purple-300'
-                }`}
-              >
-                {i === 2 && (
-                  <div className="absolute top-2 right-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
-                    <Sparkles size={10} /> Popular
-                  </div>
-                )}
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-2xl font-bold text-gray-900">₹{pkg.amount_inr}</span>
-                  {selectedPackage?.id === pkg.id && (
-                    <div className="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center">
-                      <Check size={14} className="text-white" />
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <Coins size={18} className="text-purple-500" />
-                  <span className="text-lg text-gray-700">{pkg.credits} coins</span>
-                </div>
-                <p className="text-gray-400 text-sm mt-2">
-                  ₹{(pkg.amount_inr / pkg.credits).toFixed(2)} per coin
-                </p>
-              </button>
-            ))}
+      {/* How Coins Work */}
+      <div className="bg-[#E9D5FF]/30 rounded-2xl p-6 mb-8">
+        <h3 className="font-semibold text-[#0F172A] mb-4 flex items-center gap-2">
+          <Gift size={20} />
+          How Coins Work
+        </h3>
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+          <div className="flex items-start gap-3">
+            <MessageCircle size={18} className="text-[#0F172A] flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium text-[#0F172A]">1 Coin = 1 Message</p>
+              <p className="text-gray-600">Send thoughtful messages</p>
+            </div>
           </div>
+          <div className="flex items-start gap-3">
+            <Phone size={18} className="text-[#0F172A] flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium text-[#0F172A]">5 Coins = 1 Min Audio</p>
+              <p className="text-gray-600">Voice calls with matches</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <Video size={18} className="text-[#0F172A] flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium text-[#0F172A]">10 Coins = 1 Min Video</p>
+              <p className="text-gray-600">Face-to-face video calls</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <Check size={18} className="text-green-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium text-[#0F172A]">Coins Never Expire</p>
+              <p className="text-gray-600">Use them whenever you want</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
-          {/* Purchase Button */}
-          <button
-            onClick={handlePurchase}
-            disabled={!selectedPackage || loading}
-            className="btn-primary w-full py-4 flex items-center justify-center gap-3 disabled:opacity-50 text-lg"
-          >
-            <IndianRupee size={20} />
-            {loading
-              ? 'Processing...'
-              : selectedPackage
-              ? `Pay ₹${selectedPackage.amount_inr}`
-              : 'Select a package'}
-          </button>
-
-          <p className="text-center text-gray-400 text-sm mt-4">
-            🔒 Secure payment powered by Razorpay
-          </p>
-        </>
-      ) : (
-        /* History */
-        <div className="space-y-3">
-          {history.length === 0 ? (
-            <div className="text-center py-10 card">
-              <History size={48} className="text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">No transaction history yet</p>
+      {/* Transaction History */}
+      <div>
+        <h2 className="text-xl font-bold text-[#0F172A] mb-4 flex items-center gap-2">
+          <History size={20} />
+          Recent Transactions
+        </h2>
+        
+        <div className="bg-white rounded-2xl shadow-md overflow-hidden">
+          {transactions.length === 0 ? (
+            <div className="p-8 text-center text-gray-500">
+              <History size={32} className="mx-auto mb-2 text-gray-300" />
+              <p>No transactions yet</p>
             </div>
           ) : (
-            history.map((tx) => (
+            transactions.map((tx, index) => (
               <div
                 key={tx.id}
-                className="card flex items-center justify-between py-4"
+                className={`flex items-center justify-between p-4 ${
+                  index < transactions.length - 1 ? 'border-b border-gray-100' : ''
+                }`}
               >
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    tx.amount > 0 ? 'bg-green-100' : 'bg-red-100'
+                    tx.type === 'purchase' ? 'bg-green-100' :
+                    tx.type === 'bonus' ? 'bg-[#E9D5FF]' : 'bg-gray-100'
                   }`}>
-                    <TrendingUp size={18} className={tx.amount > 0 ? 'text-green-600' : 'text-red-600 rotate-180'} />
+                    {tx.type === 'purchase' ? <CreditCard size={18} className="text-green-600" /> :
+                     tx.type === 'bonus' ? <Gift size={18} className="text-[#0F172A]" /> :
+                     <Coins size={18} className="text-gray-600" />}
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900">
-                      {tx.reason === 'signup_bonus' && '🎁 Signup Bonus'}
-                      {tx.reason === 'message_sent' && '✉️ Message Sent'}
-                      {tx.reason === 'credit_purchase' && '💳 Credit Purchase'}
-                      {tx.reason === 'refund' && '🔄 Refund'}
-                    </p>
-                    <p className="text-gray-400 text-sm">
-                      {new Date(tx.created_at).toLocaleDateString()}
-                    </p>
+                    <p className="font-medium text-[#0F172A]">{tx.description}</p>
+                    <p className="text-xs text-gray-500">{tx.date}</p>
                   </div>
                 </div>
-                <div className={`text-lg font-bold ${
-                  tx.amount > 0 ? 'text-green-600' : 'text-red-500'
-                }`}>
-                  {tx.amount > 0 ? '+' : ''}{tx.amount}
+                <div className="text-right">
+                  <p className={`font-semibold ${
+                    tx.coins > 0 ? 'text-green-600' : 'text-gray-600'
+                  }`}>
+                    {tx.coins > 0 ? '+' : ''}{tx.coins} coins
+                  </p>
+                  {tx.amount > 0 && (
+                    <p className="text-xs text-gray-500">₹{tx.amount}</p>
+                  )}
                 </div>
               </div>
             ))
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 };

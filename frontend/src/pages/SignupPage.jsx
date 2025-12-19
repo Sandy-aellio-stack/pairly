@@ -1,377 +1,592 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ChevronRight, ChevronLeft, Eye, EyeOff, Heart, Plus, Trash2, Check, User, Mail, Lock, Phone, Calendar, Users, MapPin } from 'lucide-react';
-import gsap from 'gsap';
+import { Heart, Mail, Lock, Eye, EyeOff, ArrowRight, User, Check, Calendar, Users, MapPin, Camera, Phone } from 'lucide-react';
+import { toast } from 'sonner';
 import useAuthStore from '@/store/authStore';
-import CustomCursor from '@/components/CustomCursor';
+import api from '@/services/api';
+import HeartCursor from '@/components/HeartCursor';
 
 const SignupPage = () => {
   const navigate = useNavigate();
   const { signup } = useAuthStore();
   const [step, setStep] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [photos, setPhotos] = useState([]);
-  const [primaryPhoto, setPrimaryPhoto] = useState(0);
-  const fileInputRef = useRef(null);
-  const containerRef = useRef(null);
-
   const [formData, setFormData] = useState({
-    name: '', email: '', password: '', mobile_number: '', age: '', gender: '',
-    interested_in: '', intent: 'dating', min_age: 18, max_age: 50, max_distance_km: 50,
-    address_line: '', city: '', state: '', country: 'India', pincode: '',
+    // Step 1: Basic Info
+    name: '',
+    age: '',
+    gender: '',
+    // Step 2: Preferences
+    interested_in: '',
+    min_age: 18,
+    max_age: 50,
+    intent: 'dating',
+    // Step 3: Contact
+    email: '',
+    mobile_number: '',
+    password: '',
+    confirmPassword: '',
+    // Step 4: Address (Optional) & Image
+    address_line: '',
+    city: '',
+    state: '',
+    country: 'India',
+    pincode: '',
+    profile_image: null,
+    // Terms
+    agreeTerms: false,
   });
-
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      // Floating widgets
-      gsap.to('.signup-widget-1', { y: -25, x: 15, rotation: 6, duration: 4.5, ease: 'sine.inOut', yoyo: true, repeat: -1 });
-      gsap.to('.signup-widget-2', { y: 20, x: -10, rotation: -4, duration: 5, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 0.7 });
-      gsap.to('.signup-widget-3', { y: -18, x: 12, rotation: 5, duration: 4.2, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 1.2 });
-      gsap.to('.signup-widget-4', { y: 22, x: -18, rotation: -7, duration: 5.5, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 0.3 });
-      gsap.to('.signup-widget-5', { y: -20, x: 8, rotation: 3, duration: 4.8, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 1.5 });
-
-      // Blobs
-      gsap.to('.signup-blob-1', { x: 50, y: -40, duration: 9, ease: 'sine.inOut', yoyo: true, repeat: -1 });
-      gsap.to('.signup-blob-2', { x: -40, y: 50, duration: 11, ease: 'sine.inOut', yoyo: true, repeat: -1 });
-      gsap.to('.signup-blob-3', { x: 30, y: -30, duration: 8, ease: 'sine.inOut', yoyo: true, repeat: -1 });
-
-      // Pulsing
-      gsap.to('.signup-pulse', { scale: 1.4, opacity: 0.4, duration: 2.5, ease: 'sine.inOut', yoyo: true, repeat: -1, stagger: 0.4 });
-
-      // Card entrance
-      gsap.from('.signup-card', { y: 50, opacity: 0, duration: 1, ease: 'power3.out', delay: 0.2 });
-    }, containerRef);
-
-    return () => ctx.revert();
-  }, []);
-
-  useEffect(() => {
-    // Step transition animation
-    gsap.from('.step-content', { x: 30, opacity: 0, duration: 0.5, ease: 'power2.out' });
-  }, [step]);
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-    setError('');
-  };
-
-  const handlePhotoUpload = (e) => {
-    const files = Array.from(e.target.files);
-    const newPhotos = files.slice(0, 6 - photos.length).map((file) => ({
-      file, preview: URL.createObjectURL(file),
-    }));
-    setPhotos((prev) => [...prev, ...newPhotos].slice(0, 6));
-  };
-
-  const removePhoto = (index) => {
-    setPhotos((prev) => prev.filter((_, i) => i !== index));
-    if (primaryPhoto === index) setPrimaryPhoto(0);
-    else if (primaryPhoto > index) setPrimaryPhoto(primaryPhoto - 1);
-  };
-
-  const nextStep = () => {
-    if (step === 1 && (!formData.name || !formData.email || !formData.password)) {
-      setError('Please fill all fields'); return;
+    const { name, value, type, checked, files } = e.target;
+    if (type === 'file' && files[0]) {
+      setFormData({ ...formData, profile_image: files[0] });
+      setImagePreview(URL.createObjectURL(files[0]));
+    } else {
+      setFormData({ ...formData, [name]: type === 'checkbox' ? checked : value });
     }
-    if (step === 2 && (!formData.age || !formData.gender || !formData.mobile_number)) {
-      setError('Please fill all fields'); return;
-    }
-    if (step === 2 && parseInt(formData.age) < 18) {
-      setError('You must be 18 or older'); return;
-    }
-    if (step === 3 && !formData.interested_in) {
-      setError('Please select your preference'); return;
-    }
-    setError('');
-    setStep(step + 1);
   };
 
-  const prevStep = () => {
-    setError('');
-    setStep(step - 1);
+  const validateStep = () => {
+    switch (step) {
+      case 1:
+        if (!formData.name || formData.name.length < 2) {
+          toast.error('Please enter your name (min 2 characters)');
+          return false;
+        }
+        if (!formData.age || formData.age < 18) {
+          toast.error('You must be at least 18 years old');
+          return false;
+        }
+        if (!formData.gender) {
+          toast.error('Please select your gender');
+          return false;
+        }
+        return true;
+      case 2:
+        if (!formData.interested_in) {
+          toast.error('Please select who you want to meet');
+          return false;
+        }
+        return true;
+      case 3:
+        if (!formData.email) {
+          toast.error('Please enter your email');
+          return false;
+        }
+        if (!formData.mobile_number || formData.mobile_number.length < 10) {
+          toast.error('Please enter a valid mobile number');
+          return false;
+        }
+        if (!formData.password || formData.password.length < 8) {
+          toast.error('Password must be at least 8 characters');
+          return false;
+        }
+        if (formData.password !== formData.confirmPassword) {
+          toast.error('Passwords do not match');
+          return false;
+        }
+        return true;
+      case 4:
+        if (!formData.agreeTerms) {
+          toast.error('Please agree to the terms and conditions');
+          return false;
+        }
+        return true;
+      default:
+        return true;
+    }
   };
 
-  const handleSubmit = async () => {
-    setLoading(true);
-    setError('');
+  const handleNextStep = () => {
+    if (validateStep()) {
+      setStep(step + 1);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateStep()) return;
+
+    setIsLoading(true);
+
     try {
-      const data = {
-        ...formData,
+      const signupData = {
+        name: formData.name,
+        email: formData.email,
+        mobile_number: formData.mobile_number,
+        password: formData.password,
         age: parseInt(formData.age),
+        gender: formData.gender,
+        interested_in: formData.interested_in,
+        intent: formData.intent,
         min_age: parseInt(formData.min_age),
         max_age: parseInt(formData.max_age),
-        max_distance_km: parseInt(formData.max_distance_km),
-        profile_pictures: photos.map((p) => p.preview),
+        max_distance_km: 50,
+        address_line: formData.address_line || 'Not provided',
+        city: formData.city || 'Not provided',
+        state: formData.state || 'Not provided',
+        country: formData.country || 'India',
+        pincode: formData.pincode || '000000',
       };
-      await signup(data);
+
+      await signup(signupData);
+      
+      toast.success('Welcome to TrueBond! 🎉 You received 10 free coins!');
       navigate('/dashboard');
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Signup failed');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Registration failed. Please try again.');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const stepTitles = ['Basic Info', 'Personal Details', 'Preferences', 'Photos', 'Location'];
-  const stepIcons = [User, Calendar, Users, Plus, MapPin];
+  const steps = [
+    { num: 1, label: 'Basic Info', icon: User },
+    { num: 2, label: 'Preferences', icon: Heart },
+    { num: 3, label: 'Account', icon: Lock },
+    { num: 4, label: 'Complete', icon: Check },
+  ];
+
+  const genderOptions = [
+    { value: 'male', label: 'Male', emoji: '👨' },
+    { value: 'female', label: 'Female', emoji: '👩' },
+    { value: 'other', label: 'Other', emoji: '🧑' },
+  ];
+
+  const intentOptions = [
+    { value: 'dating', label: 'Dating', desc: 'Open to dating' },
+    { value: 'serious', label: 'Serious', desc: 'Looking for long-term' },
+    { value: 'casual', label: 'Casual', desc: 'Keeping it casual' },
+    { value: 'friendship', label: 'Friendship', desc: 'Just friends first' },
+  ];
 
   return (
-    <div ref={containerRef} className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50 flex items-center justify-center p-6 relative overflow-hidden">
-      <CustomCursor />
-
-      {/* Animated Background */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {/* Blobs */}
-        <div className="signup-blob-1 absolute top-[5%] right-[10%] w-[450px] h-[450px] rounded-full bg-purple-200/40 blur-[90px]" />
-        <div className="signup-blob-2 absolute bottom-[5%] left-[5%] w-[500px] h-[500px] rounded-full bg-pink-200/40 blur-[100px]" />
-        <div className="signup-blob-3 absolute top-[40%] left-[20%] w-[300px] h-[300px] rounded-full bg-purple-100/50 blur-[80px]" />
-
-        {/* Widgets */}
-        <div className="signup-widget-1 absolute top-[12%] left-[8%] bg-white rounded-2xl p-4 shadow-xl">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center">
-              <Heart size={20} className="text-white" fill="white" />
+    <div className="min-h-screen bg-[#F8FAFC] flex">
+      <HeartCursor />
+      
+      {/* Left Side - Image */}
+      <div className="hidden lg:flex w-2/5 bg-gradient-to-br from-[#E9D5FF] via-[#FCE7F3] to-[#DBEAFE] items-center justify-center p-12 sticky top-0 h-screen">
+        <div className="max-w-lg text-center">
+          <div className="relative">
+            <div className="w-64 h-64 mx-auto rounded-full bg-white/30 backdrop-blur-sm flex items-center justify-center">
+              <Heart size={120} className="text-rose-400" fill="currentColor" />
             </div>
-            <div>
-              <div className="text-sm font-semibold">Welcome!</div>
-              <div className="text-xs text-gray-500">Join TrueBond</div>
+            <div className="absolute -top-4 -left-4 w-20 h-20 rounded-full bg-white shadow-lg flex items-center justify-center animate-float">
+              <span className="text-3xl">🌟</span>
+            </div>
+            <div className="absolute -bottom-4 -right-4 w-16 h-16 rounded-full bg-white shadow-lg flex items-center justify-center animate-float-delay-1">
+              <span className="text-2xl">💝</span>
             </div>
           </div>
-        </div>
-
-        <div className="signup-widget-2 absolute top-[20%] right-[12%] bg-white rounded-2xl p-4 shadow-xl">
-          <div className="flex gap-2">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-300 to-pink-300" />
-            ))}
-          </div>
-          <div className="text-xs text-gray-500 mt-2">1000+ matches daily</div>
-        </div>
-
-        <div className="signup-widget-3 absolute bottom-[25%] left-[6%] bg-white rounded-xl p-3 shadow-lg">
-          <div className="flex items-center gap-2">
-            <MapPin size={18} className="text-purple-500" />
-            <span className="text-sm">Find nearby</span>
-          </div>
-        </div>
-
-        <div className="signup-widget-4 absolute bottom-[15%] right-[8%] bg-white rounded-2xl p-4 shadow-xl">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-              <Check size={18} className="text-green-600" />
-            </div>
-            <span className="text-sm">100% Safe</span>
-          </div>
-        </div>
-
-        <div className="signup-widget-5 absolute top-[50%] left-[15%] bg-white rounded-xl p-3 shadow-lg">
-          <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
-            <Users size={30} className="text-purple-400" />
+          <h2 className="text-2xl font-bold text-[#0F172A] mt-8">Start Your Journey</h2>
+          <p className="text-gray-600 mt-2">Create meaningful connections that last a lifetime</p>
+          
+          {/* Signup Benefits */}
+          <div className="mt-8 text-left bg-white/50 rounded-xl p-6 backdrop-blur-sm">
+            <p className="font-semibold text-[#0F172A] mb-3">What you get:</p>
+            <ul className="space-y-2 text-sm text-gray-700">
+              <li className="flex items-center gap-2">
+                <Check size={16} className="text-green-500" />
+                10 free conversation coins
+              </li>
+              <li className="flex items-center gap-2">
+                <Check size={16} className="text-green-500" />
+                Verified profile badge
+              </li>
+              <li className="flex items-center gap-2">
+                <Check size={16} className="text-green-500" />
+                Find people nearby
+              </li>
+              <li className="flex items-center gap-2">
+                <Check size={16} className="text-green-500" />
+                Privacy protected
+              </li>
+            </ul>
           </div>
         </div>
-
-        {/* Pulsing dots */}
-        <div className="signup-pulse absolute top-[25%] left-[35%] w-4 h-4 rounded-full bg-purple-400" />
-        <div className="signup-pulse absolute top-[35%] right-[30%] w-3 h-3 rounded-full bg-pink-400" />
-        <div className="signup-pulse absolute bottom-[30%] left-[40%] w-5 h-5 rounded-full bg-purple-300" />
-        <div className="signup-pulse absolute bottom-[40%] right-[35%] w-4 h-4 rounded-full bg-pink-300" />
       </div>
 
-      {/* Signup Card */}
-      <div className="signup-card relative z-10 bg-white/80 backdrop-blur-xl rounded-3xl p-8 w-full max-w-lg shadow-2xl shadow-purple-200/30">
-        {/* Logo */}
-        <div className="flex items-center justify-center gap-3 mb-6">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-            <Heart size={24} className="text-white" fill="white" />
-          </div>
-          <span className="text-xl font-bold text-gray-900">TrueBond</span>
-        </div>
-
-        {/* Step Indicator */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-gray-900">{stepTitles[step - 1]}</h2>
-            <span className="text-sm text-gray-500">Step {step} of 5</span>
-          </div>
-          <div className="flex gap-2">
-            {[1, 2, 3, 4, 5].map((s) => (
-              <div key={s} className={`h-2 flex-1 rounded-full transition-colors ${s <= step ? 'bg-gradient-to-r from-purple-500 to-pink-500' : 'bg-gray-200'}`} />
-            ))}
-          </div>
-        </div>
-
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl mb-6 text-sm">
-            {error}
-          </div>
-        )}
-
-        <div className="step-content">
-          {/* Step 1 */}
-          {step === 1 && (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
-                <div className="relative">
-                  <User size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input type="text" name="name" value={formData.name} onChange={handleChange} className="input pl-12" placeholder="Your name" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                <div className="relative">
-                  <Mail size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input type="email" name="email" value={formData.email} onChange={handleChange} className="input pl-12" placeholder="hello@example.com" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
-                <div className="relative">
-                  <Lock size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input type={showPassword ? 'text' : 'password'} name="password" value={formData.password} onChange={handleChange} className="input pl-12 pr-12" placeholder="Min 8 characters" minLength={8} />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                  </button>
-                </div>
-              </div>
+      {/* Right Side - Form */}
+      <div className="flex-1 flex items-center justify-center px-6 py-12 overflow-y-auto">
+        <div className="w-full max-w-lg">
+          {/* Logo */}
+          <Link to="/" className="flex items-center gap-3 mb-6">
+            <div className="w-12 h-12 rounded-xl bg-[#0F172A] flex items-center justify-center">
+              <Heart size={24} className="text-white" fill="white" />
             </div>
-          )}
+            <span className="text-2xl font-bold text-[#0F172A]">TrueBond</span>
+          </Link>
 
-          {/* Step 2 */}
-          {step === 2 && (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Mobile Number</label>
-                <div className="relative">
-                  <Phone size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input type="tel" name="mobile_number" value={formData.mobile_number} onChange={handleChange} className="input pl-12" placeholder="+91 9876543210" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Age</label>
-                <div className="relative">
-                  <Calendar size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input type="number" name="age" value={formData.age} onChange={handleChange} className="input pl-12" placeholder="18+" min={18} />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
-                <select name="gender" value={formData.gender} onChange={handleChange} className="input">
-                  <option value="">Select</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-            </div>
-          )}
-
-          {/* Step 3 */}
-          {step === 3 && (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Interested In</label>
-                <select name="interested_in" value={formData.interested_in} onChange={handleChange} className="input">
-                  <option value="">Select</option>
-                  <option value="male">Men</option>
-                  <option value="female">Women</option>
-                  <option value="other">Everyone</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Looking For</label>
-                <select name="intent" value={formData.intent} onChange={handleChange} className="input">
-                  <option value="dating">Dating</option>
-                  <option value="serious">Serious Relationship</option>
-                  <option value="casual">Casual</option>
-                  <option value="friendship">Friendship</option>
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Min Age</label>
-                  <input type="number" name="min_age" value={formData.min_age} onChange={handleChange} className="input" min={18} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Max Age</label>
-                  <input type="number" name="max_age" value={formData.max_age} onChange={handleChange} className="input" max={100} />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Step 4 - Photos */}
-          {step === 4 && (
-            <div className="space-y-4">
-              <p className="text-sm text-gray-600">Add up to 6 photos. Tap the star to set as primary.</p>
-              <div className="grid grid-cols-3 gap-3">
-                {photos.map((photo, i) => (
-                  <div key={i} className="relative aspect-square group">
-                    <img src={photo.preview} alt="" className="w-full h-full object-cover rounded-xl" />
-                    <button onClick={() => removePhoto(i)} className="absolute top-1 right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Trash2 size={12} />
-                    </button>
-                    <button onClick={() => setPrimaryPhoto(i)} className={`absolute bottom-1 left-1 w-6 h-6 rounded-full flex items-center justify-center text-white transition-all ${primaryPhoto === i ? 'bg-green-500' : 'bg-black/50 opacity-0 group-hover:opacity-100'}`}>
-                      <Check size={12} />
-                    </button>
+          {/* Progress Steps */}
+          <div className="flex items-center justify-between mb-8">
+            {steps.map((s, i) => (
+              <div key={s.num} className="flex items-center">
+                <div className="flex flex-col items-center">
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center font-semibold transition-all ${
+                    step >= s.num ? 'bg-[#0F172A] text-white' : 'bg-gray-200 text-gray-500'
+                  }`}>
+                    {step > s.num ? <Check size={20} /> : <s.icon size={20} />}
                   </div>
-                ))}
-                {photos.length < 6 && (
-                  <button onClick={() => fileInputRef.current?.click()} className="aspect-square border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-purple-400 hover:text-purple-500 transition-colors">
-                    <Plus size={28} />
-                    <span className="text-xs mt-1">Add Photo</span>
-                  </button>
+                  <span className={`text-xs mt-1 ${step >= s.num ? 'text-[#0F172A]' : 'text-gray-400'}`}>
+                    {s.label}
+                  </span>
+                </div>
+                {i < steps.length - 1 && (
+                  <div className={`w-12 h-1 mx-2 rounded transition-all ${
+                    step > s.num ? 'bg-[#0F172A]' : 'bg-gray-200'
+                  }`} />
                 )}
               </div>
-              <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handlePhotoUpload} className="hidden" />
+            ))}
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Step 1: Basic Info */}
+            {step === 1 && (
+              <>
+                <h1 className="text-2xl font-bold text-[#0F172A] mb-2">Tell us about yourself</h1>
+                <p className="text-gray-600 mb-6">Let's start with the basics</p>
+                
+                <div>
+                  <label className="block text-sm font-medium text-[#0F172A] mb-2">Full Name</label>
+                  <div className="relative">
+                    <User size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      placeholder="Your name"
+                      className="w-full pl-12 pr-4 py-4 rounded-xl border border-gray-200 focus:border-[#0F172A] focus:ring-2 focus:ring-[#E9D5FF] outline-none transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-[#0F172A] mb-2">Age</label>
+                  <div className="relative">
+                    <Calendar size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="number"
+                      name="age"
+                      value={formData.age}
+                      onChange={handleChange}
+                      placeholder="Your age (18+)"
+                      min="18"
+                      max="100"
+                      className="w-full pl-12 pr-4 py-4 rounded-xl border border-gray-200 focus:border-[#0F172A] focus:ring-2 focus:ring-[#E9D5FF] outline-none transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-[#0F172A] mb-2">I am a</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {genderOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, gender: option.value })}
+                        className={`p-4 rounded-xl border-2 transition-all text-center ${
+                          formData.gender === option.value
+                            ? 'border-[#0F172A] bg-[#E9D5FF]/30'
+                            : 'border-gray-200 hover:border-[#E9D5FF]'
+                        }`}
+                      >
+                        <span className="text-2xl block mb-1">{option.emoji}</span>
+                        <span className="text-sm font-medium text-[#0F172A]">{option.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Step 2: Preferences */}
+            {step === 2 && (
+              <>
+                <h1 className="text-2xl font-bold text-[#0F172A] mb-2">Who do you want to meet?</h1>
+                <p className="text-gray-600 mb-6">Help us find the right people for you</p>
+                
+                <div>
+                  <label className="block text-sm font-medium text-[#0F172A] mb-2">I'm interested in</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {genderOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, interested_in: option.value })}
+                        className={`p-4 rounded-xl border-2 transition-all text-center ${
+                          formData.interested_in === option.value
+                            ? 'border-[#0F172A] bg-[#E9D5FF]/30'
+                            : 'border-gray-200 hover:border-[#E9D5FF]'
+                        }`}
+                      >
+                        <span className="text-2xl block mb-1">{option.emoji}</span>
+                        <span className="text-sm font-medium text-[#0F172A]">{option.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-[#0F172A] mb-2">
+                    Age Range: {formData.min_age} - {formData.max_age} years
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="range"
+                      name="min_age"
+                      min="18"
+                      max="80"
+                      value={formData.min_age}
+                      onChange={handleChange}
+                      className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#0F172A]"
+                    />
+                    <span className="text-sm text-gray-600">to</span>
+                    <input
+                      type="range"
+                      name="max_age"
+                      min="18"
+                      max="100"
+                      value={formData.max_age}
+                      onChange={handleChange}
+                      className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#0F172A]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-[#0F172A] mb-2">What are you looking for?</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {intentOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, intent: option.value })}
+                        className={`p-4 rounded-xl border-2 transition-all text-left ${
+                          formData.intent === option.value
+                            ? 'border-[#0F172A] bg-[#E9D5FF]/30'
+                            : 'border-gray-200 hover:border-[#E9D5FF]'
+                        }`}
+                      >
+                        <span className="font-semibold text-[#0F172A] block">{option.label}</span>
+                        <span className="text-xs text-gray-500">{option.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Step 3: Account */}
+            {step === 3 && (
+              <>
+                <h1 className="text-2xl font-bold text-[#0F172A] mb-2">Create your account</h1>
+                <p className="text-gray-600 mb-6">Secure your profile</p>
+
+                <div>
+                  <label className="block text-sm font-medium text-[#0F172A] mb-2">Email</label>
+                  <div className="relative">
+                    <Mail size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      placeholder="hello@example.com"
+                      className="w-full pl-12 pr-4 py-4 rounded-xl border border-gray-200 focus:border-[#0F172A] focus:ring-2 focus:ring-[#E9D5FF] outline-none transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-[#0F172A] mb-2">Mobile Number</label>
+                  <div className="relative">
+                    <Phone size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="tel"
+                      name="mobile_number"
+                      value={formData.mobile_number}
+                      onChange={handleChange}
+                      placeholder="+91 98765 43210"
+                      className="w-full pl-12 pr-4 py-4 rounded-xl border border-gray-200 focus:border-[#0F172A] focus:ring-2 focus:ring-[#E9D5FF] outline-none transition-all"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">This will be kept private</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-[#0F172A] mb-2">Password</label>
+                  <div className="relative">
+                    <Lock size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      placeholder="Min 8 characters"
+                      className="w-full pl-12 pr-12 py-4 rounded-xl border border-gray-200 focus:border-[#0F172A] focus:ring-2 focus:ring-[#E9D5FF] outline-none transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-[#0F172A] mb-2">Confirm Password</label>
+                  <div className="relative">
+                    <Lock size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      name="confirmPassword"
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      placeholder="Confirm your password"
+                      className="w-full pl-12 pr-4 py-4 rounded-xl border border-gray-200 focus:border-[#0F172A] focus:ring-2 focus:ring-[#E9D5FF] outline-none transition-all"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Step 4: Complete (Address Optional + Image + Terms) */}
+            {step === 4 && (
+              <>
+                <h1 className="text-2xl font-bold text-[#0F172A] mb-2">Almost done!</h1>
+                <p className="text-gray-600 mb-6">Add optional details (address is kept private)</p>
+
+                {/* Profile Image (Optional) */}
+                <div>
+                  <label className="block text-sm font-medium text-[#0F172A] mb-2">Profile Photo (Optional)</label>
+                  <div className="flex items-center gap-4">
+                    <div className="w-20 h-20 rounded-full bg-[#E9D5FF]/50 flex items-center justify-center overflow-hidden border-2 border-dashed border-[#0F172A]/30">
+                      {imagePreview ? (
+                        <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                      ) : (
+                        <Camera size={24} className="text-[#0F172A]/50" />
+                      )}
+                    </div>
+                    <label className="flex-1">
+                      <input
+                        type="file"
+                        name="profile_image"
+                        accept="image/*"
+                        onChange={handleChange}
+                        className="hidden"
+                      />
+                      <span className="block px-4 py-2 bg-white border border-gray-200 rounded-lg text-center cursor-pointer hover:bg-gray-50 transition-colors">
+                        Choose Photo
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Address Fields (Optional) */}
+                <div className="bg-gray-50 rounded-xl p-4 space-y-4">
+                  <p className="text-sm font-medium text-[#0F172A] flex items-center gap-2">
+                    <MapPin size={16} />
+                    Address (Optional - Never shown to others)
+                  </p>
+                  
+                  <input
+                    type="text"
+                    name="city"
+                    value={formData.city}
+                    onChange={handleChange}
+                    placeholder="City"
+                    className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[#0F172A] outline-none transition-all text-sm"
+                  />
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <input
+                      type="text"
+                      name="state"
+                      value={formData.state}
+                      onChange={handleChange}
+                      placeholder="State"
+                      className="px-4 py-3 rounded-lg border border-gray-200 focus:border-[#0F172A] outline-none transition-all text-sm"
+                    />
+                    <input
+                      type="text"
+                      name="pincode"
+                      value={formData.pincode}
+                      onChange={handleChange}
+                      placeholder="Pincode"
+                      className="px-4 py-3 rounded-lg border border-gray-200 focus:border-[#0F172A] outline-none transition-all text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Terms */}
+                <label className="flex items-start gap-3 bg-[#E9D5FF]/20 p-4 rounded-xl">
+                  <input
+                    type="checkbox"
+                    name="agreeTerms"
+                    checked={formData.agreeTerms}
+                    onChange={handleChange}
+                    className="w-5 h-5 rounded border-gray-300 text-[#0F172A] focus:ring-[#E9D5FF] mt-0.5"
+                  />
+                  <span className="text-sm text-gray-600">
+                    I agree to the{' '}
+                    <Link to="/terms" className="text-[#0F172A] font-medium hover:underline">Terms of Service</Link>
+                    {' '}and{' '}
+                    <Link to="/privacy" className="text-[#0F172A] font-medium hover:underline">Privacy Policy</Link>
+                    . I confirm I am at least 18 years old.
+                  </span>
+                </label>
+              </>
+            )}
+
+            {/* Navigation Buttons */}
+            <div className="flex gap-3">
+              {step > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setStep(step - 1)}
+                  className="flex-1 py-4 border-2 border-gray-200 text-gray-600 rounded-xl font-semibold hover:border-[#0F172A] hover:text-[#0F172A] transition-all"
+                >
+                  ← Back
+                </button>
+              )}
+              
+              {step < 4 ? (
+                <button
+                  type="button"
+                  onClick={handleNextStep}
+                  className="flex-1 py-4 bg-[#0F172A] text-white rounded-xl font-semibold hover:bg-gray-800 transition-all flex items-center justify-center gap-2"
+                >
+                  Continue
+                  <ArrowRight size={20} />
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="flex-1 py-4 bg-[#0F172A] text-white rounded-xl font-semibold hover:bg-gray-800 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isLoading ? 'Creating Account...' : 'Create Account'}
+                  <ArrowRight size={20} />
+                </button>
+              )}
             </div>
-          )}
+          </form>
 
-          {/* Step 5 - Address */}
-          {step === 5 && (
-            <div className="space-y-4">
-              <div className="bg-purple-50 p-4 rounded-xl">
-                <p className="text-sm text-purple-700">🔒 Your address is private and never shown to others</p>
-              </div>
-              <input name="address_line" value={formData.address_line} onChange={handleChange} className="input" placeholder="Address Line" />
-              <div className="grid grid-cols-2 gap-4">
-                <input name="city" value={formData.city} onChange={handleChange} className="input" placeholder="City" />
-                <input name="state" value={formData.state} onChange={handleChange} className="input" placeholder="State" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <input name="country" value={formData.country} onChange={handleChange} className="input" placeholder="Country" />
-                <input name="pincode" value={formData.pincode} onChange={handleChange} className="input" placeholder="Pincode" />
-              </div>
-            </div>
-          )}
+          <p className="text-center mt-6 text-gray-600">
+            Already have an account?{' '}
+            <Link to="/login" className="text-[#0F172A] font-semibold hover:underline">
+              Sign in
+            </Link>
+          </p>
         </div>
-
-        {/* Navigation */}
-        <div className="flex gap-3 mt-8">
-          {step > 1 && (
-            <button type="button" onClick={prevStep} className="btn-ghost flex-1 flex items-center justify-center gap-2">
-              <ChevronLeft size={18} /> Back
-            </button>
-          )}
-          {step < 5 ? (
-            <button type="button" onClick={nextStep} className="btn-primary flex-1 flex items-center justify-center gap-2">
-              Next <ChevronRight size={18} />
-            </button>
-          ) : (
-            <button type="button" onClick={handleSubmit} disabled={loading} className="btn-primary flex-1 disabled:opacity-50">
-              {loading ? 'Creating Account...' : 'Create Account'}
-            </button>
-          )}
-        </div>
-
-        <p className="text-center text-gray-500 mt-6 text-sm">
-          Already have an account?{' '}
-          <Link to="/login" className="text-purple-600 font-semibold hover:underline">Sign in</Link>
-        </p>
-
-        <Link to="/" className="block text-center text-gray-400 hover:text-gray-600 mt-4 text-sm">← Back to home</Link>
       </div>
     </div>
   );

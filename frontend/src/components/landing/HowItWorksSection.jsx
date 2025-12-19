@@ -1,114 +1,101 @@
-import { useEffect, useRef } from 'react';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { UserPlus, Coins, MessageCircle, CreditCard } from 'lucide-react';
-
-gsap.registerPlugin(ScrollTrigger);
+import { useState } from 'react';
+import { UserPlus, Sparkles, MessageCircle, Heart, Users, Clock, Check } from 'lucide-react';
 
 const steps = [
   {
-    icon: UserPlus,
-    title: 'Sign Up',
-    description: 'Create your profile in seconds. Add photos and tell us about yourself.',
-    color: 'from-purple-500 to-purple-600',
+    id: 1,
+    title: 'Create Your Profile',
+    description: 'Tell us about yourself—your interests, values, and what kind of connection you are looking for.',
+    timeframe: '10-15 min',
+    Icon: UserPlus,
   },
   {
-    icon: Coins,
-    title: 'Get 10 Free Coins',
-    description: 'Start with 10 free coins to begin your journey of discovery.',
-    color: 'from-purple-600 to-pink-500',
+    id: 2,
+    title: 'Get Matched',
+    description: 'We find people who share your interests and relationship goals.',
+    timeframe: 'Instant',
+    Icon: Sparkles,
   },
   {
-    icon: MessageCircle,
-    title: 'Message Nearby People',
-    description: 'Use coins to send messages. Each message costs 1 coin.',
-    color: 'from-pink-500 to-purple-500',
+    id: 3,
+    title: 'Start Talking',
+    description: 'Send a message to someone who caught your attention. Quality over quantity.',
+    timeframe: 'Same day',
+    Icon: MessageCircle,
   },
   {
-    icon: CreditCard,
-    title: 'Buy More When Needed',
-    description: 'Purchase coins starting from just ₹100 when you run out.',
-    color: 'from-purple-500 to-indigo-500',
+    id: 4,
+    title: 'Build Connection',
+    description: 'Take your time getting to know each other through real conversations.',
+    timeframe: '1-2 weeks',
+    Icon: Heart,
+  },
+  {
+    id: 5,
+    title: 'Meet Up',
+    description: 'When you are both ready, take it offline and meet in person.',
+    timeframe: 'Your pace',
+    Icon: Users,
   },
 ];
 
 const HowItWorksSection = () => {
-  const sectionRef = useRef(null);
-  const titleRef = useRef(null);
-  const cardsRef = useRef([]);
-
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      // Title animation
-      gsap.from(titleRef.current, {
-        y: 50,
-        opacity: 0,
-        duration: 1,
-        ease: 'power3.out',
-        scrollTrigger: {
-          trigger: titleRef.current,
-          start: 'top 80%',
-        },
-      });
-
-      // Cards stagger animation
-      cardsRef.current.forEach((card, i) => {
-        gsap.from(card, {
-          y: 100,
-          opacity: 0,
-          duration: 0.8,
-          ease: 'power3.out',
-          scrollTrigger: {
-            trigger: card,
-            start: 'top 85%',
-          },
-          delay: i * 0.15,
-        });
-      });
-    }, sectionRef);
-
-    return () => ctx.revert();
-  }, []);
+  const [activeStep, setActiveStep] = useState(0);
 
   return (
-    <section ref={sectionRef} className="section py-32 px-6">
-      <div className="max-w-7xl mx-auto">
-        <div ref={titleRef} className="text-center mb-20">
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
-            How It <span className="gradient-text">Works</span>
+    <section id="how-it-works" className="py-28 bg-white lg:pl-20">
+      <div className="container mx-auto px-6">
+        <div className="text-center max-w-3xl mx-auto mb-16">
+          <span className="text-sm font-semibold text-[#7C3AED] uppercase tracking-wider">How It Works</span>
+          <h2 className="text-4xl md:text-5xl font-bold text-[#0F172A] mt-4 mb-4">
+            Five Simple Steps
           </h2>
-          <p className="text-xl text-white/60 max-w-2xl mx-auto">
-            Getting started is simple. Follow these steps to find your bond.
+          <p className="text-xl text-gray-600">
+            No pressure, no rush—just a natural path to connection.
           </p>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {steps.map((step, index) => (
-            <div
-              key={index}
-              ref={(el) => (cardsRef.current[index] = el)}
-              className="card-dark relative group hover:border-purple-500/30 transition-all duration-500"
-            >
-              {/* Step number */}
-              <div className="absolute -top-4 -right-4 w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center font-bold text-lg">
-                {index + 1}
-              </div>
-
-              {/* Icon */}
-              <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${step.color} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500`}>
-                <step.icon size={28} className="text-white" />
-              </div>
-
-              {/* Content */}
-              <h3 className="text-xl font-bold mb-3">{step.title}</h3>
-              <p className="text-white/60">{step.description}</p>
-
-              {/* Connector line */}
-              {index < steps.length - 1 && (
-                <div className="hidden lg:block absolute top-1/2 -right-3 w-6 h-0.5 bg-gradient-to-r from-purple-500/50 to-transparent" />
-              )}
-            </div>
-          ))}
+        
+        <div className="max-w-4xl mx-auto">
+          <div className="relative">
+            <div className="absolute left-8 top-8 bottom-8 w-0.5 bg-[#E9D5FF] hidden md:block"></div>
+            
+            {steps.map((step, index) => {
+              const IconComponent = step.Icon;
+              return (
+                <button
+                  key={step.id}
+                  onClick={() => setActiveStep(index)}
+                  className={`w-full flex items-start mb-6 last:mb-0 text-left transition-all ${
+                    activeStep === index ? 'scale-[1.02]' : ''
+                  }`}
+                >
+                  <div className={`flex-shrink-0 w-16 h-16 rounded-full flex items-center justify-center transition-all z-10 ${
+                    activeStep === index
+                      ? 'bg-[#0F172A] shadow-lg'
+                      : 'bg-[#E9D5FF]'
+                  }`}>
+                    <IconComponent
+                      size={28}
+                      className={activeStep === index ? 'text-white' : 'text-[#0F172A]'}
+                    />
+                  </div>
+                  
+                  <div className={`ml-6 flex-1 rounded-2xl p-6 transition-all ${
+                    activeStep === index
+                      ? 'bg-[#E9D5FF]/50 border-2 border-[#0F172A] shadow-lg'
+                      : 'bg-gray-50'
+                  }`}>
+                    <h3 className="text-xl font-semibold text-[#0F172A] mb-2">{step.title}</h3>
+                    <p className="text-gray-600 mb-3">{step.description}</p>
+                    <span className="px-3 py-1 bg-white text-[#0F172A] rounded-full text-sm font-medium border border-[#E9D5FF] inline-flex items-center">
+                      <Clock size={14} className="mr-1" />
+                      {step.timeframe}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     </section>

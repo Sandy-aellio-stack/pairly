@@ -1,66 +1,76 @@
-import { useEffect, useRef } from 'react';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { Heart, ArrowRight } from 'lucide-react';
+import { Heart, ArrowRight, Check, MessageCircle, Phone, Video } from 'lucide-react';
 
-gsap.registerPlugin(ScrollTrigger);
-
-const CTASection = ({ onJoinClick }) => {
-  const sectionRef = useRef(null);
-  const contentRef = useRef(null);
-
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      gsap.from(contentRef.current, {
-        y: 80,
-        opacity: 0,
-        duration: 1,
-        ease: 'power3.out',
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          start: 'top 70%',
-        },
-      });
-    }, sectionRef);
-
-    return () => ctx.revert();
-  }, []);
-
+const CTASection = ({ onGetStarted }) => {
   return (
-    <section ref={sectionRef} className="section py-32 px-6 relative overflow-hidden">
-      {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-t from-purple-900/30 via-transparent to-transparent" />
-      
+    <section
+      id="cta"
+      className="relative py-28 overflow-hidden"
+      style={{
+        backgroundImage: `linear-gradient(rgba(15, 23, 42, 0.6), rgba(15, 23, 42, 0.7)), url('https://customer-assets.emergentagent.com/job_datebond/artifacts/urcyl3fg_WhatsApp%20Image%202025-12-15%20at%2015.05.44%20%282%29.jpeg')`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
       {/* Decorative elements */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl" />
-      <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-pink-500/10 rounded-full blur-3xl" />
-
-      <div ref={contentRef} className="max-w-4xl mx-auto text-center relative z-10">
-        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 mb-8 animate-pulse-purple">
-          <Heart size={40} className="text-white" fill="white" />
+      <div className="absolute top-0 left-0 w-64 h-64 bg-[#E9D5FF]/10 rounded-full blur-3xl"></div>
+      <div className="absolute bottom-0 right-0 w-80 h-80 bg-[#DBEAFE]/10 rounded-full blur-3xl"></div>
+      
+      <div className="container mx-auto px-6 relative z-10">
+        <div className="max-w-4xl mx-auto text-center text-white space-y-8">
+          <Heart size={56} className="mx-auto text-[#E9D5FF]" fill="currentColor" />
+          
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold">
+            Ready to Meet Someone Real?
+          </h2>
+          
+          <p className="text-xl text-white/90 max-w-2xl mx-auto">
+            Join TrueBond and start having conversations that actually matter.
+            No games, no gimmicks—just real people looking for real connection.
+          </p>
+          
+          {/* Coin reminder */}
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 max-w-md mx-auto">
+            <p className="text-sm text-white/80 mb-3">Start with 10 free coins</p>
+            <div className="flex justify-center gap-6 text-sm">
+              <div className="flex items-center gap-1">
+                <MessageCircle size={16} />
+                <span>1 coin/msg</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Phone size={16} />
+                <span>5 coins/min</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Video size={16} />
+                <span>10 coins/min</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+            <button
+              onClick={onGetStarted}
+              className="px-8 py-4 bg-white text-[#0F172A] rounded-full font-semibold shadow-lg hover:bg-gray-100 transition-all hover:scale-105 flex items-center justify-center space-x-2 group"
+            >
+              <span>Get Started Free</span>
+              <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+            </button>
+            <button className="px-8 py-4 bg-transparent text-white border-2 border-white rounded-full font-semibold hover:bg-white/10 transition-all">
+              Learn More
+            </button>
+          </div>
+          
+          <div className="flex items-center justify-center space-x-6 pt-6 text-sm opacity-80">
+            <div className="flex items-center space-x-2">
+              <Check size={18} />
+              <span>No credit card required</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Check size={18} />
+              <span>10 free coins to start</span>
+            </div>
+          </div>
         </div>
-
-        <h2 className="text-4xl md:text-5xl lg:text-7xl font-bold mb-6">
-          Create your
-          <br />
-          <span className="gradient-text">TrueBond</span>
-        </h2>
-
-        <p className="text-xl text-white/60 max-w-xl mx-auto mb-12">
-          Join thousands of people finding meaningful connections every day. Your perfect match might be just around the corner.
-        </p>
-
-        <button
-          onClick={onJoinClick}
-          className="btn-primary text-xl px-12 py-6 inline-flex items-center gap-3 group"
-        >
-          Get Started Free
-          <ArrowRight size={24} className="group-hover:translate-x-2 transition-transform" />
-        </button>
-
-        <p className="text-white/40 mt-6">
-          10 free coins • No credit card required
-        </p>
       </div>
     </section>
   );

@@ -14,8 +14,8 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
 
 # Configuration
-BACKEND_URL = "https://bond-match.preview.emergentagent.com/api"
-WEBHOOK_BASE_URL = "https://bond-match.preview.emergentagent.com/api/webhooks"
+BACKEND_URL = "https://datemate-70.preview.emergentagent.com/api"
+WEBHOOK_BASE_URL = "https://datemate-70.preview.emergentagent.com/api/webhooks"
 
 class PairlyTester:
     def __init__(self):

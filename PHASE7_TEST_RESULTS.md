@@ -79,7 +79,7 @@ Total: 10/10 tests passed (100% success rate)
 **Result:** PASS
 
 **Test Cases:**
-1. ✅ Allowed origin (https://bond-match.preview.emergentagent.com): Accepted
+1. ✅ Allowed origin (https://datemate-70.preview.emergentagent.com): Accepted
 2. ✅ Unauthorized origin (https://malicious-site.com): Rejected
 
 **Configuration:**

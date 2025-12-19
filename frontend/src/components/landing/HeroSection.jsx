@@ -1,146 +1,120 @@
-import { useEffect, useRef } from 'react';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { Search, Sparkles } from 'lucide-react';
+import { Heart, ArrowRight, Shield, Lock, Users } from 'lucide-react';
 
-gsap.registerPlugin(ScrollTrigger);
-
-const HeroSection = ({ onJoinClick, onLoginClick }) => {
-  const sectionRef = useRef(null);
-  const titleRef = useRef(null);
-  const subtitleRef = useRef(null);
-  const ctaRef = useRef(null);
-  const orbitRef = useRef(null);
-
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      // Title animation
-      gsap.from(titleRef.current, {
-        y: 100,
-        opacity: 0,
-        duration: 1.2,
-        ease: 'power4.out',
-        delay: 0.5,
-      });
-
-      // Subtitle animation
-      gsap.from(subtitleRef.current, {
-        y: 50,
-        opacity: 0,
-        duration: 1,
-        ease: 'power3.out',
-        delay: 0.8,
-      });
-
-      // CTA buttons animation
-      gsap.from(ctaRef.current.children, {
-        y: 30,
-        opacity: 0,
-        duration: 0.8,
-        stagger: 0.15,
-        ease: 'power3.out',
-        delay: 1.1,
-      });
-
-      // Orbit animation
-      gsap.to(orbitRef.current, {
-        rotation: 360,
-        duration: 60,
-        repeat: -1,
-        ease: 'none',
-      });
-
-      // Parallax on scroll
-      gsap.to(titleRef.current, {
-        yPercent: -50,
-        opacity: 0,
-        ease: 'none',
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          start: 'top top',
-          end: 'bottom top',
-          scrub: true,
-        },
-      });
-    }, sectionRef);
-
-    return () => ctx.revert();
-  }, []);
-
+const HeroSection = ({ onGetStarted, onWaitlist }) => {
   return (
     <section
-      ref={sectionRef}
-      className="section min-h-screen relative overflow-hidden pt-20"
+      id="hero"
+      className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#F8FAFC] pt-20"
     >
-      {/* Animated background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-b from-purple-900/20 via-transparent to-transparent" />
-      
-      {/* Animated orbs */}
-      <div ref={orbitRef} className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl animate-float" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '-3s' }} />
-        <div className="absolute top-1/2 right-1/3 w-48 h-48 bg-purple-400/10 rounded-full blur-2xl animate-float" style={{ animationDelay: '-1.5s' }} />
-      </div>
-
-      {/* Decorative rings */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="w-[600px] h-[600px] border border-white/5 rounded-full" />
-        <div className="absolute w-[800px] h-[800px] border border-white/3 rounded-full" />
-        <div className="absolute w-[1000px] h-[1000px] border border-white/2 rounded-full" />
-      </div>
-
-      {/* Content */}
-      <div className="relative z-10 text-center max-w-5xl mx-auto px-6">
-        <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/10 mb-8">
-          <Sparkles size={16} className="text-purple-400" />
-          <span className="text-sm text-white/80">Find real connections</span>
-        </div>
-
-        <h1
-          ref={titleRef}
-          className="text-5xl md:text-7xl lg:text-8xl font-bold leading-tight mb-8"
-        >
-          <span className="text-white">Real connections</span>
-          <br />
-          <span className="gradient-text">start with TrueBond</span>
-        </h1>
-
-        <p
-          ref={subtitleRef}
-          className="text-xl md:text-2xl text-white/60 max-w-2xl mx-auto mb-12"
-        >
-          Discover people nearby, spark meaningful conversations, and build authentic relationships.
-        </p>
-
-        <div ref={ctaRef} className="flex flex-col sm:flex-row gap-4 justify-center">
-          <button onClick={onJoinClick} className="btn-primary text-lg px-10 py-5 flex items-center justify-center gap-3">
-            <Search size={20} />
-            Join Now — It's Free
-          </button>
-          <button onClick={onLoginClick} className="btn-secondary text-lg px-10 py-5">
-            I have an account
-          </button>
-        </div>
-
-        {/* Stats */}
-        <div className="flex justify-center gap-12 mt-20">
-          {[
-            { value: '10', label: 'Free coins on signup' },
-            { value: '5km', label: 'Discover nearby' },
-            { value: '100%', label: 'Privacy focused' },
-          ].map((stat, i) => (
-            <div key={i} className="text-center">
-              <div className="text-3xl md:text-4xl font-bold gradient-text">{stat.value}</div>
-              <div className="text-white/40 text-sm mt-1">{stat.label}</div>
+      <div className="container mx-auto px-6 py-16 relative z-10">
+        <div className="grid lg:grid-cols-2 gap-16 items-center lg:pl-20">
+          {/* Left content */}
+          <div className="text-center lg:text-left space-y-8">
+            <div className="inline-flex items-center space-x-2 px-5 py-2.5 bg-[#E9D5FF] rounded-full">
+              <Heart size={18} className="text-[#0F172A]" fill="currentColor" />
+              <span className="text-sm font-semibold text-[#0F172A]">Join thousands building real connections</span>
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Scroll indicator */}
-      <div className="absolute bottom-10 left-1/2 -translate-x-1/2">
-        <div className="w-6 h-10 border-2 border-white/30 rounded-full flex justify-center pt-2">
-          <div className="w-1.5 h-3 bg-white/60 rounded-full animate-bounce" />
+            
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-[#0F172A] leading-tight">
+              Meet New People.
+              <br />
+              <span className="gradient-text">
+                Make Real Connections.
+              </span>
+            </h1>
+            
+            <div className="space-y-6">
+              <p className="text-xl md:text-2xl text-gray-700 leading-relaxed">
+                TrueBond helps you connect with people who share your values and intentions. 
+                <span className="font-semibold text-[#0F172A]">Real conversations, genuine bonds</span> — 
+                all in a calm, welcoming space.
+              </p>
+              
+              <p className="text-lg text-gray-600 leading-relaxed">
+                Whether you're looking for love, friendship, or someone who gets you, 
+                we make it easy to find your people. <span className="font-medium">No pressure. No noise.</span>
+              </p>
+              
+              <div className="bg-[#E9D5FF]/30 border-l-4 border-[#0F172A] p-6 rounded-r-lg">
+                <p className="text-base text-gray-700 leading-relaxed mb-3">
+                  We focus on <span className="font-semibold text-[#0F172A]">quality over quantity</span>. 
+                  Every feature is designed to help you build meaningful relationships, not collect matches.
+                </p>
+                <p className="text-base text-[#0F172A] font-semibold">
+                  Start slow. Talk honestly. Build something real.
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-6">
+              <button
+                onClick={onGetStarted}
+                className="px-8 py-4 bg-[#0F172A] text-white rounded-full font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 flex items-center justify-center space-x-2 group"
+              >
+                <span>Get Started Free</span>
+                <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+              </button>
+              
+              <button
+                onClick={onWaitlist}
+                className="px-8 py-4 bg-white text-[#0F172A] border-2 border-[#0F172A] rounded-full font-semibold hover:bg-gray-50 hover:shadow-lg transition-all duration-300"
+              >
+                Join Waitlist
+              </button>
+            </div>
+            
+            <div className="flex items-center justify-center lg:justify-start space-x-8 pt-6">
+              <div className="flex items-center space-x-2">
+                <Shield size={20} className="text-green-600" />
+                <span className="text-sm text-gray-600 font-medium">Verified Profiles</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Lock size={20} className="text-green-600" />
+                <span className="text-sm text-gray-600 font-medium">Secure & Private</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Users size={20} className="text-[#0F172A]" />
+                <span className="text-sm text-gray-600 font-medium">Real People</span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Right content - Single hero image */}
+          <div className="relative h-[500px] lg:h-[600px] hidden lg:block">
+            <div className="absolute inset-0 flex items-center justify-center">
+              <img 
+                src="https://customer-assets.emergentagent.com/job_datebond/artifacts/zn3pqli0_Gemini_Generated_Image_ttgcrgttgcrgttgc.png" 
+                alt="TrueBond - Connect with real people" 
+                className="max-w-full max-h-full object-contain rounded-3xl shadow-2xl"
+              />
+            </div>
+            
+            {/* Floating stats card */}
+            <div className="absolute bottom-8 right-0 bg-white rounded-2xl p-4 shadow-xl animate-float">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-[#E9D5FF] rounded-full flex items-center justify-center">
+                  <Users size={20} className="text-[#0F172A]" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-[#0F172A]">10K+</p>
+                  <p className="text-xs text-gray-500">Active Users</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Floating match card */}
+            <div className="absolute top-1/3 left-0 bg-white rounded-2xl p-4 shadow-xl animate-float-delay-1">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-[#DBEAFE] rounded-full flex items-center justify-center">
+                  <Heart size={20} className="text-[#0F172A]" fill="currentColor" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-[#0F172A]">New connection!</p>
+                  <p className="text-xs text-gray-500">Say hello</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>

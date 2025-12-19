@@ -18,6 +18,17 @@ from backend.routes.tb_messages import router as messages_router
 from backend.routes.tb_credits import router as credits_router
 from backend.routes.tb_payments import router as payments_router
 
+# Import new routes
+from backend.routes.tb_notifications import router as notifications_router
+from backend.routes.tb_search import router as search_router
+
+# Import Admin routes
+from backend.routes.tb_admin_auth import router as admin_auth_router
+from backend.routes.tb_admin_users import router as admin_users_router
+from backend.routes.tb_admin_analytics import router as admin_analytics_router
+from backend.routes.tb_admin_settings import router as admin_settings_router
+from backend.routes.tb_admin_moderation import router as admin_moderation_router
+
 # MongoDB client reference
 mongo_client = None
 
@@ -70,6 +81,15 @@ app.include_router(location_router)
 app.include_router(messages_router)
 app.include_router(credits_router)
 app.include_router(payments_router)
+app.include_router(notifications_router)
+app.include_router(search_router)
+
+# Register Admin routers
+app.include_router(admin_auth_router)
+app.include_router(admin_users_router)
+app.include_router(admin_analytics_router)
+app.include_router(admin_settings_router)
+app.include_router(admin_moderation_router)
 
 
 @app.get("/api/health")
