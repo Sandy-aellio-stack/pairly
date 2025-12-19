@@ -12,7 +12,7 @@ from datetime import datetime
 from typing import Dict, Any, Optional, Tuple
 
 # Configuration - Use the correct backend URL from frontend/.env
-BACKEND_URL = "https://datebond.preview.emergentagent.com/api"
+BACKEND_URL = "https://datemate-70.preview.emergentagent.com/api"
 
 class TrueBondTester:
     def __init__(self):
