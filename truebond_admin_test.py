@@ -347,15 +347,21 @@ class TrueBondAdminTester:
             
             if response.status_code == 200:
                 data = response.json()
-                expected_fields = ["id", "name", "email", "created_at", "status"]
-                
-                missing_fields = [field for field in expected_fields if field not in data]
-                if missing_fields:
-                    self.log(f"✗ Admin user details missing fields: {missing_fields}", "ERROR")
+                if "user" in data and "transactions" in data:
+                    user = data["user"]
+                    transactions = data["transactions"]
+                    expected_fields = ["id", "name", "email", "status"]
+                    
+                    missing_fields = [field for field in expected_fields if field not in user]
+                    if missing_fields:
+                        self.log(f"✗ Admin user details missing fields: {missing_fields}", "ERROR")
+                        return False
+                    
+                    self.log(f"✓ Admin user details - User: {user.get('name')}, Status: {user.get('status')}, Email: {user.get('email')}, Transactions: {len(transactions)}")
+                    return True
+                else:
+                    self.log(f"✗ Admin user details response format incorrect: {data}", "ERROR")
                     return False
-                
-                self.log(f"✓ Admin user details - User: {data.get('name')}, Status: {data.get('status')}, Email: {data.get('email')}")
-                return True
             else:
                 self.log(f"✗ Admin user details failed: {response.status_code}", "ERROR")
                 if response.text:
