@@ -554,8 +554,8 @@ class TrueBondAdminTester:
             
             if response.status_code == 200:
                 data = response.json()
-                if "unread_count" in data:
-                    unread_count = data["unread_count"]
+                if "count" in data:
+                    unread_count = data["count"]
                     self.log(f"✓ Unread notifications count - {unread_count} unread")
                     return True
                 else:
