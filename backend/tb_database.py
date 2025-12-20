@@ -31,6 +31,8 @@ async def init_db():
         
         # Get database name from URL or use default
         db_name = MONGO_URL.split("/")[-1].split("?")[0] if "/" in MONGO_URL else "truebond"
+        if not db_name:
+            db_name = "truebond"
         
         await init_beanie(
             database=client[db_name],
