@@ -31,7 +31,7 @@ async def get_overview(
     
     # Active users (logged in within 7 days)
     active_users = await TBUser.find(
-        TBUser.last_login_at >= week_ago
+        {"last_login_at": {"$gte": week_ago}}
     ).count()
     
     # Calculate changes (simplified - comparing to previous period)

@@ -169,20 +169,26 @@ async def adjust_user_credits(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
+    from backend.models.tb_credit import TransactionReason
+    
+    # Update balance first
+    new_balance = user.credits_balance + amount
+    if new_balance < 0:
+        new_balance = 0
+    
     # Create transaction record
     transaction = TBCreditTransaction(
         user_id=str(user.id),
         amount=amount,
-        transaction_type="admin_adjustment",
+        reason=TransactionReason.ADMIN_ADJUSTMENT,
+        balance_after=new_balance,
         description=f"Admin adjustment: {reason}",
         reference_id=f"admin_{admin['email']}"
     )
     await transaction.insert()
     
-    # Update balance
-    user.credits_balance += amount
-    if user.credits_balance < 0:
-        user.credits_balance = 0
+    # Update user balance
+    user.credits_balance = new_balance
     user.updated_at = datetime.now(timezone.utc)
     await user.save()
     
