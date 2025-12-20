@@ -112,41 +112,58 @@ const CreditsPage = () => {
     try {
       const response = await paymentsAPI.createOrder(tier.id);
       
-      if (response.data.order_id && window.Razorpay) {
-        const options = {
-          key: response.data.key_id || 'rzp_test_key',
-          amount: tier.price * 100,
-          currency: 'INR',
-          name: 'TrueBond',
-          description: `${tier.coins} Coins - ${tier.name} Pack`,
-          order_id: response.data.order_id,
-          handler: async function(razorpayResponse) {
-            try {
-              await paymentsAPI.verifyPayment({
-                razorpay_order_id: razorpayResponse.razorpay_order_id,
-                razorpay_payment_id: razorpayResponse.razorpay_payment_id,
-                razorpay_signature: razorpayResponse.razorpay_signature,
-              });
-              toast.success(`Successfully purchased ${tier.coins} coins!`);
-              refreshCredits();
-              fetchData();
-            } catch (err) {
-              toast.error('Payment verification failed');
+      if (response.data.order_id) {
+        if (window.Razorpay && !response.data.order_id.startsWith('order_mock_')) {
+          // Real Razorpay payment
+          const options = {
+            key: response.data.key_id || 'rzp_test_key',
+            amount: tier.price * 100,
+            currency: 'INR',
+            name: 'TrueBond',
+            description: `${tier.coins} Coins - ${tier.name} Pack`,
+            order_id: response.data.order_id,
+            handler: async function(razorpayResponse) {
+              try {
+                await paymentsAPI.verifyPayment({
+                  razorpay_order_id: razorpayResponse.razorpay_order_id,
+                  razorpay_payment_id: razorpayResponse.razorpay_payment_id,
+                  razorpay_signature: razorpayResponse.razorpay_signature,
+                });
+                toast.success(`Successfully purchased ${tier.coins} coins!`);
+                refreshCredits();
+                fetchData();
+              } catch (err) {
+                toast.error('Payment verification failed');
+              }
+            },
+            prefill: {
+              email: user?.email || '',
+              contact: user?.mobile_number || '',
+            },
+            theme: {
+              color: '#0F172A'
             }
-          },
-          prefill: {
-            email: user?.email || '',
-            contact: user?.mobile_number || '',
-          },
-          theme: {
-            color: '#0F172A'
+          };
+          
+          const rzp = new window.Razorpay(options);
+          rzp.open();
+        } else {
+          // Demo mode - simulate successful payment
+          try {
+            await paymentsAPI.verifyPayment({
+              razorpay_order_id: response.data.order_id,
+              razorpay_payment_id: `pay_demo_${Date.now()}`,
+              razorpay_signature: 'demo_signature',
+            });
+            toast.success(`Successfully purchased ${tier.coins} coins!`);
+            refreshCredits();
+            fetchData();
+          } catch (err) {
+            toast.error('Demo purchase failed');
           }
-        };
-        
-        const rzp = new window.Razorpay(options);
-        rzp.open();
+        }
       } else {
-        toast.info(`Demo: Would purchase ${tier.coins} coins for ₹${tier.price}`);
+        toast.error('Failed to create order');
       }
     } catch (error) {
       toast.error('Failed to create order. Please try again.');

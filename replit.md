@@ -97,3 +97,5 @@ TrueBond is a full-stack dating application with a React frontend and Python Fas
 - 2025-12-20: Fixed Privacy & Safety button in Profile page to navigate to Settings
 - 2025-12-20: Fixed missing HeartCursor imports in static pages (Privacy, Terms, About, Contact, Blog, Careers, Help)
 - 2025-12-20: All footer links now working (Privacy Policy, Terms, Contact, About, etc.)
+- 2025-12-20: Synced backend payment packages to match landing page pricing (₹100/100, ₹450/500, ₹800/1000 coins)
+- 2025-12-20: Enabled demo credit purchases (auto-verifies mock payments and adds credits)

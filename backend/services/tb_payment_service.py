@@ -114,8 +114,11 @@ class PaymentService:
                 "credits_added": payment.credits_purchased
             }
 
-        # Verify signature with Razorpay
-        if razorpay_client:
+        # Skip verification for mock/demo orders
+        is_mock_order = data.razorpay_order_id.startswith("order_mock_")
+        
+        # Verify signature with Razorpay (only for real orders)
+        if razorpay_client and not is_mock_order:
             try:
                 razorpay_client.utility.verify_payment_signature({
                     "razorpay_order_id": data.razorpay_order_id,
@@ -128,9 +131,7 @@ class PaymentService:
                 await payment.save()
                 raise HTTPException(status_code=400, detail="Payment verification failed")
             except Exception as e:
-                # For mock orders, skip verification
-                if not data.razorpay_order_id.startswith("order_mock_"):
-                    raise HTTPException(status_code=400, detail=f"Verification error: {str(e)}")
+                raise HTTPException(status_code=400, detail=f"Verification error: {str(e)}")
 
         # Update payment record
         payment.provider_payment_id = data.razorpay_payment_id

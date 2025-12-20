@@ -35,10 +35,9 @@ class TBPayment(Document):
         name = "tb_payments"
 
 
-# Credit packages
+# Credit packages - matching landing page pricing
 CREDIT_PACKAGES = [
-    {"id": "pack_100", "credits": 50, "amount_inr": 100, "label": "₹100 - 50 Credits"},
-    {"id": "pack_250", "credits": 150, "amount_inr": 250, "label": "₹250 - 150 Credits"},
-    {"id": "pack_500", "credits": 350, "amount_inr": 500, "label": "₹500 - 350 Credits"},
-    {"id": "pack_1000", "credits": 800, "amount_inr": 1000, "label": "₹1000 - 800 Credits"},
+    {"id": "starter", "credits": 100, "amount_inr": 100, "label": "Starter"},
+    {"id": "popular", "credits": 500, "amount_inr": 450, "label": "Popular"},
+    {"id": "premium", "credits": 1000, "amount_inr": 800, "label": "Premium"},
 ]
