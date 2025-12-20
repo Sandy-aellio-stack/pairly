@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 import os
 
 from backend.tb_database import init_db, close_db
+from backend.socket_server import create_socket_app, sio
 
 # Import TrueBond routes
 from backend.routes.tb_auth import router as auth_router
@@ -109,3 +110,6 @@ async def root():
         "docs": "/docs",
         "health": "/api/health"
     }
+
+
+socket_app = create_socket_app(app)

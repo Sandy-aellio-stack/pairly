@@ -2,6 +2,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { Home, MessageCircle, MapPin, User, Coins, LogOut, Heart, Bell, Search, Settings } from 'lucide-react';
 import useAuthStore from '@/store/authStore';
 import HeartCursor from '@/components/HeartCursor';
+import IncomingCallModal from '@/components/IncomingCallModal';
 
 const DashboardLayout = () => {
   const navigate = useNavigate();
@@ -24,6 +25,7 @@ const DashboardLayout = () => {
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       <HeartCursor />
+      <IncomingCallModal />
       
       {/* Top Navigation Bar - Instagram Style */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-100">

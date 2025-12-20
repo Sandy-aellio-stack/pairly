@@ -14,6 +14,7 @@ import useAdminStore from '@/store/adminStore';
 import LandingPage from '@/pages/LandingPage';
 import LoginPage from '@/pages/LoginPage';
 import SignupPage from '@/pages/SignupPage';
+import VerifyOTPPage from '@/pages/VerifyOTPPage';
 import TermsPage from '@/pages/TermsPage';
 import PrivacyPage from '@/pages/PrivacyPage';
 import AboutPage from '@/pages/AboutPage';
@@ -122,6 +123,7 @@ function App() {
             <SignupPage />
           </PublicRoute>
         } />
+        <Route path="/verify-otp" element={<VerifyOTPPage />} />
         
         {/* Info Pages */}
         <Route path="/terms" element={<TermsPage />} />

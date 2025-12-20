@@ -2,6 +2,7 @@ from beanie import init_beanie
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import asyncio
+import certifi
 
 # TrueBond Models
 from backend.models.tb_user import TBUser
@@ -20,12 +21,13 @@ async def init_db():
     try:
         client = AsyncIOMotorClient(
             MONGO_URL,
-            serverSelectionTimeoutMS=5000,
-            connectTimeoutMS=5000
+            serverSelectionTimeoutMS=3000,
+            connectTimeoutMS=3000,
+            tlsCAFile=certifi.where()
         )
         
         # Test connection with timeout
-        await asyncio.wait_for(client.admin.command('ping'), timeout=5.0)
+        await asyncio.wait_for(client.admin.command('ping'), timeout=3.0)
         
         # Get database name from URL or use default
         db_name = MONGO_URL.split("/")[-1].split("?")[0] if "/" in MONGO_URL else "truebond"

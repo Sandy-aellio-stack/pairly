@@ -42,8 +42,7 @@ outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "PYTHONPATH=/home/runner/workspace python -m uvicorn backend.main:app --host localhost --port 8000 --reload"
-waitForPort = 8000
+args = "PYTHONPATH=/home/runner/workspace python -m uvicorn backend.main:socket_app --host localhost --port 8000 --reload"
 
 [[ports]]
 localPort = 5000

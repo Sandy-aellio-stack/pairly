@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { authAPI, creditsAPI } from '../services/api';
+import { connectSocket, disconnectSocket } from '../services/socket';
 
 const useAuthStore = create((set, get) => ({
   user: null,
@@ -18,6 +19,7 @@ const useAuthStore = create((set, get) => ({
           credits: response.data.credits_balance,
           isLoading: false 
         });
+        connectSocket(token);
       } catch (error) {
         localStorage.removeItem('tb_access_token');
         localStorage.removeItem('tb_refresh_token');
@@ -40,6 +42,7 @@ const useAuthStore = create((set, get) => ({
       isAuthenticated: true,
       credits: userResponse.data.credits_balance 
     });
+    connectSocket(tokens.access_token);
     return response.data;
   },
 
@@ -62,6 +65,7 @@ const useAuthStore = create((set, get) => ({
     try {
       await authAPI.logout();
     } catch (e) {}
+    disconnectSocket();
     localStorage.removeItem('tb_access_token');
     localStorage.removeItem('tb_refresh_token');
     set({ user: null, isAuthenticated: false, credits: 0 });
