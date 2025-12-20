@@ -50,7 +50,10 @@ async def init_db():
         print(f"✅ Connected to MongoDB: {db_name}")
         return client
     except Exception as e:
+        import traceback
         print(f"⚠️ MongoDB connection failed: {e}")
+        print(f"⚠️ Connection URL (masked): {MONGO_URL[:30]}...")
+        traceback.print_exc()
         print("⚠️ Starting without database - set MONGO_URL environment variable")
         return None
 
