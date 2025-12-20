@@ -94,3 +94,6 @@ TrueBond is a full-stack dating application with a React frontend and Python Fas
 - 2025-12-20: Updated Settings page with Privacy & Safety sections connected to backend
 - 2025-12-20: Updated Credits page to match landing page design style
 - 2025-12-20: Implemented heart-only cursor on desktop (hides system cursor)
+- 2025-12-20: Fixed Privacy & Safety button in Profile page to navigate to Settings
+- 2025-12-20: Fixed missing HeartCursor imports in static pages (Privacy, Terms, About, Contact, Blog, Careers, Help)
+- 2025-12-20: All footer links now working (Privacy Policy, Terms, Contact, About, etc.)

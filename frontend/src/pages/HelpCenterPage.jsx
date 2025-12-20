@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, ArrowLeft, Search, Book, CreditCard, Shield, Users, MessageCircle, Settings, ChevronRight } from 'lucide-react';
+import HeartCursor from '@/components/HeartCursor';
 
 const categories = [
   { Icon: Book, title: 'Getting Started', count: 12, description: 'Learn the basics of TrueBond' },

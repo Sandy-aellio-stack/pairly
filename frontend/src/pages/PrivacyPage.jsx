@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Heart, ArrowLeft, Shield, Lock, Eye, Database } from 'lucide-react';
+import HeartCursor from '@/components/HeartCursor';
 
 const PrivacyPage = () => {
   return (

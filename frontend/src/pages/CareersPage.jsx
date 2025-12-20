@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Heart, ArrowLeft, MapPin, Clock, ArrowRight, Briefcase } from 'lucide-react';
+import HeartCursor from '@/components/HeartCursor';
 
 const openings = [
   {

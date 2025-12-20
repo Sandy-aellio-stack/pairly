@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Bell, Lock, Eye, Globe, Shield, Trash2, LogOut, ChevronRight, AlertTriangle, Users, Loader2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import useAuthStore from '@/store/authStore';
 import { userAPI } from '@/services/api';
 import { toast } from 'sonner';
 
 const SettingsPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const privacySectionRef = useRef(null);
   const { user, logout } = useAuthStore();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -34,6 +36,17 @@ const SettingsPage = () => {
   useEffect(() => {
     fetchSettings();
   }, []);
+
+  // Scroll to privacy section if navigated with that intent
+  useEffect(() => {
+    if (location.state?.scrollTo === 'privacy' && !isLoading && privacySectionRef.current) {
+      setTimeout(() => {
+        privacySectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Clear the state to prevent re-scrolling on future renders
+        navigate(location.pathname, { replace: true, state: {} });
+      }, 100);
+    }
+  }, [location.state, isLoading, navigate, location.pathname]);
 
   const fetchSettings = async () => {
     try {
@@ -160,7 +173,7 @@ const SettingsPage = () => {
       </div>
 
       {/* Privacy */}
-      <div className="bg-white rounded-2xl shadow-md mb-6 overflow-hidden">
+      <div ref={privacySectionRef} className="bg-white rounded-2xl shadow-md mb-6 overflow-hidden">
         <div className="p-4 border-b border-gray-100">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-[#DBEAFE] flex items-center justify-center">

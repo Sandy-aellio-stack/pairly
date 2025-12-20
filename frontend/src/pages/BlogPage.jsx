@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Heart, ArrowLeft, Calendar, Clock, ArrowRight } from 'lucide-react';
+import HeartCursor from '@/components/HeartCursor';
 
 const blogPosts = [
   {

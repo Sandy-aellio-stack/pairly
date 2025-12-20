@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, ArrowLeft, Mail, Phone, MapPin, MessageSquare, Send } from 'lucide-react';
 import { toast } from 'sonner';
+import HeartCursor from '@/components/HeartCursor';
 
 const ContactPage = () => {
   const [formData, setFormData] = useState({

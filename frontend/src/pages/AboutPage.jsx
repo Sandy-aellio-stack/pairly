@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Heart, ArrowLeft, Users, Target, Sparkles, Shield } from 'lucide-react';
+import HeartCursor from '@/components/HeartCursor';
 
 const AboutPage = () => {
   const values = [

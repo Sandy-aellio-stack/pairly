@@ -344,7 +344,10 @@ const ProfilePage = () => {
           <ChevronRight size={20} className="text-gray-400" />
         </button>
         
-        <button className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors border-b border-gray-100">
+        <button 
+          onClick={() => navigate('/dashboard/settings', { state: { scrollTo: 'privacy' } })}
+          className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors border-b border-gray-100"
+        >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-[#DBEAFE]/50 flex items-center justify-center">
               <Shield size={18} className="text-blue-600" />
@@ -354,7 +357,10 @@ const ProfilePage = () => {
           <ChevronRight size={20} className="text-gray-400" />
         </button>
         
-        <button className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors border-b border-gray-100">
+        <button 
+          onClick={() => navigate('/dashboard/settings')}
+          className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors border-b border-gray-100"
+        >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
               <Settings size={18} className="text-gray-600" />
