@@ -22,10 +22,10 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3000,
+    port: 5000,
     host: '0.0.0.0',
     strictPort: true,
-    allowedHosts: ['pairly-intro.preview.emergentagent.com', 'bond-match.preview.emergentagent.com', 'localhost', '.emergentagent.com'],
+    allowedHosts: true,
   },
   build: {
     outDir: 'build',
