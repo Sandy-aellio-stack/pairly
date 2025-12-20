@@ -5,7 +5,7 @@ import base64
 import uuid
 from datetime import datetime
 
-from backend.models.tb_user import TBUser, Gender, Intent, Preferences
+from backend.models.tb_user import TBUser, Gender, Intent, Preferences, UserSettings, NotificationSettings, PrivacySettings, SafetySettings
 from backend.routes.tb_auth import get_current_user
 
 router = APIRouter(prefix="/api/users", tags=["TrueBond Users"])
@@ -144,4 +144,66 @@ async def upload_photo(file: UploadFile = File(...), user: TBUser = Depends(get_
     return {
         "message": "Photo uploaded successfully",
         "profile_pictures": user.profile_pictures
+    }
+
+
+# ========== USER SETTINGS ENDPOINTS ==========
+
+class UpdateSettingsRequest(BaseModel):
+    notifications: Optional[dict] = None
+    privacy: Optional[dict] = None
+    safety: Optional[dict] = None
+    dark_mode: Optional[bool] = None
+    language: Optional[str] = None
+
+
+@router.get("/settings")
+async def get_user_settings(user: TBUser = Depends(get_current_user)):
+    """Get current user's settings (notifications, privacy, safety)"""
+    # Ensure settings exist (for older users without settings)
+    if not hasattr(user, 'settings') or user.settings is None:
+        user.settings = UserSettings()
+        await user.save()
+    
+    return {
+        "settings": user.settings.model_dump()
+    }
+
+
+@router.put("/settings")
+async def update_user_settings(data: UpdateSettingsRequest, user: TBUser = Depends(get_current_user)):
+    """Update user's settings (notifications, privacy, safety)"""
+    # Ensure settings exist
+    if not hasattr(user, 'settings') or user.settings is None:
+        user.settings = UserSettings()
+    
+    # Update notifications
+    if data.notifications is not None:
+        for key, value in data.notifications.items():
+            if hasattr(user.settings.notifications, key):
+                setattr(user.settings.notifications, key, value)
+    
+    # Update privacy
+    if data.privacy is not None:
+        for key, value in data.privacy.items():
+            if hasattr(user.settings.privacy, key):
+                setattr(user.settings.privacy, key, value)
+    
+    # Update safety
+    if data.safety is not None:
+        for key, value in data.safety.items():
+            if hasattr(user.settings.safety, key):
+                setattr(user.settings.safety, key, value)
+    
+    # Update other settings
+    if data.dark_mode is not None:
+        user.settings.dark_mode = data.dark_mode
+    if data.language is not None:
+        user.settings.language = data.language
+    
+    await user.save()
+    
+    return {
+        "message": "Settings updated",
+        "settings": user.settings.model_dump()
     }

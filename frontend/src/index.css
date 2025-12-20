@@ -27,17 +27,26 @@
   --error: #EF4444;
 }
 
-/* Use default system cursor */
-* {
-  cursor: auto;
+/* Hide system cursor on desktop when heart cursor is active */
+@media (pointer: fine) and (min-width: 1024px) {
+  * {
+    cursor: none !important;
+  }
 }
 
-a, button, [role="button"] {
-  cursor: pointer;
-}
-
-input, textarea, select {
-  cursor: text;
+/* Show normal cursor on touch devices and mobile */
+@media (pointer: coarse), (max-width: 1023px) {
+  * {
+    cursor: auto;
+  }
+  
+  a, button, [role="button"] {
+    cursor: pointer;
+  }
+  
+  input, textarea, select {
+    cursor: text;
+  }
 }
 
 html {

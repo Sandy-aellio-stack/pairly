@@ -54,6 +54,8 @@ export const userAPI = {
   uploadPhoto: (formData) => api.post('/users/upload-photo', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
+  getSettings: () => api.get('/users/settings'),
+  updateSettings: (data) => api.put('/users/settings', data),
 };
 
 // Credits APIs - matches /api/credits/*

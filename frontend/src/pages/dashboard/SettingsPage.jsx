@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bell, Lock, Eye, Globe, Moon, Sun, Smartphone, Shield, Trash2, LogOut, ChevronRight, Check, Loader2 } from 'lucide-react';
+import { Bell, Lock, Eye, Globe, Shield, Trash2, LogOut, ChevronRight, AlertTriangle, Users, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '@/store/authStore';
 import { userAPI } from '@/services/api';
@@ -8,7 +8,8 @@ import { toast } from 'sonner';
 const SettingsPage = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [settings, setSettings] = useState({
     notifications: {
       messages: true,
@@ -17,25 +18,58 @@ const SettingsPage = () => {
       marketing: false,
     },
     privacy: {
-      showOnline: true,
-      showLastSeen: true,
-      showDistance: true,
+      show_online: true,
+      show_last_seen: true,
+      show_distance: true,
     },
-    display: {
-      darkMode: false,
-      language: 'en',
+    safety: {
+      block_screenshots: false,
+      require_verified_matches: false,
+      hide_from_search: false,
     },
+    dark_mode: false,
+    language: 'en',
   });
 
-  const handleToggle = (category, setting) => {
-    setSettings(prev => ({
-      ...prev,
-      [category]: {
-        ...prev[category],
-        [setting]: !prev[category][setting]
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const response = await userAPI.getSettings();
+      if (response.data.settings) {
+        setSettings(response.data.settings);
       }
-    }));
-    toast.success('Setting updated');
+    } catch (error) {
+      console.error('Failed to fetch settings:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleToggle = async (category, setting) => {
+    const newSettings = {
+      ...settings,
+      [category]: {
+        ...settings[category],
+        [setting]: !settings[category][setting]
+      }
+    };
+    setSettings(newSettings);
+
+    setIsSaving(true);
+    try {
+      await userAPI.updateSettings({
+        [category]: { [setting]: !settings[category][setting] }
+      });
+      toast.success('Setting updated');
+    } catch (error) {
+      setSettings(settings);
+      toast.error('Failed to update setting');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleLogout = async () => {
@@ -50,12 +84,13 @@ const SettingsPage = () => {
     }
   };
 
-  const ToggleSwitch = ({ enabled, onChange }) => (
+  const ToggleSwitch = ({ enabled, onChange, disabled }) => (
     <button
       onClick={onChange}
+      disabled={disabled}
       className={`w-12 h-6 rounded-full transition-colors duration-200 flex items-center px-1 ${
         enabled ? 'bg-[#0F172A]' : 'bg-gray-300'
-      }`}
+      } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
     >
       <span
         className={`w-4 h-4 bg-white rounded-full transition-transform duration-200 ${
@@ -64,6 +99,14 @@ const SettingsPage = () => {
       />
     </button>
   );
+
+  if (isLoading) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 flex items-center justify-center h-[60vh]">
+        <Loader2 className="w-12 h-12 animate-spin text-[#0F172A]" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto px-4">
@@ -87,7 +130,8 @@ const SettingsPage = () => {
             </div>
             <ToggleSwitch 
               enabled={settings.notifications.messages} 
-              onChange={() => handleToggle('notifications', 'messages')} 
+              onChange={() => handleToggle('notifications', 'messages')}
+              disabled={isSaving}
             />
           </div>
           <div className="flex items-center justify-between p-4">
@@ -97,7 +141,8 @@ const SettingsPage = () => {
             </div>
             <ToggleSwitch 
               enabled={settings.notifications.matches} 
-              onChange={() => handleToggle('notifications', 'matches')} 
+              onChange={() => handleToggle('notifications', 'matches')}
+              disabled={isSaving}
             />
           </div>
           <div className="flex items-center justify-between p-4">
@@ -107,7 +152,8 @@ const SettingsPage = () => {
             </div>
             <ToggleSwitch 
               enabled={settings.notifications.nearby} 
-              onChange={() => handleToggle('notifications', 'nearby')} 
+              onChange={() => handleToggle('notifications', 'nearby')}
+              disabled={isSaving}
             />
           </div>
         </div>
@@ -130,8 +176,9 @@ const SettingsPage = () => {
               <p className="text-sm text-gray-500">Let others see when you're online</p>
             </div>
             <ToggleSwitch 
-              enabled={settings.privacy.showOnline} 
-              onChange={() => handleToggle('privacy', 'showOnline')} 
+              enabled={settings.privacy.show_online} 
+              onChange={() => handleToggle('privacy', 'show_online')}
+              disabled={isSaving}
             />
           </div>
           <div className="flex items-center justify-between p-4">
@@ -140,8 +187,9 @@ const SettingsPage = () => {
               <p className="text-sm text-gray-500">Let others see when you were last active</p>
             </div>
             <ToggleSwitch 
-              enabled={settings.privacy.showLastSeen} 
-              onChange={() => handleToggle('privacy', 'showLastSeen')} 
+              enabled={settings.privacy.show_last_seen} 
+              onChange={() => handleToggle('privacy', 'show_last_seen')}
+              disabled={isSaving}
             />
           </div>
           <div className="flex items-center justify-between p-4">
@@ -150,10 +198,92 @@ const SettingsPage = () => {
               <p className="text-sm text-gray-500">Let others see how far you are</p>
             </div>
             <ToggleSwitch 
-              enabled={settings.privacy.showDistance} 
-              onChange={() => handleToggle('privacy', 'showDistance')} 
+              enabled={settings.privacy.show_distance} 
+              onChange={() => handleToggle('privacy', 'show_distance')}
+              disabled={isSaving}
             />
           </div>
+        </div>
+      </div>
+
+      {/* Safety */}
+      <div className="bg-white rounded-2xl shadow-md mb-6 overflow-hidden">
+        <div className="p-4 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-[#FEE2E2] flex items-center justify-center">
+              <Shield size={20} className="text-red-600" />
+            </div>
+            <h2 className="text-lg font-semibold text-[#0F172A]">Safety</h2>
+          </div>
+        </div>
+        <div className="divide-y divide-gray-100">
+          <div className="flex items-center justify-between p-4">
+            <div>
+              <p className="font-medium text-[#0F172A]">Block Screenshots</p>
+              <p className="text-sm text-gray-500">Prevent others from taking screenshots of your profile</p>
+            </div>
+            <ToggleSwitch 
+              enabled={settings.safety.block_screenshots} 
+              onChange={() => handleToggle('safety', 'block_screenshots')}
+              disabled={isSaving}
+            />
+          </div>
+          <div className="flex items-center justify-between p-4">
+            <div>
+              <p className="font-medium text-[#0F172A]">Verified Matches Only</p>
+              <p className="text-sm text-gray-500">Only match with verified users</p>
+            </div>
+            <ToggleSwitch 
+              enabled={settings.safety.require_verified_matches} 
+              onChange={() => handleToggle('safety', 'require_verified_matches')}
+              disabled={isSaving}
+            />
+          </div>
+          <div className="flex items-center justify-between p-4">
+            <div>
+              <p className="font-medium text-[#0F172A]">Hide from Search</p>
+              <p className="text-sm text-gray-500">Don't appear in search results</p>
+            </div>
+            <ToggleSwitch 
+              enabled={settings.safety.hide_from_search} 
+              onChange={() => handleToggle('safety', 'hide_from_search')}
+              disabled={isSaving}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Safety Resources */}
+      <div className="bg-gradient-to-br from-[#FEF3C7] to-[#FDE68A] rounded-2xl p-6 mb-6">
+        <div className="flex items-start gap-3 mb-4">
+          <AlertTriangle size={24} className="text-amber-700 flex-shrink-0" />
+          <div>
+            <h3 className="font-semibold text-amber-900 mb-1">Safety Resources</h3>
+            <p className="text-sm text-amber-800">If you ever feel unsafe, use these resources:</p>
+          </div>
+        </div>
+        <div className="space-y-2">
+          <button 
+            onClick={() => navigate('/help')}
+            className="w-full bg-white/80 hover:bg-white rounded-xl p-3 text-left transition-colors"
+          >
+            <p className="font-medium text-amber-900">Report a User</p>
+            <p className="text-xs text-amber-700">Report inappropriate behavior</p>
+          </button>
+          <button 
+            onClick={() => navigate('/help')}
+            className="w-full bg-white/80 hover:bg-white rounded-xl p-3 text-left transition-colors"
+          >
+            <p className="font-medium text-amber-900">Safety Tips</p>
+            <p className="text-xs text-amber-700">Learn how to stay safe while dating</p>
+          </button>
+          <button 
+            onClick={() => window.open('tel:112', '_self')}
+            className="w-full bg-red-100 hover:bg-red-200 rounded-xl p-3 text-left transition-colors"
+          >
+            <p className="font-medium text-red-700">Emergency Help</p>
+            <p className="text-xs text-red-600">Call emergency services</p>
+          </button>
         </div>
       </div>
 
@@ -162,7 +292,7 @@ const SettingsPage = () => {
         <div className="p-4 border-b border-gray-100">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-[#FCE7F3] flex items-center justify-center">
-              <Shield size={20} className="text-[#0F172A]" />
+              <Users size={20} className="text-[#0F172A]" />
             </div>
             <h2 className="text-lg font-semibold text-[#0F172A]">Account</h2>
           </div>
@@ -189,7 +319,7 @@ const SettingsPage = () => {
             <ChevronRight size={20} className="text-gray-400" />
           </button>
           <button 
-            onClick={() => toast.info('Phone verification coming soon!')}
+            onClick={() => navigate('/verify-otp')}
             className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
           >
             <div className="text-left">
@@ -236,7 +366,7 @@ const SettingsPage = () => {
       {/* App Info */}
       <div className="mt-8 text-center text-gray-400 text-sm">
         <p>TrueBond v1.0.0</p>
-        <p className="mt-1">Made with ❤️ in India</p>
+        <p className="mt-1">Made with love in India</p>
       </div>
     </div>
   );

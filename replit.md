@@ -90,3 +90,7 @@ TrueBond is a full-stack dating application with a React frontend and Python Fas
 - 2025-12-20: Fixed cursor visibility issue (removed custom cursor:none CSS)
 - 2025-12-20: Fixed backend LSP errors in admin routes (TBCreditTransaction model, null checks)
 - 2025-12-20: Connected all admin panel pages to real backend APIs
+- 2025-12-20: Added user settings API (notifications, privacy, safety preferences)
+- 2025-12-20: Updated Settings page with Privacy & Safety sections connected to backend
+- 2025-12-20: Updated Credits page to match landing page design style
+- 2025-12-20: Implemented heart-only cursor on desktop (hides system cursor)

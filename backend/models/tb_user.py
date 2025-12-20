@@ -34,6 +34,33 @@ class Preferences(BaseModel):
     max_distance_km: int = Field(ge=1, le=500, default=50)
 
 
+class NotificationSettings(BaseModel):
+    messages: bool = True
+    matches: bool = True
+    nearby: bool = False
+    marketing: bool = False
+
+
+class PrivacySettings(BaseModel):
+    show_online: bool = True
+    show_last_seen: bool = True
+    show_distance: bool = True
+
+
+class SafetySettings(BaseModel):
+    block_screenshots: bool = False
+    require_verified_matches: bool = False
+    hide_from_search: bool = False
+
+
+class UserSettings(BaseModel):
+    notifications: NotificationSettings = Field(default_factory=NotificationSettings)
+    privacy: PrivacySettings = Field(default_factory=PrivacySettings)
+    safety: SafetySettings = Field(default_factory=SafetySettings)
+    dark_mode: bool = False
+    language: str = "en"
+
+
 class GeoLocation(BaseModel):
     type: str = "Point"
     coordinates: List[float]  # [longitude, latitude]
@@ -65,6 +92,9 @@ class TBUser(Document):
     is_active: bool = True
     is_verified: bool = False
     is_online: bool = False
+    
+    # User settings (notifications, privacy, safety)
+    settings: UserSettings = Field(default_factory=UserSettings)
     
     # Timestamps
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Coins, Check, Sparkles, CreditCard, History, Gift, Loader2, MessageCircle, Phone, Video } from 'lucide-react';
+import { Coins, Check, Sparkles, CreditCard, History, Gift, Loader2, MessageCircle, Phone, Video, Info } from 'lucide-react';
 import useAuthStore from '@/store/authStore';
 import { creditsAPI, paymentsAPI } from '@/services/api';
 import { toast } from 'sonner';
@@ -12,17 +12,53 @@ const CreditsPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isPurchasing, setIsPurchasing] = useState(false);
 
-  // Default pricing tiers (fallback)
   const defaultTiers = [
-    { id: 'starter', name: 'Starter', coins: 100, price: 100, pricePerCoin: 1, discount: 0 },
-    { id: 'popular', name: 'Popular', coins: 500, price: 450, pricePerCoin: 0.9, discount: 10, popular: true },
-    { id: 'premium', name: 'Premium', coins: 1000, price: 800, pricePerCoin: 0.8, discount: 20 },
+    { 
+      id: 'starter', 
+      name: 'Starter', 
+      coins: 100, 
+      price: 100, 
+      pricePerCoin: 1, 
+      discount: 0,
+      features: [
+        '100 coins',
+        '1 per coin',
+        'Basic matching',
+        'Profile verification',
+      ],
+    },
+    { 
+      id: 'popular', 
+      name: 'Popular', 
+      coins: 500, 
+      price: 450, 
+      pricePerCoin: 0.9, 
+      discount: 10, 
+      popular: true,
+      features: [
+        '500 coins',
+        '0.90 per coin (10% off)',
+        'Priority matching',
+        'Advanced filters',
+        'Profile boost',
+      ],
+    },
+    { 
+      id: 'premium', 
+      name: 'Premium', 
+      coins: 1000, 
+      price: 800, 
+      pricePerCoin: 0.8, 
+      discount: 20,
+      features: [
+        '1000 coins',
+        '0.80 per coin (20% off)',
+        'Unlimited matching',
+        'All features included',
+        'VIP support',
+      ],
+    },
   ];
-
-  // Pricing constants
-  const MESSAGE_COST = 1;
-  const AUDIO_COST = 5;
-  const VIDEO_COST = 10;
 
   useEffect(() => {
     fetchData();
@@ -31,13 +67,11 @@ const CreditsPage = () => {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // Fetch packages and transaction history in parallel
       const [packagesRes, historyRes] = await Promise.all([
         paymentsAPI.getPackages().catch(() => ({ data: { packages: [] } })),
         creditsAPI.getHistory().catch(() => ({ data: { transactions: [] } }))
       ]);
 
-      // Process packages
       if (packagesRes.data.packages && packagesRes.data.packages.length > 0) {
         const formattedPackages = packagesRes.data.packages.map((pkg, idx) => ({
           id: pkg.id,
@@ -45,15 +79,15 @@ const CreditsPage = () => {
           coins: pkg.credits,
           price: pkg.amount_inr,
           pricePerCoin: pkg.amount_inr / pkg.credits,
-          discount: Math.round((1 - (pkg.amount_inr / pkg.credits)) * 100), // Calculate discount
-          popular: idx === 1, // Second package is popular
+          discount: Math.round((1 - (pkg.amount_inr / pkg.credits)) * 100),
+          popular: idx === 1,
+          features: defaultTiers[idx]?.features || defaultTiers[0].features,
         }));
         setPackages(formattedPackages);
       } else {
         setPackages(defaultTiers);
       }
 
-      // Process transactions
       if (historyRes.data.transactions) {
         const formattedTx = historyRes.data.transactions.map(tx => ({
           id: tx.id,
@@ -81,7 +115,7 @@ const CreditsPage = () => {
       if (response.data.order_id && window.Razorpay) {
         const options = {
           key: response.data.key_id || 'rzp_test_key',
-          amount: tier.price * 100, // Razorpay expects amount in paise
+          amount: tier.price * 100,
           currency: 'INR',
           name: 'TrueBond',
           description: `${tier.coins} Coins - ${tier.name} Pack`,
@@ -95,7 +129,7 @@ const CreditsPage = () => {
               });
               toast.success(`Successfully purchased ${tier.coins} coins!`);
               refreshCredits();
-              fetchData(); // Refresh transaction history
+              fetchData();
             } catch (err) {
               toast.error('Payment verification failed');
             }
@@ -132,50 +166,57 @@ const CreditsPage = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4">
+    <div className="max-w-5xl mx-auto px-4">
+      {/* Header */}
+      <div className="text-center max-w-3xl mx-auto mb-8">
+        <span className="text-sm font-semibold text-[#7C3AED] uppercase tracking-wider">Your Coins</span>
+        <h1 className="text-3xl md:text-4xl font-bold text-[#0F172A] mt-2 mb-2">
+          Simple, Fair Pricing
+        </h1>
+        <p className="text-lg text-gray-600">
+          Pay only for what you use. No subscriptions, no hidden fees.
+        </p>
+      </div>
+
       {/* Balance Card */}
-      <div className="bg-gradient-to-r from-[#0F172A] to-[#1E293B] rounded-3xl p-8 text-white mb-8">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <p className="text-white/70 text-sm mb-1">Your Balance</p>
-            <div className="flex items-center gap-3">
-              <Coins size={40} className="text-yellow-400" />
-              <span className="text-5xl font-bold">{user?.credits_balance || 0}</span>
-              <span className="text-white/70">coins</span>
-            </div>
-          </div>
-        </div>
-        {/* Coin Usage */}
-        <div className="grid grid-cols-3 gap-4 pt-4 border-t border-white/20">
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <MessageCircle size={18} className="text-white/80" />
-              <span className="text-lg font-bold">{MESSAGE_COST}</span>
-            </div>
-            <p className="text-xs text-white/60">coin/message</p>
-          </div>
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <Phone size={18} className="text-white/80" />
-              <span className="text-lg font-bold">{AUDIO_COST}</span>
-            </div>
-            <p className="text-xs text-white/60">coins/min audio</p>
-          </div>
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <Video size={18} className="text-white/80" />
-              <span className="text-lg font-bold">{VIDEO_COST}</span>
-            </div>
-            <p className="text-xs text-white/60">coins/min video</p>
+      <div className="bg-gradient-to-r from-[#0F172A] to-[#1E293B] rounded-3xl p-8 text-white mb-8 max-w-xl mx-auto">
+        <div className="text-center mb-6">
+          <p className="text-white/70 text-sm mb-2">Your Current Balance</p>
+          <div className="flex items-center justify-center gap-3">
+            <Coins size={48} className="text-yellow-400" />
+            <span className="text-6xl font-bold">{user?.credits_balance || 0}</span>
+            <span className="text-white/70 text-xl">coins</span>
           </div>
         </div>
       </div>
 
-      {/* Buy Coins */}
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold text-[#0F172A] mb-6">Buy Coins</h2>
+      {/* How Coins Work - Matching Landing Page Style */}
+      <div className="bg-[#E9D5FF]/30 rounded-2xl p-6 max-w-xl mx-auto mb-12">
+        <h4 className="font-semibold text-[#0F172A] mb-4 text-center">How Coins Work</h4>
+        <div className="grid grid-cols-3 gap-4 text-center">
+          <div className="bg-white rounded-xl p-4 shadow-sm">
+            <MessageCircle size={24} className="mx-auto text-[#0F172A] mb-2" />
+            <p className="font-bold text-[#0F172A]">1 coin</p>
+            <p className="text-xs text-gray-500">per message</p>
+          </div>
+          <div className="bg-white rounded-xl p-4 shadow-sm">
+            <Phone size={24} className="mx-auto text-[#0F172A] mb-2" />
+            <p className="font-bold text-[#0F172A]">5 coins</p>
+            <p className="text-xs text-gray-500">per min (voice)</p>
+          </div>
+          <div className="bg-white rounded-xl p-4 shadow-sm">
+            <Video size={24} className="mx-auto text-[#0F172A] mb-2" />
+            <p className="font-bold text-[#0F172A]">10 coins</p>
+            <p className="text-xs text-gray-500">per min (video)</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Buy Coins - Matching Landing Page Style */}
+      <div className="mb-12">
+        <h2 className="text-2xl font-bold text-[#0F172A] mb-6 text-center">Buy Coins</h2>
         
-        <div className="grid md:grid-cols-3 gap-4">
+        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
           {pricingTiers.map((tier, index) => (
             <button
               key={tier.id || index}
@@ -185,38 +226,46 @@ const CreditsPage = () => {
                   ? 'bg-[#0F172A] text-white shadow-2xl scale-105'
                   : selectedTier === index
                   ? 'bg-white border-2 border-[#0F172A] shadow-xl'
-                  : 'bg-white border-2 border-gray-200 hover:border-[#0F172A]'
+                  : 'bg-white border-2 border-gray-200 hover:border-[#0F172A] hover:shadow-lg'
               }`}
             >
               {tier.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#FCE7F3] text-[#0F172A] text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#E9D5FF] text-[#0F172A] text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
                   <Sparkles size={12} />
                   BEST VALUE
                 </div>
               )}
               
               {tier.discount > 0 && (
-                <span className={`inline-block px-2 py-1 rounded text-xs font-bold mb-2 ${
+                <div className={`inline-block px-2 py-1 rounded text-xs font-bold mb-2 ${
                   tier.popular ? 'bg-green-400 text-green-900' : 'bg-green-100 text-green-700'
                 }`}>
                   {tier.discount}% OFF
-                </span>
+                </div>
               )}
               
-              <h3 className={`text-lg font-bold mb-1 ${tier.popular ? 'text-white' : 'text-[#0F172A]'}`}>
+              <h3 className={`text-xl font-bold mb-2 ${tier.popular ? 'text-white' : 'text-[#0F172A]'}`}>
                 {tier.name}
               </h3>
               
-              <div className="flex items-baseline gap-1 mb-1">
-                <Coins size={20} className={tier.popular ? 'text-yellow-400' : 'text-yellow-500'} />
+              <div className="mb-2">
                 <span className={`text-3xl font-bold ${tier.popular ? 'text-white' : 'text-[#0F172A]'}`}>
-                  {tier.coins}
+                  ₹{tier.price}
                 </span>
               </div>
               
               <p className={`text-sm mb-4 ${tier.popular ? 'text-white/70' : 'text-gray-500'}`}>
-                ₹{tier.price} • ₹{tier.pricePerCoin.toFixed(2)}/coin
+                {tier.coins} coins
               </p>
+              
+              <ul className="space-y-2 mb-6">
+                {(tier.features || []).map((feature, idx) => (
+                  <li key={idx} className="flex items-start">
+                    <Check size={16} className={tier.popular ? 'text-green-400 mr-2 flex-shrink-0 mt-0.5' : 'text-green-500 mr-2 flex-shrink-0 mt-0.5'} />
+                    <span className={`text-sm ${tier.popular ? 'text-white/90' : 'text-gray-600'}`}>{feature}</span>
+                  </li>
+                ))}
+              </ul>
               
               <div
                 onClick={(e) => {
@@ -226,7 +275,7 @@ const CreditsPage = () => {
                 className={`w-full py-2.5 rounded-xl font-semibold text-center transition-all cursor-pointer ${
                   tier.popular
                     ? 'bg-white text-[#0F172A] hover:bg-gray-100'
-                    : 'bg-[#0F172A] text-white hover:bg-gray-800'
+                    : 'bg-[#0F172A] text-white hover:shadow-lg'
                 } ${isPurchasing ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {isPurchasing ? 'Processing...' : 'Buy Now'}
@@ -235,47 +284,28 @@ const CreditsPage = () => {
           ))}
         </div>
       </div>
-
-      {/* How Coins Work */}
-      <div className="bg-[#E9D5FF]/30 rounded-2xl p-6 mb-8">
-        <h3 className="font-semibold text-[#0F172A] mb-4 flex items-center gap-2">
-          <Gift size={20} />
-          How Coins Work
-        </h3>
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-          <div className="flex items-start gap-3">
-            <MessageCircle size={18} className="text-[#0F172A] flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-medium text-[#0F172A]">1 Coin = 1 Message</p>
-              <p className="text-gray-600">Send thoughtful messages</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <Phone size={18} className="text-[#0F172A] flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-medium text-[#0F172A]">5 Coins = 1 Min Audio</p>
-              <p className="text-gray-600">Voice calls with matches</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <Video size={18} className="text-[#0F172A] flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-medium text-[#0F172A]">10 Coins = 1 Min Video</p>
-              <p className="text-gray-600">Face-to-face video calls</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <Check size={18} className="text-green-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-medium text-[#0F172A]">Coins Never Expire</p>
-              <p className="text-gray-600">Use them whenever you want</p>
+      
+      {/* Info Box - Matching Landing Page Style */}
+      <div className="max-w-3xl mx-auto bg-gray-50 rounded-2xl p-6 border border-gray-200 mb-12">
+        <div className="flex items-start space-x-4">
+          <Info size={24} className="text-[#0F172A] flex-shrink-0" />
+          <div>
+            <h4 className="text-lg font-semibold text-[#0F172A] mb-2">Why Coins?</h4>
+            <p className="text-gray-600 text-sm">
+              Coins encourage thoughtful communication. When every message costs something, 
+              people think before they type. This means fewer "hey" messages and more genuine conversations.
+            </p>
+            <div className="flex flex-wrap gap-4 mt-4 text-sm text-gray-600">
+              <span className="flex items-center"><Check size={14} className="text-green-600 mr-1" /> Coins never expire</span>
+              <span className="flex items-center"><Check size={14} className="text-green-600 mr-1" /> 10 free coins on signup</span>
+              <span className="flex items-center"><Check size={14} className="text-green-600 mr-1" /> No subscriptions</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Transaction History */}
-      <div>
+      <div className="max-w-3xl mx-auto">
         <h2 className="text-xl font-bold text-[#0F172A] mb-4 flex items-center gap-2">
           <History size={20} />
           Recent Transactions
