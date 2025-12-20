@@ -49,7 +49,16 @@ TrueBond is a full-stack dating application with a React frontend and Python Fas
 - `/api/messages/*`: Messaging
 - `/api/credits/*`: Credits balance and history
 - `/api/location/*`: Location updates and nearby users
+- `/api/admin/*`: Admin panel (auth, users, analytics, moderation, settings)
 - `/api/health`: Health check
+
+## Admin Panel
+- Login: `/admin` (Demo credentials shown on login page)
+- Dashboard with user stats and activity
+- User management (view, suspend, reactivate)
+- Analytics with charts (user growth, demographics, revenue)
+- Moderation queue for reported content
+- App settings (pricing, matching preferences, safety features)
 
 ## Socket.IO Events
 ### Client -> Server
@@ -77,3 +86,7 @@ TrueBond is a full-stack dating application with a React frontend and Python Fas
 - 2025-12-20: Implemented WebRTC signaling for audio/video calls
 - 2025-12-20: Added OTP verification page and flow
 - 2025-12-20: Fixed MongoDB connection with TLS/certifi
+- 2025-12-20: Fixed admin API URL to use same origin (was incorrectly pointing to localhost:8001)
+- 2025-12-20: Fixed cursor visibility issue (removed custom cursor:none CSS)
+- 2025-12-20: Fixed backend LSP errors in admin routes (TBCreditTransaction model, null checks)
+- 2025-12-20: Connected all admin panel pages to real backend APIs
