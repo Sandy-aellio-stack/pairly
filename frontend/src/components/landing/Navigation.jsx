@@ -27,14 +27,14 @@ export function Navigation({ activeSection, onNavigate }) {
                 aria-label={item.label}
                 className={`w-3 h-3 rounded-full border-2 transition-all duration-300 ${
                   isActive
-                    ? 'bg-rose-500 border-rose-500 scale-125'
-                    : 'bg-transparent border-rose-400/60 hover:border-rose-500 hover:scale-110'
+                    ? 'bg-[#3390FF] border-[#3390FF] scale-125'
+                    : 'bg-transparent border-[#3390FF]/60 hover:border-[#3390FF] hover:scale-110'
                 }`}
               />
 
               {/* Active section label BELOW dot */}
               {isActive && (
-                <span className="mt-2 text-xs text-rose-500 font-medium tracking-wide whitespace-nowrap transition-opacity duration-300">
+                <span className="mt-2 text-xs text-[#3390FF] font-medium tracking-wide whitespace-nowrap transition-opacity duration-300">
                   {item.label}
                 </span>
               )}
