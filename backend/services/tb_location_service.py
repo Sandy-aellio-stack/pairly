@@ -3,12 +3,18 @@ from typing import List, Optional
 from fastapi import HTTPException, Query
 from pydantic import BaseModel
 import math
+import certifi
 
 from backend.models.tb_user import TBUser, GeoLocation, UserPublicProfile
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 
 MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017/truebond")
+
+def get_db_name(mongo_url: str) -> str:
+    """Extract database name from MongoDB URL"""
+    db_name = mongo_url.split("/")[-1].split("?")[0] if "/" in mongo_url else "truebond"
+    return db_name if db_name else "truebond"
 
 
 class LocationUpdateRequest(BaseModel):
@@ -57,8 +63,14 @@ class LocationService:
         max_distance_meters = max_distance * 1000
 
         # Connect to MongoDB directly for aggregation
-        client = AsyncIOMotorClient(MONGO_URL)
-        db = client.get_default_database()
+        # Use TLS only for MongoDB Atlas (mongodb+srv or mongodb with ssl)
+        client_kwargs = {}
+        if "mongodb+srv" in MONGO_URL or "ssl=true" in MONGO_URL.lower():
+            client_kwargs["tlsCAFile"] = certifi.where()
+        
+        client = AsyncIOMotorClient(MONGO_URL, **client_kwargs)
+        db_name = get_db_name(MONGO_URL)
+        db = client[db_name]
         collection = db.tb_users
 
         pipeline = [
