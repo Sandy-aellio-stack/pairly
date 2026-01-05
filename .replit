@@ -1,9 +1,10 @@
-modules = ["nodejs-20", "web", "python-3.11"]
+modules = ["python-3.12", "nodejs-20", "web"]
 [agent]
 expertMode = true
 
 [nix]
 channel = "stable-25_05"
+packages = ["awsebcli", "borgbackup", "cacert", "cargo", "ffmpeg-full", "freetype", "glibcLocales", "grpc", "iana-etc", "lcms2", "libffi", "libiconv", "libimagequant", "libjpeg", "libtiff", "libwebp", "libxcrypt", "libyaml", "openjpeg", "openssl", "pkg-config", "rustc", "sqlite", "tcl", "tk", "zlib"]
 
 [workflows]
 runButton = "Project"
