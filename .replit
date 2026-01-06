@@ -64,3 +64,4 @@ publicDir = "frontend/build"
 [userenv.shared]
 UPSTASH_REDIS_REST_URL = "https://sought-lobster-27261.upstash.io"
 UPSTASH_REDIS_REST_TOKEN = "AWp9AAIncDIyYzBlODBjNGMwZTk0MDQwYjVmMDc3OWNjZGQ4N2E0MHAyMjcyNjE"
+REDIS_URL = "rediss://default:AWp9AAIncDIyYzBlODBjNGMwZTk0MDQwYjVmMDc3OWNjZGQ4N2E0MHAyMjcyNjE@sought-lobster-27261.upstash.io:6379"
