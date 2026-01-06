@@ -1,6 +1,7 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Users, Shield, BarChart3, Settings, FileText, LogOut, Heart, Bell } from 'lucide-react';
 import useAdminStore from '@/store/adminStore';
+import HeartCursor from '@/components/HeartCursor';
 
 const AdminLayout = () => {
   const navigate = useNavigate();
@@ -21,7 +22,8 @@ const AdminLayout = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex">
+    <div className="min-h-screen bg-[#F8FAFC] flex lg:cursor-none">
+      <HeartCursor />
       {/* Sidebar */}
       <aside className="fixed left-0 top-0 bottom-0 w-64 bg-[#0F172A] text-white flex flex-col z-50">
         {/* Logo */}

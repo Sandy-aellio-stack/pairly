@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Heart, Mail, Lock, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import useAdminStore from '@/store/adminStore';
+import HeartCursor from '@/components/HeartCursor';
 
 const AdminLoginPage = () => {
   const navigate = useNavigate();
@@ -26,7 +27,8 @@ const AdminLoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-4 lg:cursor-none">
+      <HeartCursor />
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
