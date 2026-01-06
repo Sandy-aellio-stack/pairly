@@ -32,6 +32,7 @@ import ProfilePage from '@/pages/dashboard/ProfilePage';
 import CreditsPage from '@/pages/dashboard/CreditsPage';
 import SettingsPage from '@/pages/dashboard/SettingsPage';
 import CallPage from '@/pages/dashboard/CallPage';
+import NotificationsPage from '@/pages/dashboard/NotificationsPage';
 
 // Admin Pages
 import AdminLayout from '@/pages/admin/AdminLayout';
@@ -147,6 +148,7 @@ function App() {
           <Route path="profile" element={<ProfilePage />} />
           <Route path="credits" element={<CreditsPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="notifications" element={<NotificationsPage />} />
         </Route>
         
         {/* Call Page - Full Screen */}

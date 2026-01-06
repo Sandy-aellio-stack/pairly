@@ -61,10 +61,13 @@ const DashboardLayout = () => {
             </div>
 
             {/* Notifications */}
-            <button className="p-2 hover:bg-gray-100 rounded-full transition-colors relative">
+            <NavLink
+              to="/dashboard/notifications"
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors relative"
+            >
               <Bell size={22} className="text-gray-600" />
               <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full"></span>
-            </button>
+            </NavLink>
 
             {/* Profile Menu */}
             <NavLink

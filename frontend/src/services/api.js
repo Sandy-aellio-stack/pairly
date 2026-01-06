@@ -87,4 +87,13 @@ export const paymentsAPI = {
   getHistory: () => api.get('/payments/history'),
 };
 
+// Notifications APIs - matches /api/notifications/*
+export const notificationsAPI = {
+  getAll: (unreadOnly = false, limit = 20) => 
+    api.get(`/notifications?unread_only=${unreadOnly}&limit=${limit}`),
+  getUnreadCount: () => api.get('/notifications/unread-count'),
+  markAsRead: (notificationId) => api.post(`/notifications/${notificationId}/read`),
+  markAllAsRead: () => api.post('/notifications/mark-all-read'),
+};
+
 export default api;
