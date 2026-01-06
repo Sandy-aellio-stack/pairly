@@ -58,3 +58,9 @@ exposeLocalhost = true
 deploymentTarget = "static"
 build = ["bash", "-c", "cd frontend && yarn build"]
 publicDir = "frontend/build"
+
+[userenv]
+
+[userenv.shared]
+UPSTASH_REDIS_REST_URL = "https://sought-lobster-27261.upstash.io"
+UPSTASH_REDIS_REST_TOKEN = "AWp9AAIncDIyYzBlODBjNGMwZTk0MDQwYjVmMDc3OWNjZGQ4N2E0MHAyMjcyNjE"
