@@ -30,9 +30,13 @@ async def init_db():
         await asyncio.wait_for(client.admin.command('ping'), timeout=3.0)
         
         # Get database name from URL or use default
-        db_name = MONGO_URL.split("/")[-1].split("?")[0] if "/" in MONGO_URL else "truebond"
-        if not db_name:
-            db_name = "truebond"
+        # Handle MongoDB Atlas URLs that may not have db name before query params
+        db_name = "truebond"
+        if "/" in MONGO_URL:
+            path_part = MONGO_URL.split("?")[0]  # Remove query params first
+            last_segment = path_part.split("/")[-1]
+            if last_segment and last_segment != "":
+                db_name = last_segment
         
         await init_beanie(
             database=client[db_name],
