@@ -1,0 +1,149 @@
+🔧 PROJECT OBJECTIVE
+
+Prepare the TrueBond project for production release by removing unnecessary systems, standardizing integrations, and finalizing environment configuration.
+
+🚫 REMOVE COMPLETELY
+
+Razorpay payment integration
+
+Delete all Razorpay services, controllers, routes, SDK usage
+
+Remove Razorpay UI components and scripts
+
+Remove Razorpay environment variables
+
+Unused / duplicate systems
+
+Remove multiple payment provider logic
+
+Remove fallback polling for chat/calls
+
+Remove dev-only debug endpoints and console logs
+
+Remove local file storage and base64 image uploads
+
+Remove SMS / push notification placeholders
+
+✅ KEEP & STANDARDIZE
+
+Payments
+
+Stripe ONLY
+
+Use Stripe Checkout or Payment Intents
+
+Server-authoritative credit updates via webhooks
+
+Validate webhook signatures
+
+Authentication
+
+OTP-based authentication via email only
+
+JWT-based session handling
+
+Redis-based OTP storage and rate limiting
+
+Realtime
+
+Socket.IO for chat and calls
+
+Redis adapter for Socket.IO
+
+Server-controlled call billing timers
+
+Storage
+
+Cloud storage (Cloudinary or S3)
+
+Signed uploads
+
+Image validation and moderation hooks
+
+Admin
+
+RBAC enforced on all admin routes
+
+No direct DB mutation from admin UI
+
+Audit logging for admin actions
+
+🔐 ENVIRONMENT CONFIGURATION
+
+Create or update .env.example with ONLY the following variables:
+
+MONGO_URL=
+REDIS_URL=
+JWT_SECRET=
+
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+
+EMAIL_PROVIDER=
+EMAIL_API_KEY=
+EMAIL_FROM=
+
+CLOUD_STORAGE_PROVIDER=
+CLOUD_STORAGE_KEY=
+CLOUD_STORAGE_SECRET=
+CLOUD_STORAGE_BUCKET=
+
+FRONTEND_URL=
+BACKEND_URL=
+
+
+❌ Do NOT include Razorpay, SMS, or Push notification keys.
+
+✉️ EMAIL (OTP & RECEIPTS)
+
+Integrate a single email provider (SendGrid preferred)
+
+Implement OTP expiration and resend limits
+
+Use Redis for OTP storage
+
+Secure OTP verification endpoints
+
+🧪 VALIDATION & SECURITY
+
+Enforce HTTPS-only cookies
+
+Strict CORS using FRONTEND_URL
+
+Helmet security headers
+
+Rate-limit login, OTP, and payment endpoints
+
+Validate all inputs (Zod/Joi)
+
+Remove stack traces from production responses
+
+📦 DELIVERABLES
+
+Cleaned backend code (Stripe-only)
+
+Updated frontend payment flow
+
+Removed Razorpay & unused systems
+
+Updated .env.example
+
+Stripe webhook handler implemented
+
+Production-safe configuration
+
+No secrets committed
+
+❗ IMPORTANT RULES
+
+Do NOT change UI/UX unless required for removal
+
+Do NOT introduce new features
+
+Do NOT break existing flows
+
+Focus ONLY on production readiness
+
+✅ FINAL OUTPUT EXPECTED
+
+A clean, secure, Stripe-only, production-ready TrueBond codebase that can be deployed immediately once environment variables are set.
