@@ -50,6 +50,7 @@ TrueBond is a full-stack dating application with a React frontend and Python Fas
 - `/api/credits/*`: Credits balance and history
 - `/api/location/*`: Location updates and nearby users
 - `/api/admin/*`: Admin panel (auth, users, analytics, moderation, settings)
+- `/api/notifications/*`: User notifications (get, mark read)
 - `/api/health`: Health check
 
 ## Admin Panel
@@ -108,6 +109,8 @@ TrueBond is a full-stack dating application with a React frontend and Python Fas
 - 2026-01-06: Added database indexes for payments collection
 - 2026-01-06: Socket.IO already has JWT validation on connect
 - 2026-01-06: Server-side call billing worker already in place with credit checks
+- 2026-01-06: Added NotificationsPage with real API integration and fallback to mock data
+- 2026-01-06: Connected bell icon in dashboard to /dashboard/notifications route
 
 ## Production Security Features
 - Stripe webhook signature verification (mandatory)
