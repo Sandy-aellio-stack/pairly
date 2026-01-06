@@ -55,25 +55,29 @@ const HeartCursor = () => {
     
     if (!cursor || !trail) return;
 
-    // Initial position off-screen
-    gsap.set(cursor, { x: -100, y: -100 });
-    gsap.set(trail, { x: -100, y: -100 });
+    // Initial position off-screen using left/top for reliable fixed positioning
+    gsap.set(cursor, { left: -100, top: -100 });
+    gsap.set(trail, { left: -100, top: -100 });
 
     const onMouseMove = (e) => {
-      // Main cursor - follows quickly
+      // Use clientX/clientY for viewport-relative positioning with fixed elements
+      const x = e.clientX;
+      const y = e.clientY;
+      
+      // Main cursor - follows quickly using left/top
       gsap.to(cursor, {
-        x: e.clientX,
-        y: e.clientY,
-        duration: 0.15,
-        ease: 'power2.out',
+        left: x,
+        top: y,
+        duration: 0.1,
+        ease: 'none',
       });
       
-      // Trail - follows with delay for smooth effect
+      // Trail - follows with slight delay for smooth effect
       gsap.to(trail, {
-        x: e.clientX,
-        y: e.clientY,
-        duration: 0.4,
-        ease: 'power3.out',
+        left: x,
+        top: y,
+        duration: 0.3,
+        ease: 'power2.out',
       });
     };
 
@@ -146,8 +150,7 @@ const HeartCursor = () => {
         style={{
           width: '40px',
           height: '40px',
-          marginLeft: '-20px',
-          marginTop: '-20px',
+          transform: 'translate(-50%, -50%)',
           background: 'radial-gradient(circle, rgba(244, 114, 182, 0.6) 0%, rgba(244, 114, 182, 0) 70%)',
           borderRadius: '50%',
           filter: 'blur(4px)',
@@ -159,8 +162,7 @@ const HeartCursor = () => {
         ref={cursorRef}
         className="fixed pointer-events-none z-[9999] hidden lg:block"
         style={{
-          marginLeft: '-16px',
-          marginTop: '-16px',
+          transform: 'translate(-50%, -50%)',
         }}
       >
         <svg 
