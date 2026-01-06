@@ -6,8 +6,50 @@ const HeartCursor = () => {
   const trailRef = useRef(null);
   const [isHovering, setIsHovering] = useState(false);
   const [isClicking, setIsClicking] = useState(false);
+  const [isMobile, setIsMobile] = useState(true);
 
   useEffect(() => {
+    const checkMobile = () => {
+      const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      const isSmallScreen = window.innerWidth < 1024;
+      setIsMobile(isTouch || isSmallScreen);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  useEffect(() => {
+    if (isMobile) return;
+    
+    const styleId = 'heart-cursor-style';
+    let style = document.getElementById(styleId);
+    if (!style) {
+      style = document.createElement('style');
+      style.id = styleId;
+      style.textContent = `
+        @media (min-width: 1024px) {
+          *, *::before, *::after {
+            cursor: none !important;
+          }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+    
+    return () => {
+      const existingStyle = document.getElementById(styleId);
+      if (existingStyle) {
+        existingStyle.remove();
+      }
+    };
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (isMobile) return;
+    
     const cursor = cursorRef.current;
     const trail = trailRef.current;
     
@@ -93,7 +135,7 @@ const HeartCursor = () => {
       document.removeEventListener('mouseover', onMouseOver);
       document.removeEventListener('mouseout', onMouseOut);
     };
-  }, []);
+  }, [isMobile]);
 
   return (
     <>
