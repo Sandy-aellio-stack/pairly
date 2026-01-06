@@ -5,40 +5,6 @@ import useAuthStore from '@/store/authStore';
 import { locationAPI } from '@/services/api';
 import { toast } from 'sonner';
 
-// Mock profiles data
-const getMockProfiles = () => [
-  {
-    id: '1',
-    name: 'Priya',
-    age: 26,
-    bio: 'Coffee lover ☕ | Travel enthusiast ✈️ | Looking for genuine connections',
-    profile_pictures: ['https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400'],
-    intent: 'serious',
-    distance_km: 2.5,
-    interests: ['Travel', 'Photography', 'Coffee']
-  },
-  {
-    id: '2',
-    name: 'Arjun',
-    age: 28,
-    bio: 'Software engineer by day, musician by night 🎸',
-    profile_pictures: ['https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400'],
-    intent: 'dating',
-    distance_km: 3.2,
-    interests: ['Music', 'Tech', 'Hiking']
-  },
-  {
-    id: '3',
-    name: 'Ananya',
-    age: 24,
-    bio: 'Art lover 🎨 | Yoga practitioner 🧘‍♀️ | Let us have meaningful conversations',
-    profile_pictures: ['https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400'],
-    intent: 'friendship',
-    distance_km: 4.1,
-    interests: ['Art', 'Yoga', 'Reading']
-  },
-];
-
 const HomePage = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
@@ -72,27 +38,26 @@ const HomePage = () => {
                 if (response.data.users && response.data.users.length > 0) {
                   setProfiles(response.data.users);
                 } else {
-                  // Use mock data if no real users nearby
-                  setProfiles(getMockProfiles());
+                  setProfiles([]);
                 }
               } catch (e) {
-                setProfiles(getMockProfiles());
+                setProfiles([]);
               }
               setIsLoading(false);
             },
             () => {
               // Geolocation denied, use default location (Bangalore)
               setUserLocation({ lat: 12.9716, lng: 77.5946 });
-              setProfiles(getMockProfiles());
+              setProfiles([]);
               setIsLoading(false);
             }
           );
         } else {
-          setProfiles(getMockProfiles());
+          setProfiles([]);
           setIsLoading(false);
         }
       } catch (error) {
-        setProfiles(getMockProfiles());
+        setProfiles([]);
         setIsLoading(false);
       }
     };

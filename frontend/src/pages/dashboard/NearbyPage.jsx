@@ -40,93 +40,26 @@ const NearbyPage = () => {
       const response = await locationAPI.getNearby(lat, lng, user?.preferences?.max_distance_km || 50);
       
       if (response.data.users && response.data.users.length > 0) {
-        // Add mock locations for users without coordinates
-        const usersWithLocations = response.data.users.map((u, index) => ({
-          ...u,
-          location: u.location || {
-            lat: lat + (Math.random() - 0.5) * 0.05,
-            lng: lng + (Math.random() - 0.5) * 0.05
-          },
-          photo: u.profile_pictures?.[0] || getRandomAvatar(index),
-          lookingFor: u.intent || 'dating',
-          interests: u.interests || ['Coffee', 'Travel', 'Music'].slice(0, Math.floor(Math.random() * 3) + 1)
-        }));
+        // Filter to only include users with valid location data
+        const usersWithLocations = response.data.users
+          .filter(u => u.location && u.location.lat && u.location.lng)
+          .map((u) => ({
+            ...u,
+            photo: u.profile_pictures?.[0] || '',
+            lookingFor: u.intent || 'dating',
+            interests: u.interests || []
+          }));
         setUsers(usersWithLocations);
       } else {
-        // Use mock data if no real users
-        setUsers(getMockUsers(lat, lng));
+        setUsers([]);
       }
     } catch (error) {
       console.error('Error fetching nearby users:', error);
-      setUsers(getMockUsers(lat, lng));
+      setUsers([]);
     } finally {
       setIsLoading(false);
     }
   };
-
-  const getRandomAvatar = (index) => {
-    const avatars = [
-      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200',
-      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
-      'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200',
-      'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200',
-      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200',
-    ];
-    return avatars[index % avatars.length];
-  };
-
-  const getMockUsers = (lat, lng) => [
-    {
-      id: 'mock1',
-      name: 'Priya',
-      age: 26,
-      photo: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200',
-      interests: ['Hiking', 'Photography', 'Coffee'],
-      lookingFor: 'Long-term relationship',
-      distance_km: 2.5,
-      location: { lat: lat + 0.01, lng: lng + 0.01 }
-    },
-    {
-      id: 'mock2',
-      name: 'Arjun',
-      age: 28,
-      photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
-      interests: ['Music', 'Travel', 'Tech'],
-      lookingFor: 'Meaningful connection',
-      distance_km: 3.2,
-      location: { lat: lat - 0.008, lng: lng + 0.015 }
-    },
-    {
-      id: 'mock3',
-      name: 'Ananya',
-      age: 24,
-      photo: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200',
-      interests: ['Art', 'Yoga', 'Reading'],
-      lookingFor: 'Friendship first',
-      distance_km: 4.1,
-      location: { lat: lat + 0.012, lng: lng - 0.01 }
-    },
-    {
-      id: 'mock4',
-      name: 'Rahul',
-      age: 30,
-      photo: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200',
-      interests: ['Fitness', 'Cooking', 'Movies'],
-      lookingFor: 'Serious relationship',
-      distance_km: 5.0,
-      location: { lat: lat - 0.015, lng: lng - 0.008 }
-    },
-    {
-      id: 'mock5',
-      name: 'Sneha',
-      age: 27,
-      photo: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200',
-      interests: ['Dancing', 'Travel', 'Food'],
-      lookingFor: 'Someone genuine',
-      distance_km: 6.3,
-      location: { lat: lat + 0.02, lng: lng + 0.005 }
-    }
-  ];
 
   // Get user location and fetch nearby users
   useEffect(() => {

@@ -25,10 +25,10 @@ const NotificationsPage = () => {
           id: n.id,
           type: mapNotificationType(n.type),
           user: {
-            name: n.title.split(' ')[0] || 'Someone',
-            age: Math.floor(Math.random() * 10) + 22,
-            photo: getRandomAvatar(),
-            distance: `${(Math.random() * 5 + 1).toFixed(1)} km away`
+            name: n.title || 'Someone',
+            age: n.user_age || null,
+            photo: n.user_photo || null,
+            distance: n.user_distance || null
           },
           message: n.body,
           time: formatTime(n.createdAt),
@@ -36,11 +36,11 @@ const NotificationsPage = () => {
         }));
         setNotifications(mappedNotifications);
       } else {
-        setNotifications(getMockNotifications());
+        setNotifications([]);
       }
     } catch (error) {
       console.error('Error fetching notifications:', error);
-      setNotifications(getMockNotifications());
+      setNotifications([]);
     } finally {
       setIsLoading(false);
     }
@@ -51,15 +51,6 @@ const NotificationsPage = () => {
     return typeMap[type] || 'like';
   };
 
-  const getRandomAvatar = () => {
-    const avatars = [
-      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200',
-      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
-      'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200',
-      'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200',
-    ];
-    return avatars[Math.floor(Math.random() * avatars.length)];
-  };
 
   const formatTime = (isoString) => {
     const date = new Date(isoString);
@@ -81,113 +72,6 @@ const NotificationsPage = () => {
       toast.error('Failed to mark notifications as read');
     }
   };
-
-  const getMockNotifications = () => [
-    {
-      id: '1',
-      type: 'like',
-      user: {
-        name: 'Priya',
-        age: 26,
-        photo: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200',
-        distance: '2.5 km away'
-      },
-      message: 'liked your profile',
-      time: '2 minutes ago',
-      isNew: true
-    },
-    {
-      id: '2',
-      type: 'nearby',
-      user: {
-        name: 'Arjun',
-        age: 28,
-        photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
-        distance: '1.2 km away'
-      },
-      message: 'is nearby and looking for connections',
-      time: '5 minutes ago',
-      isNew: true
-    },
-    {
-      id: '3',
-      type: 'match',
-      user: {
-        name: 'Ananya',
-        age: 24,
-        photo: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200',
-        distance: '4.1 km away'
-      },
-      message: "It's a match! Start a conversation",
-      time: '1 hour ago',
-      isNew: true
-    },
-    {
-      id: '4',
-      type: 'view',
-      user: {
-        name: 'Rahul',
-        age: 30,
-        photo: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200',
-        distance: '5.0 km away'
-      },
-      message: 'viewed your profile',
-      time: '2 hours ago',
-      isNew: false
-    },
-    {
-      id: '5',
-      type: 'like',
-      user: {
-        name: 'Sneha',
-        age: 27,
-        photo: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200',
-        distance: '3.8 km away'
-      },
-      message: 'liked your photo',
-      time: '3 hours ago',
-      isNew: false
-    },
-    {
-      id: '6',
-      type: 'nearby',
-      user: {
-        name: 'Vikram',
-        age: 29,
-        photo: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200',
-        distance: '800m away'
-      },
-      message: 'just arrived in your area',
-      time: '4 hours ago',
-      isNew: false
-    },
-    {
-      id: '7',
-      type: 'message',
-      user: {
-        name: 'Meera',
-        age: 25,
-        photo: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200',
-        distance: '2.1 km away'
-      },
-      message: 'sent you a message',
-      time: '5 hours ago',
-      isNew: false
-    },
-    {
-      id: '8',
-      type: 'superlike',
-      user: {
-        name: 'Aditya',
-        age: 27,
-        photo: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200',
-        distance: '6.2 km away'
-      },
-      message: 'super liked your profile!',
-      time: 'Yesterday',
-      isNew: false
-    }
-  ];
 
   const tabs = [
     { id: 'all', label: 'All', icon: Bell },
@@ -296,11 +180,17 @@ const NotificationsPage = () => {
                 }`}
               >
                 <div className="relative">
-                  <img
-                    src={notification.user.photo}
-                    alt={notification.user.name}
-                    className="w-14 h-14 rounded-full object-cover"
-                  />
+                  {notification.user.photo ? (
+                    <img
+                      src={notification.user.photo}
+                      alt={notification.user.name}
+                      className="w-14 h-14 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-14 h-14 rounded-full bg-[#E9D5FF] flex items-center justify-center">
+                      <Users size={24} className="text-[#0F172A]" />
+                    </div>
+                  )}
                   <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white shadow flex items-center justify-center">
                     {getNotificationIcon(notification.type)}
                   </div>
@@ -311,14 +201,18 @@ const NotificationsPage = () => {
 
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-[#0F172A]">
-                    <span className="font-semibold">{notification.user.name}, {notification.user.age}</span>
+                    <span className="font-semibold">
+                      {notification.user.name}{notification.user.age ? `, ${notification.user.age}` : ''}
+                    </span>
                     {' '}{notification.message}
                   </p>
                   <div className="flex items-center gap-3 mt-1">
-                    <span className="text-xs text-gray-500 flex items-center gap-1">
-                      <MapPin size={12} />
-                      {notification.user.distance}
-                    </span>
+                    {notification.user.distance && (
+                      <span className="text-xs text-gray-500 flex items-center gap-1">
+                        <MapPin size={12} />
+                        {notification.user.distance}
+                      </span>
+                    )}
                     <span className="text-xs text-gray-400 flex items-center gap-1">
                       <Clock size={12} />
                       {notification.time}

@@ -42,11 +42,10 @@ const ChatPage = () => {
       if (response.data.conversations && response.data.conversations.length > 0) {
         setConversations(response.data.conversations);
       } else {
-        // Show mock conversations if no real ones exist
-        setConversations(getMockConversations());
+        setConversations([]);
       }
     } catch (error) {
-      setConversations(getMockConversations());
+      setConversations([]);
     } finally {
       setIsLoading(false);
     }
@@ -62,50 +61,11 @@ const ChatPage = () => {
         await messagesAPI.markRead(userId);
       }
     } catch (error) {
-      // Use mock messages if API fails
-      setMessages(getMockMessages());
+      setMessages([]);
     } finally {
       setLoadingMessages(false);
     }
   };
-
-  const getMockConversations = () => [
-    {
-      id: 'mock1',
-      name: 'Priya',
-      lastMessage: 'That sounds great! Would love to meet for coffee ☕',
-      time: '2 min ago',
-      unread: 2,
-      online: true,
-      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100'
-    },
-    {
-      id: 'mock2',
-      name: 'Arjun',
-      lastMessage: 'Haha, you have great taste in music!',
-      time: '1 hour ago',
-      unread: 0,
-      online: false,
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100'
-    },
-    {
-      id: 'mock3',
-      name: 'Ananya',
-      lastMessage: 'Thanks for the book recommendation 📚',
-      time: 'Yesterday',
-      unread: 0,
-      online: true,
-      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100'
-    },
-  ];
-
-  const getMockMessages = () => [
-    { id: 1, sender: 'them', text: 'Hey! I saw we have similar interests 😊', time: '10:30 AM' },
-    { id: 2, sender: 'me', text: 'Hi! Yes, I noticed you love traveling too!', time: '10:32 AM' },
-    { id: 3, sender: 'them', text: 'Absolutely! What\'s your favorite destination so far?', time: '10:33 AM' },
-    { id: 4, sender: 'me', text: 'I\'d say Ladakh. The mountains are breathtaking! How about you?', time: '10:35 AM' },
-    { id: 5, sender: 'them', text: 'That sounds amazing! I\'ve been wanting to go there.', time: '10:38 AM' },
-  ];
 
   const selectedConversation = conversations.find(c => c.id === selectedChat?.id) || selectedChat;
 
