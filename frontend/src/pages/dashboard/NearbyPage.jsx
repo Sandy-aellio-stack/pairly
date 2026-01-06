@@ -288,9 +288,9 @@ const NearbyPage = () => {
   });
 
   return (
-    <div className="h-[calc(100vh-140px)] bg-[#F8FAFC] flex">
+    <div className="h-[calc(100vh-140px)] bg-[#F8FAFC] flex flex-col lg:flex-row">
       {/* Left Panel - User List */}
-      <div className="w-full lg:w-[420px] flex flex-col border-r border-gray-200 bg-white">
+      <div className="w-full lg:w-[420px] flex flex-col border-b lg:border-b-0 lg:border-r border-gray-200 bg-white h-1/2 lg:h-full">
         {/* Header */}
         <div className="p-4 border-b border-gray-100">
           <div className="flex items-center justify-between mb-4">
@@ -461,7 +461,7 @@ const NearbyPage = () => {
       </div>
 
       {/* Map */}
-      <div className="hidden lg:block flex-1 relative">
+      <div className="flex-1 relative min-h-[300px] lg:min-h-0">
         <div ref={mapContainer} className="absolute inset-0" />
         
         {/* Selected User Popup */}

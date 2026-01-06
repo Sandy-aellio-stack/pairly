@@ -111,6 +111,8 @@ TrueBond is a full-stack dating application with a React frontend and Python Fas
 - 2026-01-06: Server-side call billing worker already in place with credit checks
 - 2026-01-06: Added NotificationsPage with real API integration and fallback to mock data
 - 2026-01-06: Connected bell icon in dashboard to /dashboard/notifications route
+- 2026-01-06: Fixed NearbyPage map to display on all devices (mobile, tablet, desktop)
+- 2026-01-06: Added HeartCursor to CallPage and IncomingCallModal (desktop only)
 
 ## Production Security Features
 - Stripe webhook signature verification (mandatory)
