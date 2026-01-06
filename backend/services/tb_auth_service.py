@@ -97,15 +97,20 @@ class AuthService:
         if data.age < 18:
             raise HTTPException(status_code=400, detail="Must be 18 or older to register")
 
-        # Check existing email
-        existing_email = await TBUser.find_one(TBUser.email == data.email)
-        if existing_email:
-            raise HTTPException(status_code=400, detail="Email already registered")
+        try:
+            # Check existing email
+            existing_email = await TBUser.find_one({"email": data.email})
+            if existing_email:
+                raise HTTPException(status_code=400, detail="Email already registered")
 
-        # Check existing mobile
-        existing_mobile = await TBUser.find_one(TBUser.mobile_number == data.mobile_number)
-        if existing_mobile:
-            raise HTTPException(status_code=400, detail="Mobile number already registered")
+            # Check existing mobile
+            existing_mobile = await TBUser.find_one({"mobile_number": data.mobile_number})
+            if existing_mobile:
+                raise HTTPException(status_code=400, detail="Mobile number already registered")
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=503, detail="Database not available. Please try again later.")
 
         # Create user
         user = TBUser(
@@ -155,7 +160,11 @@ class AuthService:
 
     @staticmethod
     async def login(data: LoginRequest) -> Tuple[TBUser, TokenResponse]:
-        user = await TBUser.find_one(TBUser.email == data.email)
+        try:
+            user = await TBUser.find_one({"email": data.email})
+        except Exception as e:
+            raise HTTPException(status_code=503, detail="Database not available. Please try again later.")
+        
         if not user:
             raise HTTPException(status_code=401, detail="Invalid email or password")
 

@@ -112,48 +112,13 @@ const CreditsPage = () => {
     try {
       const response = await paymentsAPI.createOrder(tier.id);
       
-      if (response.data.order_id) {
-        if (window.Razorpay && !response.data.order_id.startsWith('order_mock_')) {
-          // Real Razorpay payment
-          const options = {
-            key: response.data.key_id || 'rzp_test_key',
-            amount: tier.price * 100,
-            currency: 'INR',
-            name: 'TrueBond',
-            description: `${tier.coins} Coins - ${tier.name} Pack`,
-            order_id: response.data.order_id,
-            handler: async function(razorpayResponse) {
-              try {
-                await paymentsAPI.verifyPayment({
-                  razorpay_order_id: razorpayResponse.razorpay_order_id,
-                  razorpay_payment_id: razorpayResponse.razorpay_payment_id,
-                  razorpay_signature: razorpayResponse.razorpay_signature,
-                });
-                toast.success(`Successfully purchased ${tier.coins} coins!`);
-                refreshCredits();
-                fetchData();
-              } catch (err) {
-                toast.error('Payment verification failed');
-              }
-            },
-            prefill: {
-              email: user?.email || '',
-              contact: user?.mobile_number || '',
-            },
-            theme: {
-              color: '#0F172A'
-            }
-          };
-          
-          const rzp = new window.Razorpay(options);
-          rzp.open();
-        } else {
-          // Demo mode - simulate successful payment
+      if (response.data.payment_intent_id) {
+        const isMockOrder = response.data.payment_intent_id.startsWith('pi_mock_');
+        
+        if (isMockOrder) {
           try {
             await paymentsAPI.verifyPayment({
-              razorpay_order_id: response.data.order_id,
-              razorpay_payment_id: `pay_demo_${Date.now()}`,
-              razorpay_signature: 'demo_signature',
+              payment_intent_id: response.data.payment_intent_id,
             });
             toast.success(`Successfully purchased ${tier.coins} coins!`);
             refreshCredits();
@@ -161,6 +126,8 @@ const CreditsPage = () => {
           } catch (err) {
             toast.error('Demo purchase failed');
           }
+        } else {
+          toast.info('Stripe payment integration coming soon. Please contact support.');
         }
       } else {
         toast.error('Failed to create order');
@@ -184,7 +151,6 @@ const CreditsPage = () => {
 
   return (
     <div className="max-w-5xl mx-auto px-4">
-      {/* Header */}
       <div className="text-center max-w-3xl mx-auto mb-8">
         <span className="text-sm font-semibold text-[#7C3AED] uppercase tracking-wider">Your Coins</span>
         <h1 className="text-3xl md:text-4xl font-bold text-[#0F172A] mt-2 mb-2">
@@ -195,7 +161,6 @@ const CreditsPage = () => {
         </p>
       </div>
 
-      {/* Balance Card */}
       <div className="bg-gradient-to-r from-[#0F172A] to-[#1E293B] rounded-3xl p-8 text-white mb-8 max-w-xl mx-auto">
         <div className="text-center mb-6">
           <p className="text-white/70 text-sm mb-2">Your Current Balance</p>
@@ -207,7 +172,6 @@ const CreditsPage = () => {
         </div>
       </div>
 
-      {/* How Coins Work - Matching Landing Page Style */}
       <div className="bg-[#E9D5FF]/30 rounded-2xl p-6 max-w-xl mx-auto mb-12">
         <h4 className="font-semibold text-[#0F172A] mb-4 text-center">How Coins Work</h4>
         <div className="grid grid-cols-3 gap-4 text-center">
@@ -229,7 +193,6 @@ const CreditsPage = () => {
         </div>
       </div>
 
-      {/* Buy Coins - Matching Landing Page Style */}
       <div className="mb-12">
         <h2 className="text-2xl font-bold text-[#0F172A] mb-6 text-center">Buy Coins</h2>
         
@@ -302,7 +265,6 @@ const CreditsPage = () => {
         </div>
       </div>
       
-      {/* Info Box - Matching Landing Page Style */}
       <div className="max-w-3xl mx-auto bg-gray-50 rounded-2xl p-6 border border-gray-200 mb-12">
         <div className="flex items-start space-x-4">
           <Info size={24} className="text-[#0F172A] flex-shrink-0" />
@@ -321,7 +283,6 @@ const CreditsPage = () => {
         </div>
       </div>
 
-      {/* Transaction History */}
       <div className="max-w-3xl mx-auto">
         <h2 className="text-xl font-bold text-[#0F172A] mb-4 flex items-center gap-2">
           <History size={20} />

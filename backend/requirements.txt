@@ -114,7 +114,6 @@ pytokens==0.3.0
 pytz==2025.2
 PyYAML==6.0.3
 qrcode==8.2
-razorpay==2.0.0
 redis==7.1.0
 referencing==0.37.0
 requests==2.32.5

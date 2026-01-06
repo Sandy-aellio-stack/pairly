@@ -1,4 +1,4 @@
-import razorpay
+import stripe
 import os
 from datetime import datetime, timezone
 from typing import Optional
@@ -10,26 +10,19 @@ from backend.models.tb_payment import TBPayment, PaymentStatus, PaymentProvider,
 from backend.models.tb_credit import TransactionReason
 from backend.services.tb_credit_service import CreditService
 
-# Razorpay configuration
-RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID", "rzp_test_yourtestkey")
-RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET", "yourtestsecret")
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 
-# Initialize Razorpay client
-try:
-    razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
-except Exception as e:
-    print(f"Razorpay client initialization error: {e}")
-    razorpay_client = None
+stripe.api_key = STRIPE_SECRET_KEY
 
 
 class CreateOrderRequest(BaseModel):
-    package_id: str  # pack_100, pack_250, etc.
+    package_id: str
 
 
 class VerifyPaymentRequest(BaseModel):
-    razorpay_order_id: str
-    razorpay_payment_id: str
-    razorpay_signature: str
+    payment_intent_id: str
+    payment_method_id: Optional[str] = None
 
 
 class PaymentService:
@@ -40,69 +33,62 @@ class PaymentService:
 
     @staticmethod
     async def create_order(user_id: str, data: CreateOrderRequest) -> dict:
-        """Create Razorpay order for credit purchase"""
-        # Find package
+        """Create Stripe payment intent for credit purchase"""
         package = next((p for p in CREDIT_PACKAGES if p["id"] == data.package_id), None)
         if not package:
             raise HTTPException(status_code=400, detail="Invalid package")
-
-        if package["amount_inr"] < 100:
-            raise HTTPException(status_code=400, detail="Minimum purchase amount is ₹100")
 
         user = await TBUser.get(user_id)
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
-        # Create Razorpay order
-        if razorpay_client:
+        amount_cents = package["amount_inr"] * 100
+
+        if STRIPE_SECRET_KEY:
             try:
-                order_data = {
-                    "amount": package["amount_inr"] * 100,  # Amount in paise
-                    "currency": "INR",
-                    "receipt": f"tb_{user_id[:8]}_{datetime.now().strftime('%Y%m%d%H%M%S')}",
-                    "notes": {
+                payment_intent = stripe.PaymentIntent.create(
+                    amount=amount_cents,
+                    currency="inr",
+                    metadata={
                         "user_id": user_id,
                         "package_id": package["id"],
-                        "credits": package["credits"]
+                        "credits": str(package["credits"])
                     }
-                }
-                razorpay_order = razorpay_client.order.create(data=order_data)
-                order_id = razorpay_order["id"]
+                )
+                intent_id = payment_intent.id
+                client_secret = payment_intent.client_secret
             except Exception as e:
-                print(f"Razorpay order creation error: {e}")
-                # For development, create mock order
-                order_id = f"order_mock_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                print(f"Stripe payment intent creation error: {e}")
+                intent_id = f"pi_mock_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                client_secret = f"mock_secret_{intent_id}"
         else:
-            # Mock order for development
-            order_id = f"order_mock_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+            intent_id = f"pi_mock_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+            client_secret = f"mock_secret_{intent_id}"
 
-        # Save payment record
         payment = TBPayment(
             user_id=user_id,
             amount_inr=package["amount_inr"],
             credits_purchased=package["credits"],
-            provider=PaymentProvider.RAZORPAY,
-            provider_order_id=order_id,
+            provider=PaymentProvider.STRIPE,
+            provider_order_id=intent_id,
             status=PaymentStatus.PENDING
         )
         await payment.insert()
 
         return {
-            "order_id": order_id,
-            "amount": package["amount_inr"] * 100,  # In paise
-            "currency": "INR",
+            "payment_intent_id": intent_id,
+            "client_secret": client_secret,
+            "amount": amount_cents,
+            "currency": "inr",
             "credits": package["credits"],
-            "key_id": RAZORPAY_KEY_ID,
             "payment_id": str(payment.id)
         }
 
     @staticmethod
     async def verify_payment(user_id: str, data: VerifyPaymentRequest) -> dict:
-        """Verify Razorpay payment and credit wallet"""
-        # Find payment record
+        """Verify Stripe payment and credit wallet"""
         payment = await TBPayment.find_one(
-            TBPayment.provider_order_id == data.razorpay_order_id,
-            TBPayment.user_id == user_id
+            {"provider_order_id": data.payment_intent_id, "user_id": user_id}
         )
 
         if not payment:
@@ -114,56 +100,46 @@ class PaymentService:
                 "credits_added": payment.credits_purchased
             }
 
-        # Skip verification for mock/demo orders
-        is_mock_order = data.razorpay_order_id.startswith("order_mock_")
+        is_mock_order = data.payment_intent_id.startswith("pi_mock_")
         
-        # Verify signature with Razorpay (only for real orders)
-        if razorpay_client and not is_mock_order:
+        if STRIPE_SECRET_KEY and not is_mock_order:
             try:
-                razorpay_client.utility.verify_payment_signature({
-                    "razorpay_order_id": data.razorpay_order_id,
-                    "razorpay_payment_id": data.razorpay_payment_id,
-                    "razorpay_signature": data.razorpay_signature
-                })
-            except razorpay.errors.SignatureVerificationError:
+                intent = stripe.PaymentIntent.retrieve(data.payment_intent_id)
+                if intent.status != "succeeded":
+                    raise HTTPException(status_code=400, detail=f"Payment not completed: {intent.status}")
+            except stripe.error.StripeError as e:
                 payment.status = PaymentStatus.FAILED
-                payment.error_message = "Signature verification failed"
+                payment.error_message = str(e)
                 await payment.save()
                 raise HTTPException(status_code=400, detail="Payment verification failed")
-            except Exception as e:
-                raise HTTPException(status_code=400, detail=f"Verification error: {str(e)}")
 
-        # Update payment record
-        payment.provider_payment_id = data.razorpay_payment_id
-        payment.provider_signature = data.razorpay_signature
+        payment.provider_payment_id = data.payment_intent_id
         payment.status = PaymentStatus.COMPLETED
         payment.completed_at = datetime.now(timezone.utc)
         await payment.save()
 
-        # Add credits to user
         await CreditService.add_credits(
             user_id=user_id,
             amount=payment.credits_purchased,
             reason=TransactionReason.CREDIT_PURCHASE,
             reference_id=str(payment.id),
-            description=f"Purchased {payment.credits_purchased} credits for ₹{payment.amount_inr}"
+            description=f"Purchased {payment.credits_purchased} credits"
         )
 
-        # Get updated balance
         user = await TBUser.get(user_id)
 
         return {
             "status": "success",
             "credits_added": payment.credits_purchased,
             "new_balance": user.credits_balance,
-            "payment_id": data.razorpay_payment_id
+            "payment_id": data.payment_intent_id
         }
 
     @staticmethod
     async def get_payment_history(user_id: str, limit: int = 50) -> list:
         """Get user's payment history"""
         payments = await TBPayment.find(
-            TBPayment.user_id == user_id
+            {"user_id": user_id}
         ).sort(-TBPayment.created_at).limit(limit).to_list()
 
         return [
