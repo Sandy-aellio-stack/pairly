@@ -7,11 +7,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import os
+import logging
 
 from backend.tb_database import init_db, close_db
 from backend.socket_server import create_socket_app, sio
+from backend.core.redis_client import redis_client
+from backend.middleware.security import (
+    SecurityHeadersMiddleware,
+    RequestLoggingMiddleware,
+    RateLimitMiddleware
+)
 
-# Import TrueBond routes
 from backend.routes.tb_auth import router as auth_router
 from backend.routes.tb_users import router as users_router
 from backend.routes.tb_location import router as location_router
@@ -19,18 +25,26 @@ from backend.routes.tb_messages import router as messages_router
 from backend.routes.tb_credits import router as credits_router
 from backend.routes.tb_payments import router as payments_router
 
-# Import new routes
 from backend.routes.tb_notifications import router as notifications_router
 from backend.routes.tb_search import router as search_router
 
-# Import Admin routes
 from backend.routes.tb_admin_auth import router as admin_auth_router
 from backend.routes.tb_admin_users import router as admin_users_router
 from backend.routes.tb_admin_analytics import router as admin_analytics_router
 from backend.routes.tb_admin_settings import router as admin_settings_router
 from backend.routes.tb_admin_moderation import router as admin_moderation_router
 
-# MongoDB client reference
+from backend.routes.webhooks import router as webhooks_router
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger("truebond")
+
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "")
+
 mongo_client = None
 
 
@@ -38,44 +52,56 @@ mongo_client = None
 async def lifespan(app: FastAPI):
     """Application lifespan handler"""
     global mongo_client
-    # Startup
     mongo_client = await init_db()
-    print("🚀 TrueBond Backend Started")
+    await redis_client.connect()
+    logger.info("TrueBond Backend Started")
     yield
-    # Shutdown
     await close_db(mongo_client)
+    await redis_client.disconnect()
 
 
 app = FastAPI(
     title="TrueBond API",
     description="Dating App Backend - Credit-based messaging with live location",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    docs_url="/docs" if ENVIRONMENT != "production" else None,
+    redoc_url="/redoc" if ENVIRONMENT != "production" else None
 )
 
-# CORS configuration
+allowed_origins = ["*"]
+if ENVIRONMENT == "production" and FRONTEND_URL:
+    allowed_origins = [FRONTEND_URL]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure for production
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RequestLoggingMiddleware)
+app.add_middleware(RateLimitMiddleware)
 
-# Global exception handler
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    return JSONResponse(
-        status_code=500,
-        content={
-            "error": "Internal server error",
-            "detail": str(exc) if os.getenv("ENV") == "development" else "Something went wrong"
-        }
-    )
+    if ENVIRONMENT == "production":
+        logger.error(f"Unhandled exception: {type(exc).__name__}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Internal server error"}
+        )
+    else:
+        logger.error(f"Exception: {exc}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Internal server error", "detail": str(exc)}
+        )
 
 
-# Register TrueBond routers
 app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(location_router)
@@ -84,8 +110,8 @@ app.include_router(credits_router)
 app.include_router(payments_router)
 app.include_router(notifications_router)
 app.include_router(search_router)
+app.include_router(webhooks_router)
 
-# Register Admin routers
 app.include_router(admin_auth_router)
 app.include_router(admin_users_router)
 app.include_router(admin_analytics_router)
@@ -98,7 +124,8 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "truebond",
-        "version": "1.0.0"
+        "version": "1.0.0",
+        "environment": ENVIRONMENT
     }
 
 
@@ -107,7 +134,7 @@ async def root():
     return {
         "app": "TrueBond",
         "version": "1.0.0",
-        "docs": "/docs",
+        "docs": "/docs" if ENVIRONMENT != "production" else None,
         "health": "/api/health"
     }
 

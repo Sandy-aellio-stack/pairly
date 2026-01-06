@@ -6,7 +6,6 @@ from .providers import (
     PaymentIntentResponse,
     WebhookEventData,
     StripeProvider,
-    RazorpayProvider
 )
 
 __all__ = [
@@ -19,5 +18,4 @@ __all__ = [
     "PaymentIntentResponse",
     "WebhookEventData",
     "StripeProvider",
-    "RazorpayProvider",
 ]

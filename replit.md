@@ -34,14 +34,14 @@ TrueBond is a full-stack dating application with a React frontend and Python Fas
 - Audio/video calling with WebRTC (signaling via Socket.IO)
 - Real-time location/nearby users
 - Admin panel with analytics
-- Payment integration (Stripe, Razorpay)
+- Payment integration (Stripe only)
 
 ## Environment Variables Required
 - `MONGO_URL`: MongoDB connection string (Atlas or local)
 - `JWT_SECRET`: Secret for JWT tokens
-- `STRIPE_SECRET_KEY`: For payments (optional)
-- `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET`: For Indian payments (optional)
-- `REDIS_URL`: Redis connection string (optional)
+- `STRIPE_SECRET_KEY`: Stripe secret key for payments
+- `STRIPE_WEBHOOK_SECRET`: Stripe webhook secret for credit fulfillment
+- `REDIS_URL`: Redis connection string (for rate limiting, caching, sessions)
 
 ## API Endpoints
 - `/api/auth/*`: Authentication (signup, login, OTP)
@@ -99,3 +99,22 @@ TrueBond is a full-stack dating application with a React frontend and Python Fas
 - 2025-12-20: All footer links now working (Privacy Policy, Terms, Contact, About, etc.)
 - 2025-12-20: Synced backend payment packages to match landing page pricing (₹100/100, ₹450/500, ₹800/1000 coins)
 - 2025-12-20: Enabled demo credit purchases (auto-verifies mock payments and adds credits)
+- 2026-01-06: Production Hardening - Removed Razorpay, standardized on Stripe-only payments
+- 2026-01-06: Added webhook-only credit system with idempotency (credits ONLY added via Stripe webhooks)
+- 2026-01-06: Added Redis-based rate limiting middleware for sensitive endpoints
+- 2026-01-06: Added security headers middleware (X-Content-Type-Options, X-Frame-Options, HSTS)
+- 2026-01-06: Added centralized error handling - no stack traces in production
+- 2026-01-06: Enhanced OTP system with rate limiting (3 sends/hour, 5 verify attempts)
+- 2026-01-06: Added database indexes for payments collection
+- 2026-01-06: Socket.IO already has JWT validation on connect
+- 2026-01-06: Server-side call billing worker already in place with credit checks
+
+## Production Security Features
+- Stripe webhook signature verification (mandatory)
+- Idempotency keys for payment processing (prevents duplicate credits)
+- Rate limiting on login, signup, OTP, and payment endpoints
+- Security headers (Content-Security-Policy, HSTS in production)
+- JWT validation on all Socket.IO connections
+- RBAC enforcement on admin routes
+- Centralized error handling with production-safe responses
+- Server-authoritative call billing with auto-end on insufficient credits

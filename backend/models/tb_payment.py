@@ -13,19 +13,17 @@ class PaymentStatus(str, Enum):
 
 
 class PaymentProvider(str, Enum):
-    RAZORPAY = "razorpay"
     STRIPE = "stripe"
 
 
 class TBPayment(Document):
     """Payment record for credit purchases"""
     user_id: Indexed(str)
-    amount_inr: int  # Amount in INR (paise for Razorpay)
+    amount_inr: int
     credits_purchased: int
-    provider: PaymentProvider = PaymentProvider.RAZORPAY
-    provider_order_id: str  # Razorpay order_id
-    provider_payment_id: Optional[str] = None  # Razorpay payment_id
-    provider_signature: Optional[str] = None
+    provider: PaymentProvider = PaymentProvider.STRIPE
+    provider_order_id: str
+    provider_payment_id: Optional[str] = None
     status: PaymentStatus = PaymentStatus.PENDING
     error_message: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -33,6 +31,12 @@ class TBPayment(Document):
 
     class Settings:
         name = "tb_payments"
+        indexes = [
+            "user_id",
+            "provider_order_id",
+            "status",
+            [("created_at", -1)]
+        ]
 
 
 # Credit packages - matching landing page pricing

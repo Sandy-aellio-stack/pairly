@@ -1,0 +1,265 @@
+🎯 OBJECTIVE
+
+Upgrade the TrueBond application from “runs correctly” to fully production-ready, focusing on security, reliability, payment safety, abuse prevention, and scalability.
+
+🚫 Do NOT add new features
+🚫 Do NOT change UI/UX
+🚫 Do NOT introduce new services unless explicitly mentioned
+
+🔴 CRITICAL CHANGES (MANDATORY)
+1️⃣ PAYMENTS — STRIPE HARDENING (CRITICAL)
+
+Rules
+
+Credits MUST be added only via Stripe webhook
+
+Frontend success page must NOT modify credits
+
+Webhook signature verification is mandatory
+
+Prevent duplicate crediting
+
+Implement
+
+Idempotency using stripeEventId
+
+Atomic DB transaction when adding credits
+
+Reject duplicate webhook events
+
+Log all payment events securely
+
+2️⃣ OTP SYSTEM HARDENING
+
+Implement
+
+OTP expiry (5–10 minutes)
+
+Max resend limit (e.g. 3 per hour)
+
+Max verify attempts (e.g. 5 attempts)
+
+Lock OTP after failures
+
+Redis-based OTP storage ONLY
+
+🚫 Remove any fallback or duplicate OTP logic
+
+3️⃣ SERVER-SIDE CREDIT & CALL AUTHORITY
+
+Remove
+
+Client-side credit deduction
+
+Client-side call timers
+
+Implement
+
+Server-controlled call sessions
+
+Server deducts credits at fixed intervals
+
+Auto-end call when credits reach zero
+
+Prevent reconnection abuse
+
+4️⃣ INPUT VALIDATION (SECURITY)
+
+Apply strict validation using Zod or Joi for:
+
+Signup / Login
+
+OTP send & verify
+
+Profile updates
+
+Payments
+
+Chat messages
+
+Admin actions
+
+Reject malformed or unexpected input.
+
+5️⃣ RATE LIMITING (ANTI-ABUSE)
+
+Apply rate limits to:
+
+OTP send
+
+OTP verify
+
+Login
+
+Payments
+
+Chat messages
+
+Admin actions
+
+Use Redis-based rate limiting.
+
+6️⃣ ROLE-BASED ACCESS CONTROL (RBAC)
+
+Enforce on backend
+
+Admin routes require admin role
+
+No frontend-only role protection
+
+Block privilege escalation
+
+Log all admin actions
+
+7️⃣ ERROR HANDLING & LOGGING
+
+Implement
+
+Centralized error handler
+
+Production-safe error responses
+
+Remove stack traces in production
+
+Structured logging (Winston or Pino)
+
+Mask sensitive fields (tokens, emails, payment IDs)
+
+🚫 Remove console.log in production paths
+
+8️⃣ SOCKET.IO STABILITY
+
+Implement
+
+JWT validation on socket connection
+
+Proper disconnect cleanup
+
+Redis adapter for Socket.IO
+
+Prevent ghost users and stale sessions
+
+Handle reconnect logic safely
+
+9️⃣ DATABASE OPTIMIZATION
+
+Add indexes for:
+
+users.email
+
+users.phone (if applicable)
+
+chats.participants
+
+messages.conversationId
+
+payments.userId
+
+adminLogs.createdAt
+
+Remove unused schemas and dev-only collections.
+
+🟡 IMPORTANT (SHOULD BE DONE BEFORE LAUNCH)
+🔟 ACCOUNT SAFETY
+
+Implement:
+
+Logout from all sessions
+
+Session/device tracking
+
+Soft account deletion (GDPR-style)
+
+1️⃣1️⃣ CONTENT & USER SAFETY
+
+Implement:
+
+Image size/type validation
+
+Profanity filter for chat
+
+Block & report user functionality
+
+Shadow-ban capability (admin)
+
+1️⃣2️⃣ ADMIN SAFETY
+
+Implement:
+
+Confirmation for destructive admin actions
+
+Immutable audit logs
+
+No direct database mutation from admin UI
+
+🔐 SECURITY HARDENING (MANDATORY)
+
+Enforce HTTPS-only cookies
+
+Enable Helmet security headers
+
+Strict CORS using FRONTEND_URL
+
+Prevent open redirects
+
+Validate Stripe webhook signatures
+
+Ensure .env is never committed
+
+📦 ENVIRONMENT VARIABLES (FINAL)
+
+Ensure .env.example contains ONLY:
+
+MONGO_URL=
+REDIS_URL=
+JWT_SECRET=
+
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+
+EMAIL_PROVIDER=
+EMAIL_API_KEY=
+EMAIL_FROM=
+
+CLOUD_STORAGE_PROVIDER=
+CLOUD_STORAGE_KEY=
+CLOUD_STORAGE_SECRET=
+CLOUD_STORAGE_BUCKET=
+
+FRONTEND_URL=
+BACKEND_URL=
+
+
+🚫 Do NOT add Razorpay, SMS, Push Notification variables.
+
+📋 FINAL OUTPUT EXPECTED
+
+Hardened Stripe-only payment flow
+
+Secure OTP system with abuse protection
+
+Server-authoritative credits & calls
+
+RBAC enforced on backend
+
+Proper logging & error handling
+
+Socket.IO stable for scale
+
+Optimized database indexes
+
+Production-safe codebase ready for deployment
+
+❗ STRICT RULES
+
+Do NOT add new features
+
+Do NOT change business logic
+
+Do NOT alter UI
+
+Focus ONLY on production stability & security
+
+✅ END GOAL
+
+A secure, abuse-resistant, payment-safe, production-grade TrueBond application ready for real users.

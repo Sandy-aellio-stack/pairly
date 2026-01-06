@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends
 from backend.models.tb_user import TBUser
 from backend.routes.tb_auth import get_current_user
 from backend.services.tb_payment_service import (
@@ -21,8 +21,9 @@ async def get_packages():
 @router.post("/order")
 async def create_order(data: CreateOrderRequest, user: TBUser = Depends(get_current_user)):
     """
-    Create a Razorpay order for credit purchase.
-    Returns order_id and key_id to initiate payment on frontend.
+    Create a Stripe payment intent for credit purchase.
+    Returns payment_intent_id and client_secret for Stripe Elements.
+    Note: Credits are ONLY added via webhook, not this endpoint.
     """
     return await PaymentService.create_order(
         user_id=str(user.id),
@@ -33,8 +34,8 @@ async def create_order(data: CreateOrderRequest, user: TBUser = Depends(get_curr
 @router.post("/verify")
 async def verify_payment(data: VerifyPaymentRequest, user: TBUser = Depends(get_current_user)):
     """
-    Verify Razorpay payment signature and credit wallet.
-    Call this after successful Razorpay checkout.
+    Verify Stripe payment status.
+    Note: This only checks status - credits are added via webhook only.
     """
     return await PaymentService.verify_payment(
         user_id=str(user.id),
@@ -53,23 +54,3 @@ async def get_payment_history(limit: int = 50, user: TBUser = Depends(get_curren
         "payments": payments,
         "count": len(payments)
     }
-
-
-@router.post("/webhook/razorpay")
-async def razorpay_webhook(request: Request):
-    """
-    Razorpay webhook handler.
-    Handles payment.captured, payment.failed events.
-    """
-    # TODO: Implement webhook signature verification
-    payload = await request.json()
-    event = payload.get("event")
-    
-    if event == "payment.captured":
-        # Payment successful - already handled in verify endpoint
-        pass
-    elif event == "payment.failed":
-        # Mark payment as failed
-        pass
-    
-    return {"status": "ok"}

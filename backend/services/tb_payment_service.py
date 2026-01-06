@@ -1,5 +1,6 @@
 import stripe
 import os
+import logging
 from datetime import datetime, timezone
 from typing import Optional
 from fastapi import HTTPException
@@ -7,8 +8,8 @@ from pydantic import BaseModel
 
 from backend.models.tb_user import TBUser
 from backend.models.tb_payment import TBPayment, PaymentStatus, PaymentProvider, CREDIT_PACKAGES
-from backend.models.tb_credit import TransactionReason
-from backend.services.tb_credit_service import CreditService
+
+logger = logging.getLogger("payments")
 
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
@@ -58,7 +59,7 @@ class PaymentService:
                 intent_id = payment_intent.id
                 client_secret = payment_intent.client_secret
             except Exception as e:
-                print(f"Stripe payment intent creation error: {e}")
+                logger.error(f"Stripe payment intent creation error: {e}")
                 intent_id = f"pi_mock_{datetime.now().strftime('%Y%m%d%H%M%S')}"
                 client_secret = f"mock_secret_{intent_id}"
         else:
@@ -75,6 +76,8 @@ class PaymentService:
         )
         await payment.insert()
 
+        logger.info(f"Payment intent created: {intent_id} for user {user_id}")
+
         return {
             "payment_intent_id": intent_id,
             "client_secret": client_secret,
@@ -86,7 +89,11 @@ class PaymentService:
 
     @staticmethod
     async def verify_payment(user_id: str, data: VerifyPaymentRequest) -> dict:
-        """Verify Stripe payment and credit wallet"""
+        """
+        Check Stripe payment status.
+        NOTE: Credits are ONLY added via Stripe webhook, NOT here.
+        This endpoint only returns the current status.
+        """
         payment = await TBPayment.find_one(
             {"provider_order_id": data.payment_intent_id, "user_id": user_id}
         )
@@ -95,9 +102,12 @@ class PaymentService:
             raise HTTPException(status_code=404, detail="Payment not found")
 
         if payment.status == PaymentStatus.COMPLETED:
+            user = await TBUser.get(user_id)
             return {
-                "status": "already_processed",
-                "credits_added": payment.credits_purchased
+                "status": "completed",
+                "credits_added": payment.credits_purchased,
+                "current_balance": user.credits_balance if user else 0,
+                "message": "Payment completed and credits added"
             }
 
         is_mock_order = data.payment_intent_id.startswith("pi_mock_")
@@ -105,34 +115,86 @@ class PaymentService:
         if STRIPE_SECRET_KEY and not is_mock_order:
             try:
                 intent = stripe.PaymentIntent.retrieve(data.payment_intent_id)
-                if intent.status != "succeeded":
-                    raise HTTPException(status_code=400, detail=f"Payment not completed: {intent.status}")
+                
+                if intent.status == "succeeded":
+                    return {
+                        "status": "pending_fulfillment",
+                        "message": "Payment successful. Credits will be added shortly via webhook."
+                    }
+                elif intent.status in ["processing", "requires_action"]:
+                    return {
+                        "status": "processing",
+                        "message": f"Payment is {intent.status}"
+                    }
+                elif intent.status in ["requires_payment_method", "canceled"]:
+                    payment.status = PaymentStatus.FAILED
+                    payment.error_message = f"Payment {intent.status}"
+                    await payment.save()
+                    return {
+                        "status": "failed",
+                        "message": f"Payment {intent.status}"
+                    }
+                else:
+                    return {
+                        "status": intent.status,
+                        "message": f"Payment status: {intent.status}"
+                    }
             except stripe.error.StripeError as e:
-                payment.status = PaymentStatus.FAILED
-                payment.error_message = str(e)
-                await payment.save()
-                raise HTTPException(status_code=400, detail="Payment verification failed")
+                logger.error(f"Stripe verification error: {e}")
+                return {
+                    "status": "error",
+                    "message": "Unable to verify payment status"
+                }
+        else:
+            return {
+                "status": "pending",
+                "message": "Payment pending. Use Stripe webhook for production credit fulfillment."
+            }
 
-        payment.provider_payment_id = data.payment_intent_id
+    @staticmethod
+    async def fulfill_payment_via_webhook(payment_intent_id: str) -> dict:
+        """
+        Fulfill payment - ONLY called from webhook handler.
+        This is the ONLY place credits are added.
+        """
+        from backend.services.tb_credit_service import CreditService
+        from backend.models.tb_credit import TransactionReason
+        
+        payment = await TBPayment.find_one({"provider_order_id": payment_intent_id})
+        
+        if not payment:
+            logger.error(f"Payment not found for intent: {payment_intent_id}")
+            return {"success": False, "error": "Payment not found"}
+        
+        if payment.status == PaymentStatus.COMPLETED:
+            logger.info(f"Payment already fulfilled: {payment_intent_id}")
+            return {"success": True, "already_processed": True}
+        
         payment.status = PaymentStatus.COMPLETED
         payment.completed_at = datetime.now(timezone.utc)
         await payment.save()
-
+        
         await CreditService.add_credits(
-            user_id=user_id,
+            user_id=payment.user_id,
             amount=payment.credits_purchased,
             reason=TransactionReason.CREDIT_PURCHASE,
             reference_id=str(payment.id),
             description=f"Purchased {payment.credits_purchased} credits"
         )
-
-        user = await TBUser.get(user_id)
-
+        
+        logger.info(
+            f"Credits fulfilled via webhook: {payment.credits_purchased} credits for user {payment.user_id}",
+            extra={
+                "payment_intent_id": payment_intent_id,
+                "user_id": payment.user_id,
+                "credits": payment.credits_purchased
+            }
+        )
+        
         return {
-            "status": "success",
+            "success": True,
             "credits_added": payment.credits_purchased,
-            "new_balance": user.credits_balance,
-            "payment_id": data.payment_intent_id
+            "user_id": payment.user_id
         }
 
     @staticmethod
