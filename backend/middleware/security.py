@@ -8,24 +8,44 @@ from typing import Callable
 
 logger = logging.getLogger("security")
 
-FRONTEND_URL = os.getenv("FRONTEND_URL", "")
-ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+# Import security configuration
+from backend.core.security_config import security_config
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    """Add security headers to all responses"""
+    """Add security headers to all responses based on environment"""
     
     async def dispatch(self, request: Request, call_next: Callable):
         response = await call_next(request)
         
+        # Core security headers - always applied
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["X-Permitted-Cross-Domain-Policies"] = "none"
         
-        if ENVIRONMENT == "production":
-            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-            response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
+        # Cache control for API responses
+        if request.url.path.startswith("/api"):
+            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
+            response.headers["Pragma"] = "no-cache"
+        
+        # HSTS - only in production with HTTPS
+        if security_config.enable_hsts:
+            hsts_value = f"max-age={security_config.hsts_max_age}"
+            if security_config.hsts_include_subdomains:
+                hsts_value += "; includeSubDomains"
+            if security_config.hsts_preload:
+                hsts_value += "; preload"
+            response.headers["Strict-Transport-Security"] = hsts_value
+        
+        # Content Security Policy
+        if security_config.content_security_policy:
+            response.headers["Content-Security-Policy"] = security_config.content_security_policy
+        
+        # Permissions Policy (formerly Feature-Policy)
+        if security_config.permissions_policy:
+            response.headers["Permissions-Policy"] = security_config.permissions_policy
         
         return response
 
