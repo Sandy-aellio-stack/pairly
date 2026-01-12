@@ -197,16 +197,21 @@ const ChatPage = () => {
                   >
                     <ArrowLeft size={20} />
                   </button>
-                  <img
-                    src={selectedConversation.avatar || selectedConversation.profile_pictures?.[0] || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100'}
-                    alt={selectedConversation.name}
-                    className="w-10 h-10 rounded-full object-cover"
-                  />
-                  <div>
-                    <h3 className="font-semibold text-[#0F172A]">{selectedConversation.name}</h3>
-                    <p className="text-xs text-green-500">
-                      {selectedConversation.online ? 'Online' : 'Offline'}
-                    </p>
+                  <div 
+                    className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => navigate(`/dashboard/profile/${selectedChat.id}`)}
+                  >
+                    <img
+                      src={selectedConversation.avatar || selectedConversation.profile_pictures?.[0] || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100'}
+                      alt={selectedConversation.name}
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+                    <div>
+                      <h3 className="font-semibold text-[#0F172A]">{selectedConversation.name}</h3>
+                      <p className="text-xs text-green-500">
+                        {selectedConversation.online ? 'Online' : 'Tap to view profile'}
+                      </p>
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
