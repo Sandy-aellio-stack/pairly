@@ -7,7 +7,7 @@ import requests
 import time
 from datetime import datetime
 
-BACKEND_URL = "https://datemate-70.preview.emergentagent.com/api"
+BACKEND_URL = "https://project-analyzer-92.preview.emergentagent.com/api"
 
 def test_aggressive_rate_limiting():
     """Test rate limiting with rapid requests"""

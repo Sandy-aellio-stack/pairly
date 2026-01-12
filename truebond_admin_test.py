@@ -12,7 +12,7 @@ from datetime import datetime
 from typing import Dict, Any, Optional, Tuple
 
 # Configuration - Use the correct backend URL from review request
-BACKEND_URL = "https://datemate-70.preview.emergentagent.com/api"
+BACKEND_URL = "https://project-analyzer-92.preview.emergentagent.com/api"
 
 class TrueBondAdminTester:
     def __init__(self):

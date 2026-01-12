@@ -3,9 +3,9 @@
 ## 🚀 Quick Start
 
 ### Access URLs
-- **Landing Page**: https://datemate-70.preview.emergentagent.com
-- **User Dashboard**: https://datemate-70.preview.emergentagent.com/dashboard
-- **Admin Dashboard**: https://datemate-70.preview.emergentagent.com/admin
+- **Landing Page**: https://project-analyzer-92.preview.emergentagent.com
+- **User Dashboard**: https://project-analyzer-92.preview.emergentagent.com/dashboard
+- **Admin Dashboard**: https://project-analyzer-92.preview.emergentagent.com/admin
 
 ### Test Credentials
 ```
