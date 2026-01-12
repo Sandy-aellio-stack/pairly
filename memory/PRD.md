@@ -154,22 +154,67 @@ TrueBond is a credit-based dating application with real-time messaging, geolocat
 
 ## Environment Variables
 
-### Backend
+### Backend (REQUIRED)
 ```env
-MONGO_URL=mongodb://...
-JWT_SECRET=...
+# Core
+MONGO_URL=mongodb+srv://...
+DB_NAME=truebond
+JWT_SECRET=<64-char-secret>
 REDIS_URL=redis://...
-FCM_SERVER_KEY=... (optional for test mode)
-STRIPE_SECRET_KEY=...
-RAZORPAY_KEY_ID=...
+ENVIRONMENT=production
+FRONTEND_URL=https://app.truebond.com
+CORS_ALLOWED_ORIGINS=https://app.truebond.com
+
+# Admin
+ADMIN_EMAIL=admin@truebond.com
+ADMIN_PASSWORD=<strong-password>
+
+# Payments
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+RAZORPAY_KEY_ID=rzp_live_...
+RAZORPAY_KEY_SECRET=...
+RAZORPAY_WEBHOOK_SECRET=...
+
+# Push Notifications
+FCM_SERVER_KEY=AAAA...
+
+# SMS/OTP
+FONOSTER_API_KEY=...
+# OR Twilio
+TWILIO_ACCOUNT_SID=AC...
+TWILIO_AUTH_TOKEN=...
+
+# Email
+EMAIL_ENABLED=true
+SMTP_HOST=smtp.sendgrid.net
+SMTP_PORT=587
+SMTP_USER=apikey
+SMTP_PASSWORD=SG....
+
+# Media Storage
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=...
+S3_BUCKET=truebond-uploads
+S3_REGION=us-east-1
+
+# Monitoring (Optional)
+SENTRY_DSN=...
 ```
 
-### Frontend
+### Frontend (REQUIRED)
 ```env
-VITE_API_URL=...
-VITE_FIREBASE_API_KEY=... (optional for FCM)
-VITE_FIREBASE_PROJECT_ID=...
+VITE_API_URL=https://api.truebond.com
+VITE_FIREBASE_API_KEY=AIza...
+VITE_FIREBASE_AUTH_DOMAIN=truebond.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=truebond
+VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
+VITE_FIREBASE_APP_ID=1:123456789:web:abc
+VITE_FIREBASE_VAPID_KEY=BLc4...
 ```
 
 ## Test Credentials
 - Admin: admin@truebond.com / TrueBond@Admin2026!
+
+## Full Audit Report
+See `/app/TRUEBOND_FULL_AUDIT_REPORT.md` for complete audit with API keys list and infrastructure requirements.
