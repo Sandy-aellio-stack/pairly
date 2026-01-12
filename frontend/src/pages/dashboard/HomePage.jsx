@@ -117,14 +117,22 @@ const HomePage = () => {
             <div className="relative">
               {/* Profile Card */}
               <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
-                {/* Image */}
-                <div className="relative h-[500px]">
+                {/* Image - Click to view profile */}
+                <div 
+                  className="relative h-[500px] cursor-pointer"
+                  onClick={() => navigate(`/dashboard/profile/${currentProfile.id}`)}
+                >
                   <img
                     src={currentProfile.profile_pictures?.[0] || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400'}
                     alt={currentProfile.name}
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                  
+                  {/* Tap to view indicator */}
+                  <div className="absolute top-4 right-4 px-3 py-1.5 bg-black/30 backdrop-blur-sm rounded-full text-white text-xs">
+                    Tap to view profile
+                  </div>
                   
                   {/* Profile Info Overlay */}
                   <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
@@ -137,7 +145,7 @@ const HomePage = () => {
                     
                     <div className="flex items-center gap-2 text-sm text-white/80 mb-3">
                       <MapPin size={14} />
-                      <span>{currentProfile.distance_km?.toFixed(1) || '?'} km away</span>
+                      <span>{currentProfile.distance_display || `${currentProfile.distance_km?.toFixed(1) || '?'} km away`}</span>
                     </div>
                     
                     <p className="text-white/90 mb-4">{currentProfile.bio || 'No bio yet'}</p>
