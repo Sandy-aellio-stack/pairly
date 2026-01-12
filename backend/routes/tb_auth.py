@@ -10,7 +10,6 @@ from backend.services.tb_auth_service import (
 )
 from backend.services.tb_otp_service import OTPService
 from backend.services.password_reset_service import password_reset_service
-from backend.tb_database import get_database
 
 router = APIRouter(prefix="/api/auth", tags=["TrueBond Auth"])
 security = HTTPBearer()
@@ -125,7 +124,7 @@ async def get_me(user: TBUser = Depends(get_current_user)):
 
 
 @router.post("/forgot-password")
-async def forgot_password(request: ForgotPasswordRequest, db=Depends(get_database)):
+async def forgot_password(request: ForgotPasswordRequest):
     """
     Request password reset link.
     Sends reset link to user's email if account exists.
@@ -134,7 +133,7 @@ async def forgot_password(request: ForgotPasswordRequest, db=Depends(get_databas
 
     success, message = await password_reset_service.create_reset_token(
         email=request.email,
-        db=db,
+        db=None,
         frontend_url=frontend_url
     )
 
@@ -146,7 +145,7 @@ async def forgot_password(request: ForgotPasswordRequest, db=Depends(get_databas
 
 
 @router.post("/reset-password")
-async def reset_password(request: ResetPasswordRequest, db=Depends(get_database)):
+async def reset_password(request: ResetPasswordRequest):
     """
     Reset password using token from email.
     Token is valid for 10 minutes.
@@ -154,7 +153,7 @@ async def reset_password(request: ResetPasswordRequest, db=Depends(get_database)
     success, message = await password_reset_service.reset_password(
         token=request.token,
         new_password=request.new_password,
-        db=db
+        db=None
     )
 
     if not success:
@@ -167,7 +166,7 @@ async def reset_password(request: ResetPasswordRequest, db=Depends(get_database)
 
 
 @router.post("/validate-reset-token")
-async def validate_reset_token(token: str, db=Depends(get_database)):
+async def validate_reset_token(token: str):
     """
     Validate if a reset token is still valid.
     Useful for frontend to check before showing reset form.

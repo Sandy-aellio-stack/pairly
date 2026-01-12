@@ -1,5 +1,5 @@
 import bcrypt
-import jwt
+from jose import jwt
 import random
 import string
 from datetime import datetime, timezone, timedelta
