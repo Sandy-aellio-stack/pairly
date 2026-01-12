@@ -12,7 +12,7 @@ import logging
 
 logger = logging.getLogger('routes.payments_enhanced')
 
-router = APIRouter(prefix="/api/legacy/payments", tags=["Legacy Payments Enhanced"])
+router = APIRouter(prefix="/api/legacy/payments-enhanced", tags=["Legacy Payments Enhanced"])
 
 # Credit packages configuration
 CREDIT_PACKAGES = {
