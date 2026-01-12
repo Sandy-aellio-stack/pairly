@@ -73,9 +73,19 @@ async def lifespan(app: FastAPI):
     global mongo_client
     mongo_client = await init_db()
     await redis_client.connect()
+    
+    # Initialize WebSocket Redis Pub/Sub for real-time messaging
+    from backend.socket_server import init_websocket_pubsub
+    await init_websocket_pubsub()
+    
     logger.info("TrueBond Backend Started")
     yield
     await close_db(mongo_client)
+    
+    # Disconnect Redis Pub/Sub
+    from backend.core.redis_pubsub import redis_pubsub
+    await redis_pubsub.disconnect()
+    
     await redis_client.disconnect()
 
 
