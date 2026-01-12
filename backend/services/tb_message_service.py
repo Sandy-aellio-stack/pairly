@@ -2,11 +2,16 @@ from datetime import datetime, timezone
 from typing import List, Optional
 from fastapi import HTTPException
 from pydantic import BaseModel, Field
+import asyncio
+import logging
 
 from backend.models.tb_user import TBUser
 from backend.models.tb_message import TBMessage, TBConversation
 from backend.models.tb_credit import TransactionReason
 from backend.services.tb_credit_service import CreditService
+from backend.services.fcm_service import fcm_service
+
+logger = logging.getLogger("message_service")
 
 
 class SendMessageRequest(BaseModel):
