@@ -6,6 +6,7 @@ from backend.models.payment_intent import PaymentIntent, PaymentIntentStatus, Pa
 from backend.services.payments.providers import (
     PaymentProviderBase,
     StripeProvider,
+    RazorpayProvider,
     PaymentIntentRequest,
     PaymentIntentResponse
 )
@@ -48,20 +49,31 @@ class PaymentManager:
         )
     
     def _initialize_providers(self):
-        """Initialize payment providers based on configuration (Stripe only)"""
+        """Initialize payment providers based on configuration (Stripe + Razorpay)"""
         # Stripe configuration
         stripe_config = {
             'api_key': os.getenv('STRIPE_SECRET_KEY', ''),
             'webhook_secret': os.getenv('STRIPE_WEBHOOK_SECRET', '')
         }
-        
+
+        # Razorpay configuration
+        razorpay_config = {
+            'key_id': os.getenv('RAZORPAY_KEY_ID', ''),
+            'key_secret': os.getenv('RAZORPAY_KEY_SECRET', ''),
+            'webhook_secret': os.getenv('RAZORPAY_WEBHOOK_SECRET', '')
+        }
+
         # Create Stripe provider instance (will auto-detect mock mode if no keys)
         self.providers['stripe'] = StripeProvider(stripe_config, mock_mode=self.mock_mode)
-        
+
+        # Create Razorpay provider instance (will auto-detect mock mode if no keys)
+        self.providers['razorpay'] = RazorpayProvider(razorpay_config, mock_mode=self.mock_mode)
+
         logger.info(
-            f"Stripe provider initialized",
+            f"Payment providers initialized",
             extra={
-                "stripe_mock": self.providers['stripe'].is_mock_mode()
+                "stripe_mock": self.providers['stripe'].is_mock_mode(),
+                "razorpay_mock": self.providers['razorpay'].is_mock_mode()
             }
         )
     

@@ -82,6 +82,8 @@ export const messagesAPI = {
 // Payments APIs - matches /api/payments/*
 export const paymentsAPI = {
   getPackages: () => api.get('/payments/packages'),
+  detectProvider: () => api.post('/payments/detect-provider'),
+  checkout: (data) => api.post('/payments/checkout', data),
   createOrder: (package_id) => api.post('/payments/order', { package_id }),
   verifyPayment: (data) => api.post('/payments/verify', data),
   getHistory: () => api.get('/payments/history'),
