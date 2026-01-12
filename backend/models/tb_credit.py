@@ -25,3 +25,11 @@ class TBCreditTransaction(Document):
 
     class Settings:
         name = "tb_credit_transactions"
+        indexes = [
+            # User transaction history
+            [("user_id", 1), ("created_at", -1)],
+            # Transaction type filtering
+            [("reason", 1), ("created_at", -1)],
+            # Reference lookup
+            [("reference_id", 1)],
+        ]
