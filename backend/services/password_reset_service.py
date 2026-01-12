@@ -140,11 +140,23 @@ class PasswordResetService:
                 return True, "If email exists, reset link has been sent"
             
             # Find user by email using Beanie - use dict query
-            user = await TBUser.find_one({"email": email_lower})
+            try:
+                user = await TBUser.find_one({"email": email_lower})
+            except Exception as db_error:
+                # Database might not be initialized or available
+                logger.warning(f"Database query failed: {db_error}")
+                # Still return success to prevent information leakage
+                return True, "If email exists, reset link has been sent"
             
             # For security, don't reveal if email exists
             if not user:
                 logger.info(f"Password reset requested for non-existent email: {email_lower}")
+                return True, "If email exists, reset link has been sent"
+            
+            # Check if Redis is available for token storage
+            if not redis_client.is_connected():
+                logger.error("Redis not available for token storage")
+                # Still return success to prevent information leakage
                 return True, "If email exists, reset link has been sent"
             
             # Invalidate any existing tokens for this user
