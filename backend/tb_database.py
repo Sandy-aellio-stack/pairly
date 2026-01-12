@@ -13,6 +13,7 @@ from backend.models.tb_otp import TBOTP
 from backend.models.app_settings import AppSettings
 from backend.models.tb_report import TBReport
 from backend.routes.tb_notifications import TBNotification
+from backend.models.webhook_event import WebhookEvent, WebhookDLQ
 
 MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017/truebond")
 
