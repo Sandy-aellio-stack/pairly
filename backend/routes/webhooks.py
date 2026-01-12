@@ -1,12 +1,19 @@
+"""
+Payment Webhooks - Stripe and Razorpay
+Production-ready webhook handlers with:
+- Signature verification
+- Idempotent processing
+- Atomic credit updates
+- Comprehensive logging
+"""
 from fastapi import APIRouter, Request, HTTPException, Header, status
 from typing import Optional
 import logging
 
-from backend.core.payment_clients import StripeClient
-from backend.utils.subscription_utils import sync_subscription_from_provider
-from backend.core.redis_client import redis_client
-from backend.services.webhooks.event_handler import WebhookEventHandler
-from backend.services.tb_payment_service import PaymentService
+from backend.services.payment_webhook_handler import (
+    PaymentWebhookHandler,
+    WebhookResult
+)
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 logger = logging.getLogger("webhooks")
@@ -17,9 +24,27 @@ async def stripe_webhook(
     request: Request,
     stripe_signature: Optional[str] = Header(None, alias="stripe-signature")
 ):
-    """Handle Stripe webhook events with signature verification and idempotency"""
+    """
+    Handle Stripe webhook events.
+    
+    Supported events:
+    - payment_intent.succeeded: Add credits to user
+    - payment_intent.payment_failed: Mark payment as failed
+    
+    Security:
+    - Verifies webhook signature using Stripe signing secret
+    - Idempotent - safe to receive duplicate events
+    - Atomic credit updates - no double-crediting
+    
+    Returns:
+    - 200 OK for successfully processed events
+    - 200 OK for duplicate events (idempotent)
+    - 200 OK for ignored events (unhandled event types)
+    - 400 Bad Request for invalid signature
+    - 500 Internal Server Error for processing failures
+    """
     if not stripe_signature:
-        logger.warning("Missing stripe-signature header")
+        logger.warning("Stripe webhook: Missing stripe-signature header")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Missing stripe-signature header"
@@ -27,70 +52,35 @@ async def stripe_webhook(
     
     payload = await request.body()
     
-    try:
-        event = StripeClient.verify_webhook_signature(payload, stripe_signature)
-    except ValueError as e:
-        logger.error(f"Invalid Stripe payload: {e}")
+    # Process webhook using handler
+    result = await PaymentWebhookHandler.handle_stripe_webhook(
+        payload=payload,
+        signature=stripe_signature
+    )
+    
+    result_status = result.get("status")
+    
+    # Handle different results
+    if result_status == WebhookResult.INVALID_SIGNATURE.value:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid payload"
-        )
-    except Exception as e:
-        logger.error(f"Stripe signature verification failed: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Signature verification failed"
+            detail="Invalid webhook signature"
         )
     
-    event_id = event.get("id")
-    if not event_id:
+    if result_status == WebhookResult.FAILED.value:
+        logger.error(f"Stripe webhook processing failed: {result.get('error')}")
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Missing event ID"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Webhook processing failed"
         )
     
-    async with redis_client.acquire_lock(f"stripe_webhook:{event_id}", ttl=300) as acquired:
-        if not acquired:
-            logger.info(f"Duplicate webhook event ignored: {event_id}")
-            return {"status": "duplicate", "message": "Event already processed"}
-        
-        event_type = event.get("type")
-        
-        payment_events = [
-            "payment_intent.succeeded",
-            "payment_intent.failed",
-            "payment_intent.processing"
-        ]
-        
-        subscription_events = [
-            "invoice.payment_succeeded",
-            "invoice.payment_failed",
-            "customer.subscription.updated",
-            "customer.subscription.deleted"
-        ]
-        
-        if event_type in payment_events:
-            handler = WebhookEventHandler(mock_mode=False)
-            success, error, payment_id = await handler.handle_stripe_event(event_type, event)
-            
-            if not success:
-                logger.error(f"Payment event handling failed: {error}")
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Event processing failed"
-                )
-            
-            logger.info(f"Payment event processed: {event_type}, payment_id: {payment_id}")
-            return {"status": "success", "event_type": event_type}
-        
-        elif event_type in subscription_events:
-            await sync_subscription_from_provider(event, "stripe")
-            logger.info(f"Subscription event processed: {event_type}")
-            return {"status": "success", "event_type": event_type}
-        
-        else:
-            logger.debug(f"Unhandled event type ignored: {event_type}")
-            return {"status": "ignored", "event_type": event_type}
+    # All other statuses are considered successful
+    return {
+        "status": "received",
+        "result": result_status,
+        "event_id": result.get("event_id"),
+        "credits_added": result.get("credits_added")
+    }
 
 
 @router.post("/stripe/credits")
@@ -99,11 +89,25 @@ async def stripe_credits_webhook(
     stripe_signature: Optional[str] = Header(None, alias="stripe-signature")
 ):
     """
-    Dedicated webhook for TrueBond credit purchases.
-    Credits are ONLY added through this webhook - never from frontend.
+    Dedicated Stripe webhook for TrueBond credit purchases.
+    
+    This is the ONLY endpoint that adds credits to user accounts.
+    Credits are NEVER added from frontend or verify endpoints.
+    
+    Flow:
+    1. Stripe sends payment_intent.succeeded webhook
+    2. Signature is verified
+    3. Payment record is found by payment_intent_id
+    4. Credits are added atomically (with idempotency)
+    5. Payment is marked as completed
+    
+    Idempotency:
+    - Uses event_id for deduplication
+    - Uses payment_id as credit transaction reference
+    - Safe to receive multiple times
     """
     if not stripe_signature:
-        logger.warning("Missing stripe-signature header for credits webhook")
+        logger.warning("Stripe credits webhook: Missing signature")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Missing stripe-signature header"
@@ -111,41 +115,189 @@ async def stripe_credits_webhook(
     
     payload = await request.body()
     
-    try:
-        event = StripeClient.verify_webhook_signature(payload, stripe_signature)
-    except Exception as e:
-        logger.error(f"Credits webhook signature verification failed: {e}")
+    result = await PaymentWebhookHandler.handle_stripe_webhook(
+        payload=payload,
+        signature=stripe_signature
+    )
+    
+    result_status = result.get("status")
+    
+    if result_status == WebhookResult.INVALID_SIGNATURE.value:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Signature verification failed"
+            detail="Invalid webhook signature"
         )
     
-    event_id = event.get("id")
-    event_type = event.get("type")
+    if result_status == WebhookResult.FAILED.value:
+        logger.error(f"Stripe credits webhook failed: {result.get('error')}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Credits fulfillment failed"
+        )
     
-    async with redis_client.acquire_lock(f"stripe_credits:{event_id}", ttl=3600) as acquired:
-        if not acquired:
-            logger.info(f"Duplicate credits webhook ignored: {event_id}")
-            return {"status": "duplicate"}
-        
-        if event_type == "payment_intent.succeeded":
-            data_object = event.get('data', {}).get('object', {})
-            payment_intent_id = data_object.get('id')
-            
-            if payment_intent_id:
-                result = await PaymentService.fulfill_payment_via_webhook(payment_intent_id)
-                
-                if result.get("success"):
-                    logger.info(f"Credits added via webhook: {result.get('credits_added')} for user {result.get('user_id')}")
-                    return {"status": "success", "credits_added": result.get("credits_added")}
-                else:
-                    logger.error(f"Credits fulfillment failed: {result.get('error')}")
-                    raise HTTPException(
-                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail="Credits fulfillment failed"
-                    )
-            else:
-                logger.warning("No payment_intent_id in webhook event")
-                return {"status": "error", "message": "No payment intent ID"}
-        
-        return {"status": "ignored", "event_type": event_type}
+    if result_status == WebhookResult.CREDITS_ADDED.value:
+        logger.info(
+            f"Credits added via webhook: {result.get('credits_added')} for user {result.get('user_id')}"
+        )
+    
+    return {
+        "status": "success" if result_status in [
+            WebhookResult.CREDITS_ADDED.value,
+            WebhookResult.DUPLICATE.value,
+            WebhookResult.ALREADY_PROCESSED.value
+        ] else "received",
+        "result": result_status,
+        "credits_added": result.get("credits_added"),
+        "user_id": result.get("user_id")
+    }
+
+
+@router.post("/razorpay")
+async def razorpay_webhook(
+    request: Request,
+    x_razorpay_signature: Optional[str] = Header(None, alias="X-Razorpay-Signature")
+):
+    """
+    Handle Razorpay webhook events.
+    
+    Supported events:
+    - payment.captured: Add credits to user
+    - payment.failed: Mark payment as failed
+    
+    Security:
+    - Verifies webhook signature using HMAC SHA-256
+    - Idempotent - safe to receive duplicate events
+    - Atomic credit updates - no double-crediting
+    
+    Returns:
+    - 200 OK for successfully processed events
+    - 200 OK for duplicate events (idempotent)
+    - 200 OK for ignored events (unhandled event types)
+    - 400 Bad Request for invalid signature
+    - 500 Internal Server Error for processing failures
+    """
+    if not x_razorpay_signature:
+        logger.warning("Razorpay webhook: Missing X-Razorpay-Signature header")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Missing X-Razorpay-Signature header"
+        )
+    
+    payload = await request.body()
+    
+    # Process webhook using handler
+    result = await PaymentWebhookHandler.handle_razorpay_webhook(
+        payload=payload,
+        signature=x_razorpay_signature
+    )
+    
+    result_status = result.get("status")
+    
+    # Handle different results
+    if result_status == WebhookResult.INVALID_SIGNATURE.value:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid webhook signature"
+        )
+    
+    if result_status == WebhookResult.FAILED.value:
+        logger.error(f"Razorpay webhook processing failed: {result.get('error')}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Webhook processing failed"
+        )
+    
+    # All other statuses are considered successful
+    return {
+        "status": "received",
+        "result": result_status,
+        "event_id": result.get("event_id"),
+        "credits_added": result.get("credits_added")
+    }
+
+
+@router.post("/razorpay/credits")
+async def razorpay_credits_webhook(
+    request: Request,
+    x_razorpay_signature: Optional[str] = Header(None, alias="X-Razorpay-Signature")
+):
+    """
+    Dedicated Razorpay webhook for TrueBond credit purchases.
+    
+    This is the ONLY endpoint that adds credits for Razorpay payments.
+    Credits are NEVER added from frontend or verify endpoints.
+    
+    Flow:
+    1. Razorpay sends payment.captured webhook
+    2. Signature is verified using HMAC SHA-256
+    3. Payment record is found by order_id or payment_id
+    4. Credits are added atomically (with idempotency)
+    5. Payment is marked as completed
+    
+    Idempotency:
+    - Uses event_id for deduplication
+    - Uses payment_id as credit transaction reference
+    - Safe to receive multiple times
+    """
+    if not x_razorpay_signature:
+        logger.warning("Razorpay credits webhook: Missing signature")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Missing X-Razorpay-Signature header"
+        )
+    
+    payload = await request.body()
+    
+    result = await PaymentWebhookHandler.handle_razorpay_webhook(
+        payload=payload,
+        signature=x_razorpay_signature
+    )
+    
+    result_status = result.get("status")
+    
+    if result_status == WebhookResult.INVALID_SIGNATURE.value:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid webhook signature"
+        )
+    
+    if result_status == WebhookResult.FAILED.value:
+        logger.error(f"Razorpay credits webhook failed: {result.get('error')}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Credits fulfillment failed"
+        )
+    
+    if result_status == WebhookResult.CREDITS_ADDED.value:
+        logger.info(
+            f"Credits added via Razorpay webhook: {result.get('credits_added')} for user {result.get('user_id')}"
+        )
+    
+    return {
+        "status": "success" if result_status in [
+            WebhookResult.CREDITS_ADDED.value,
+            WebhookResult.DUPLICATE.value,
+            WebhookResult.ALREADY_PROCESSED.value
+        ] else "received",
+        "result": result_status,
+        "credits_added": result.get("credits_added"),
+        "user_id": result.get("user_id")
+    }
+
+
+# Health check endpoint for webhook infrastructure
+@router.get("/health")
+async def webhook_health():
+    """
+    Check webhook handler health.
+    Used by payment providers to verify endpoint availability.
+    """
+    return {
+        "status": "healthy",
+        "service": "webhook-handler",
+        "supported_providers": ["stripe", "razorpay"],
+        "supported_events": {
+            "stripe": ["payment_intent.succeeded", "payment_intent.payment_failed"],
+            "razorpay": ["payment.captured", "payment.failed"]
+        }
+    }
