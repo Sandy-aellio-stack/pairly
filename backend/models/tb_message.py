@@ -16,7 +16,12 @@ class TBMessage(Document):
     class Settings:
         name = "tb_messages"
         indexes = [
+            # Conversation lookup (both directions)
             [("sender_id", 1), ("receiver_id", 1), ("created_at", -1)],
+            # Unread message queries
+            [("receiver_id", 1), ("is_read", 1)],
+            # Recent messages
+            [("created_at", -1)],
         ]
 
 
