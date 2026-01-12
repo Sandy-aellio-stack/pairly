@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from backend.services.notification_service import notification_service
 from backend.routes.auth import get_current_user
 
-router = APIRouter(prefix="/api/notifications", tags=["notifications"])
+router = APIRouter(prefix="/api/legacy/notifications", tags=["Legacy Notifications"])
 
 class SendIn(BaseModel):
     user_id: str
