@@ -15,7 +15,7 @@ from beanie import PydanticObjectId
 
 logger = logging.getLogger('routes.messaging')
 
-router = APIRouter(prefix="/api/messages")
+router = APIRouter(prefix="/api/legacy/messages", tags=["Legacy Messaging"])
 
 # Active WebSocket connections
 active_connections: Dict[str, WebSocket] = {}
