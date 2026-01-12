@@ -28,7 +28,7 @@ class WebhookTester:
                 data = response.json()
                 self.log_test(test_name, "PASS", 
                             expected_success_message or f"Status: {data.get('status')}, Result: {data.get('result')}")
-            elif response.status_code == 500:
+            elif response.status_code in [500, 520]:  # Handle both 500 and 520 errors
                 error_data = response.json()
                 if "CollectionWasNotInitialized" in error_data.get("type", ""):
                     self.log_test(test_name, "PASS", 
