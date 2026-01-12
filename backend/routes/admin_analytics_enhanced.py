@@ -14,7 +14,7 @@ from backend.services.admin_rbac import get_admin_user, AdminRBACService
 from backend.services.admin_logging import AdminLoggingService
 
 logger = logging.getLogger('routes.admin_analytics_enhanced')
-router = APIRouter(prefix="/api/admin/analytics", tags=["admin-analytics"])
+router = APIRouter(prefix="/api/admin/legacy-analytics", tags=["Admin Legacy Analytics"])
 
 @router.get("/dashboard")
 async def get_analytics_dashboard(
