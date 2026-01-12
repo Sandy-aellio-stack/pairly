@@ -17,7 +17,7 @@ from backend.services.credits_service import (
     DuplicateTransactionError
 )
 
-router = APIRouter(prefix="/api/credits", tags=["credits"])
+router = APIRouter(prefix="/api/legacy/credits", tags=["Legacy Credits"])
 
 
 # ===== User Endpoints =====
