@@ -3,12 +3,17 @@
 ## Product Overview
 TrueBond is a credit-based dating application with real-time messaging, geolocation-based discovery, and video/audio calling features.
 
+**Completion Status:** ~70-75% production-ready
+
 ## Tech Stack
 - **Backend**: FastAPI (Python), Beanie ODM
 - **Frontend**: React, Vite, Tailwind CSS, Zustand
-- **Database**: MongoDB
+- **Database**: MongoDB (Atlas M10+ recommended for production)
 - **Real-time**: Socket.IO with Redis Pub/Sub
 - **Authentication**: JWT (Access & Refresh tokens)
+- **Payments**: Stripe + Razorpay
+- **Push Notifications**: Firebase Cloud Messaging (FCM)
+- **Media Storage**: AWS S3 (planned)
 
 ## Core Features
 
