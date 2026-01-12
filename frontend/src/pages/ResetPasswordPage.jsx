@@ -1,6 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+
+// Password strength validator
+const validatePassword = (password) => {
+  const checks = {
+    length: password.length >= 8,
+    lowercase: /[a-z]/.test(password),
+    uppercase: /[A-Z]/.test(password),
+    number: /\d/.test(password),
+  };
+  
+  const passed = Object.values(checks).filter(Boolean).length;
+  const strength = passed === 4 ? 'strong' : passed >= 2 ? 'medium' : 'weak';
+  
+  return { checks, strength, isValid: passed === 4 };
+};
 
 export default function ResetPasswordPage() {
   const [searchParams] = useSearchParams();
@@ -16,13 +31,17 @@ export default function ResetPasswordPage() {
   const [success, setSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  // Compute password validation
+  const passwordValidation = useMemo(() => validatePassword(newPassword), [newPassword]);
+  const passwordsMatch = newPassword === confirmPassword && confirmPassword.length > 0;
+
   useEffect(() => {
     validateToken();
   }, [token]);
 
   const validateToken = async () => {
     if (!token) {
-      setError('Invalid reset link');
+      setError('Invalid reset link - no token provided');
       setValidating(false);
       return;
     }
@@ -35,10 +54,11 @@ export default function ResetPasswordPage() {
       if (response.ok) {
         setTokenValid(true);
       } else {
-        setError('Invalid or expired reset link');
+        const data = await response.json();
+        setError(data.detail || 'Invalid or expired reset link');
       }
     } catch (err) {
-      setError('Failed to validate reset link');
+      setError('Failed to validate reset link. Please try again.');
       console.error('Token validation error:', err);
     } finally {
       setValidating(false);
@@ -49,11 +69,13 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     setError('');
 
-    if (newPassword.length < 8) {
-      setError('Password must be at least 8 characters long');
+    // Validate password strength
+    if (!passwordValidation.isValid) {
+      setError('Password does not meet all requirements');
       return;
     }
 
+    // Validate passwords match
     if (newPassword !== confirmPassword) {
       setError('Passwords do not match');
       return;
@@ -91,6 +113,13 @@ export default function ResetPasswordPage() {
     }
   };
 
+  // Password strength indicator colors
+  const strengthColors = {
+    weak: 'bg-red-500',
+    medium: 'bg-yellow-500',
+    strong: 'bg-green-500',
+  };
+
   if (validating) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50">
@@ -116,7 +145,7 @@ export default function ResetPasswordPage() {
             </svg>
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Invalid Reset Link</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
+          <p className="text-gray-600 mb-6">{error || 'This link has expired or is invalid.'}</p>
           <Link
             to="/forgot-password"
             className="inline-block w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 transition-all"
@@ -170,7 +199,7 @@ export default function ResetPasswordPage() {
             </svg>
           </div>
           <h2 className="text-3xl font-bold text-gray-900">Reset Password</h2>
-          <p className="text-gray-600 mt-2">Enter your new password below</p>
+          <p className="text-gray-600 mt-2">Create a strong password for your account</p>
         </div>
 
         {error && (
@@ -211,7 +240,38 @@ export default function ResetPasswordPage() {
                 )}
               </button>
             </div>
-            <p className="mt-1 text-sm text-gray-500">Must be at least 8 characters</p>
+            
+            {/* Password strength indicator */}
+            {newPassword.length > 0 && (
+              <div className="mt-2">
+                <div className="flex gap-1 mb-2">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div
+                      key={i}
+                      className={`h-1 flex-1 rounded-full transition-all ${
+                        i <= Object.values(passwordValidation.checks).filter(Boolean).length
+                          ? strengthColors[passwordValidation.strength]
+                          : 'bg-gray-200'
+                      }`}
+                    />
+                  ))}
+                </div>
+                <div className="space-y-1 text-xs">
+                  <div className={`flex items-center gap-1 ${passwordValidation.checks.length ? 'text-green-600' : 'text-gray-500'}`}>
+                    {passwordValidation.checks.length ? '✓' : '○'} At least 8 characters
+                  </div>
+                  <div className={`flex items-center gap-1 ${passwordValidation.checks.lowercase ? 'text-green-600' : 'text-gray-500'}`}>
+                    {passwordValidation.checks.lowercase ? '✓' : '○'} One lowercase letter
+                  </div>
+                  <div className={`flex items-center gap-1 ${passwordValidation.checks.uppercase ? 'text-green-600' : 'text-gray-500'}`}>
+                    {passwordValidation.checks.uppercase ? '✓' : '○'} One uppercase letter
+                  </div>
+                  <div className={`flex items-center gap-1 ${passwordValidation.checks.number ? 'text-green-600' : 'text-gray-500'}`}>
+                    {passwordValidation.checks.number ? '✓' : '○'} One number
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div>
@@ -225,13 +285,25 @@ export default function ResetPasswordPage() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
               placeholder="Confirm new password"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                confirmPassword.length > 0
+                  ? passwordsMatch
+                    ? 'border-green-500'
+                    : 'border-red-500'
+                  : 'border-gray-300'
+              }`}
             />
+            {confirmPassword.length > 0 && !passwordsMatch && (
+              <p className="mt-1 text-xs text-red-600">Passwords do not match</p>
+            )}
+            {passwordsMatch && (
+              <p className="mt-1 text-xs text-green-600">✓ Passwords match</p>
+            )}
           </div>
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !passwordValidation.isValid || !passwordsMatch}
             className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
             {loading ? (
