@@ -35,6 +35,7 @@ import CreditsPage from '@/pages/dashboard/CreditsPage';
 import SettingsPage from '@/pages/dashboard/SettingsPage';
 import CallPage from '@/pages/dashboard/CallPage';
 import NotificationsPage from '@/pages/dashboard/NotificationsPage';
+import ProfileViewerPage from '@/pages/dashboard/ProfileViewerPage';
 
 // Admin Pages
 import AdminLayout from '@/pages/admin/AdminLayout';
