@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { authAPI, creditsAPI } from '../services/api';
 import { connectSocket, disconnectSocket } from '../services/socket';
+import { initializeFCM, cleanupFCM } from '../services/fcm';
 
 const useAuthStore = create((set, get) => ({
   user: null,
@@ -20,6 +21,8 @@ const useAuthStore = create((set, get) => ({
           isLoading: false 
         });
         connectSocket(token);
+        // Initialize FCM for push notifications (non-blocking)
+        initializeFCM().catch(err => console.warn('[Auth] FCM init failed:', err));
       } catch (error) {
         localStorage.removeItem('tb_access_token');
         localStorage.removeItem('tb_refresh_token');
@@ -43,6 +46,8 @@ const useAuthStore = create((set, get) => ({
       credits: userResponse.data.credits_balance 
     });
     connectSocket(tokens.access_token);
+    // Initialize FCM for push notifications (non-blocking)
+    initializeFCM().catch(err => console.warn('[Auth] FCM init failed:', err));
     return response.data;
   },
 
@@ -58,6 +63,8 @@ const useAuthStore = create((set, get) => ({
       isAuthenticated: true,
       credits: credits_balance 
     });
+    // Initialize FCM for push notifications (non-blocking)
+    initializeFCM().catch(err => console.warn('[Auth] FCM init failed:', err));
     return response.data;
   },
 
@@ -65,6 +72,8 @@ const useAuthStore = create((set, get) => ({
     try {
       await authAPI.logout();
     } catch (e) {}
+    // Cleanup FCM token (non-blocking)
+    cleanupFCM().catch(err => console.warn('[Auth] FCM cleanup failed:', err));
     disconnectSocket();
     localStorage.removeItem('tb_access_token');
     localStorage.removeItem('tb_refresh_token');
