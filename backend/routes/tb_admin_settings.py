@@ -120,3 +120,132 @@ async def get_pricing():
         "signupBonus": settings.signup_bonus,
         "packages": settings.packages
     }
+
+
+@router.get("/security-audit")
+async def get_security_audit(
+    admin: dict = Depends(get_current_admin)
+):
+    """
+    Get security configuration audit report.
+    Only super_admin can access this endpoint.
+    """
+    if admin["role"] != "super_admin":
+        raise HTTPException(status_code=403, detail="Only super admins can view security audit")
+    
+    import os
+    from backend.core.security_config import (
+        security_config, 
+        JWTSecretValidator,
+        validate_security_config
+    )
+    from backend.core.env_validator import get_validation_report
+    
+    environment = os.getenv("ENVIRONMENT", "development")
+    jwt_secret = os.getenv("JWT_SECRET", "")
+    
+    # Validate JWT without exposing the secret
+    jwt_valid, jwt_errors, jwt_metrics = JWTSecretValidator.validate(jwt_secret, environment)
+    rotation_info = JWTSecretValidator.get_rotation_info(jwt_secret)
+    
+    # Get overall security validation
+    security_valid, security_errors = validate_security_config()
+    
+    # Get environment validation
+    env_report = get_validation_report()
+    
+    return {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "environment": environment,
+        "overall_status": "secure" if (jwt_valid and security_valid) else "needs_attention",
+        
+        "cors": {
+            "status": "configured",
+            "allowed_origins": security_config.cors_origins,
+            "allow_credentials": security_config.cors_allow_credentials,
+            "allow_methods": security_config.cors_allow_methods,
+            "max_age_seconds": security_config.cors_max_age,
+            "wildcard_warning": "*" in security_config.cors_origins,
+        },
+        
+        "security_headers": {
+            "hsts_enabled": security_config.enable_hsts,
+            "hsts_max_age": security_config.hsts_max_age if security_config.enable_hsts else None,
+            "hsts_preload": security_config.hsts_preload if security_config.enable_hsts else None,
+            "csp_configured": bool(security_config.content_security_policy),
+            "permissions_policy_configured": bool(security_config.permissions_policy),
+        },
+        
+        "jwt": {
+            "status": "valid" if jwt_valid else "weak",
+            "algorithm": security_config.jwt_algorithm,
+            "access_token_expiry_minutes": security_config.jwt_access_token_expire_minutes,
+            "refresh_token_expiry_days": security_config.jwt_refresh_token_expire_days,
+            "metrics": {
+                "length": jwt_metrics["length"],
+                "entropy_bits": round(jwt_metrics["entropy_bits"], 1),
+                "character_classes": jwt_metrics["character_classes"],
+            },
+            "issues": jwt_errors if not jwt_valid else [],
+            "rotation": rotation_info,
+        },
+        
+        "rate_limiting": {
+            "enabled": security_config.rate_limit_enabled,
+            "endpoints_protected": [
+                "/api/auth/login",
+                "/api/auth/signup", 
+                "/api/auth/otp/send",
+                "/api/auth/otp/verify",
+                "/api/payments/order",
+                "/api/messages/send",
+            ],
+        },
+        
+        "environment_validation": env_report,
+        
+        "recommendations": _get_security_recommendations(environment, jwt_valid, security_config),
+    }
+
+
+def _get_security_recommendations(environment: str, jwt_valid: bool, config) -> list:
+    """Generate security recommendations based on current config"""
+    recommendations = []
+    
+    if environment == "development":
+        recommendations.append({
+            "priority": "info",
+            "message": "Running in development mode - some security features are relaxed"
+        })
+    
+    if "*" in config.cors_origins:
+        recommendations.append({
+            "priority": "high" if environment == "production" else "medium",
+            "message": "CORS wildcard (*) detected - restrict to specific origins in production"
+        })
+    
+    if not jwt_valid:
+        recommendations.append({
+            "priority": "critical" if environment == "production" else "high",
+            "message": "JWT secret does not meet security requirements"
+        })
+    
+    if not config.enable_hsts and environment == "production":
+        recommendations.append({
+            "priority": "high",
+            "message": "HSTS is disabled - enable for production HTTPS deployments"
+        })
+    
+    if not config.content_security_policy and environment == "production":
+        recommendations.append({
+            "priority": "medium",
+            "message": "Content Security Policy not configured"
+        })
+    
+    if not recommendations:
+        recommendations.append({
+            "priority": "info",
+            "message": "Security configuration looks good for current environment"
+        })
+    
+    return recommendations
