@@ -5,7 +5,7 @@ from backend.services.monitoring import get_metrics_service, get_alert_service
 import logging
 
 logger = logging.getLogger('routes.admin_monitoring')
-router = APIRouter(prefix="/api/admin", tags=["admin-monitoring"])
+router = APIRouter(prefix="/api/admin/monitoring", tags=["Admin Monitoring"])
 
 def check_admin(user: User):
     if user.role != "admin":
