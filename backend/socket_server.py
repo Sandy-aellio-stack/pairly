@@ -252,6 +252,13 @@ async def disconnect(sid):
             
             # Update presence to offline
             await update_user_presence(user_id, False)
+            
+            # Mark location as stale for privacy
+            try:
+                from backend.services.tb_location_service import LocationService
+                await LocationService.mark_location_stale(user_id)
+            except Exception as e:
+                logger.warning(f"Failed to mark location stale: {e}")
 
             # Publish user offline via Redis
             await redis_pubsub.publish_presence(user_id, is_online=False)
