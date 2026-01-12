@@ -38,5 +38,8 @@ class TBConversation(Document):
     class Settings:
         name = "tb_conversations"
         indexes = [
+            # Participant lookup
             [("participants", 1)],
+            # Recent conversations
+            [("last_message_at", -1)],
         ]
