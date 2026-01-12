@@ -37,6 +37,7 @@ class Preferences(BaseModel):
 class NotificationSettings(BaseModel):
     messages: bool = True
     matches: bool = True
+    calls: bool = True  # Call notifications (always recommended on)
     nearby: bool = False
     marketing: bool = False
 
@@ -95,6 +96,9 @@ class TBUser(Document):
     
     # User settings (notifications, privacy, safety)
     settings: UserSettings = Field(default_factory=UserSettings)
+    
+    # FCM Push Notification tokens (multiple devices per user)
+    fcm_tokens: List[str] = Field(default_factory=list)
     
     # Timestamps
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
