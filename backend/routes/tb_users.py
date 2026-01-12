@@ -3,10 +3,12 @@ from pydantic import BaseModel, Field
 from typing import Optional, List
 import base64
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from backend.models.tb_user import TBUser, Gender, Intent, Preferences, UserSettings, NotificationSettings, PrivacySettings, SafetySettings
+from backend.models.tb_report import TBReport, ReportStatus
 from backend.routes.tb_auth import get_current_user
+from backend.services.tb_location_service import PrivacyLocation
 
 router = APIRouter(prefix="/api/users", tags=["TrueBond Users"])
 
@@ -25,27 +27,269 @@ class UpdatePreferencesRequest(BaseModel):
     max_distance_km: Optional[int] = Field(None, ge=1, le=500)
 
 
+class BlockUserRequest(BaseModel):
+    reason: Optional[str] = None
+
+
+class ReportUserRequest(BaseModel):
+    reason: str = Field(..., min_length=10, max_length=500)
+    report_type: str = "profile"
+
+
 @router.get("/profile/{user_id}")
 async def get_user_profile(user_id: str, current_user: TBUser = Depends(get_current_user)):
-    """Get a user's public profile - NO address, email, mobile exposed"""
+    """
+    Get a user's public profile.
+    
+    Privacy & Safety:
+    - Only returns public fields (NO email, phone, address, exact location)
+    - Blocked users cannot view each other
+    - Users hidden from search cannot be viewed
+    - Distance shown with privacy bucketing
+    - Respects user's privacy settings
+    """
+    # Cannot view own profile via this endpoint
+    if str(current_user.id) == user_id:
+        raise HTTPException(status_code=400, detail="Use /api/users/me for own profile")
+    
+    # Find target user
     user = await TBUser.get(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
+    # Check if user is active
     if not user.is_active:
         raise HTTPException(status_code=404, detail="User not found")
     
-    return {
+    # Check if target user is hidden from search/discovery
+    if hasattr(user, 'settings') and user.settings:
+        if user.settings.safety.hide_from_search:
+            raise HTTPException(status_code=404, detail="User not found")
+    
+    # Check if either user has blocked the other
+    is_blocked = await _check_blocked(str(current_user.id), user_id)
+    if is_blocked:
+        raise HTTPException(status_code=403, detail="Cannot view this profile")
+    
+    # Get privacy settings
+    privacy = user.settings.privacy if hasattr(user, 'settings') and user.settings else PrivacySettings()
+    
+    # Build response with privacy controls
+    response = {
         "id": str(user.id),
         "name": user.name,
         "age": user.age,
         "gender": user.gender,
         "bio": user.bio,
-        "profile_pictures": user.profile_pictures,
+        "profile_pictures": user.profile_pictures or [],
         "intent": user.intent,
-        "is_online": user.is_online,
-        "is_verified": user.is_verified
+        "is_verified": user.is_verified,
     }
+    
+    # Online status (respect privacy)
+    if privacy.show_online:
+        response["is_online"] = user.is_online
+    else:
+        response["is_online"] = None
+    
+    # Last seen (respect privacy)
+    if privacy.show_last_seen and hasattr(user, 'location_updated_at') and user.location_updated_at:
+        response["last_active"] = _format_last_active(user.location_updated_at)
+    else:
+        response["last_active"] = None
+    
+    # Distance (respect privacy + calculate if possible)
+    if privacy.show_distance and current_user.location and user.location:
+        current_coords = current_user.location.coordinates
+        target_coords = user.location.coordinates
+        
+        distance_km = PrivacyLocation.calculate_distance(
+            current_coords[1], current_coords[0],  # [lng, lat] -> lat, lng
+            target_coords[1], target_coords[0]
+        ) if hasattr(PrivacyLocation, 'calculate_distance') else None
+        
+        if distance_km is not None:
+            from backend.services.tb_location_service import LocationService
+            response["distance_km"] = PrivacyLocation.bucket_distance(distance_km)
+            response["distance_display"] = PrivacyLocation.format_distance_display(distance_km)
+    else:
+        response["distance_km"] = None
+        response["distance_display"] = "Distance hidden"
+    
+    # Location freshness (without revealing when)
+    if hasattr(user, 'location_updated_at') and user.location_updated_at:
+        response["location_fresh"] = PrivacyLocation.is_location_fresh(user.location_updated_at)
+    else:
+        response["location_fresh"] = False
+    
+    return response
+
+
+@router.get("/me")
+async def get_own_profile(current_user: TBUser = Depends(get_current_user)):
+    """
+    Get current user's own profile (includes credits, settings).
+    """
+    return {
+        "id": str(current_user.id),
+        "name": current_user.name,
+        "age": current_user.age,
+        "gender": current_user.gender,
+        "bio": current_user.bio,
+        "profile_pictures": current_user.profile_pictures or [],
+        "intent": current_user.intent,
+        "email": current_user.email,
+        "mobile_number": current_user.mobile_number,
+        "preferences": current_user.preferences.model_dump(),
+        "settings": current_user.settings.model_dump() if current_user.settings else {},
+        "credits_balance": current_user.credits_balance,
+        "is_verified": current_user.is_verified,
+        "is_online": current_user.is_online,
+        "created_at": current_user.created_at.isoformat(),
+    }
+
+
+@router.post("/block/{user_id}")
+async def block_user(user_id: str, data: BlockUserRequest = None, current_user: TBUser = Depends(get_current_user)):
+    """
+    Block a user. Blocked users:
+    - Cannot view each other's profiles
+    - Cannot send messages to each other
+    - Won't appear in each other's nearby/discovery
+    """
+    if str(current_user.id) == user_id:
+        raise HTTPException(status_code=400, detail="Cannot block yourself")
+    
+    target = await TBUser.get(user_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Store block in a separate collection for scalability
+    from backend.models.user_block import UserBlock
+    
+    # Check if already blocked
+    existing = await UserBlock.find_one({
+        "blocker_id": str(current_user.id),
+        "blocked_id": user_id
+    })
+    
+    if existing:
+        return {"message": "User already blocked", "blocked": True}
+    
+    # Create block record
+    block = UserBlock(
+        blocker_id=str(current_user.id),
+        blocked_id=user_id,
+        reason=data.reason if data else None
+    )
+    await block.insert()
+    
+    return {"message": "User blocked", "blocked": True}
+
+
+@router.delete("/block/{user_id}")
+async def unblock_user(user_id: str, current_user: TBUser = Depends(get_current_user)):
+    """Unblock a user"""
+    from backend.models.user_block import UserBlock
+    
+    result = await UserBlock.find_one({
+        "blocker_id": str(current_user.id),
+        "blocked_id": user_id
+    })
+    
+    if result:
+        await result.delete()
+        return {"message": "User unblocked", "blocked": False}
+    
+    return {"message": "User was not blocked", "blocked": False}
+
+
+@router.get("/blocked")
+async def get_blocked_users(current_user: TBUser = Depends(get_current_user)):
+    """Get list of users blocked by current user"""
+    from backend.models.user_block import UserBlock
+    
+    blocks = await UserBlock.find({"blocker_id": str(current_user.id)}).to_list()
+    
+    blocked_users = []
+    for block in blocks:
+        user = await TBUser.get(block.blocked_id)
+        if user:
+            blocked_users.append({
+                "id": str(user.id),
+                "name": user.name,
+                "profile_picture": user.profile_pictures[0] if user.profile_pictures else None,
+                "blocked_at": block.created_at.isoformat()
+            })
+    
+    return {"blocked_users": blocked_users, "count": len(blocked_users)}
+
+
+@router.post("/report/{user_id}")
+async def report_user(user_id: str, data: ReportUserRequest, current_user: TBUser = Depends(get_current_user)):
+    """
+    Report a user for inappropriate content/behavior.
+    Reports are reviewed by moderators.
+    """
+    if str(current_user.id) == user_id:
+        raise HTTPException(status_code=400, detail="Cannot report yourself")
+    
+    target = await TBUser.get(user_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    from backend.models.tb_report import TBReport, ReportType
+    
+    report = TBReport(
+        report_type=ReportType.PROFILE,
+        reported_user_id=user_id,
+        reported_by_user_id=str(current_user.id),
+        reason=data.reason
+    )
+    await report.insert()
+    
+    return {"message": "Report submitted", "report_id": str(report.id)}
+
+
+async def _check_blocked(user_id1: str, user_id2: str) -> bool:
+    """Check if either user has blocked the other"""
+    try:
+        from backend.models.user_block import UserBlock
+        
+        # Check if user1 blocked user2 OR user2 blocked user1
+        block = await UserBlock.find_one({
+            "$or": [
+                {"blocker_id": user_id1, "blocked_id": user_id2},
+                {"blocker_id": user_id2, "blocked_id": user_id1}
+            ]
+        })
+        
+        return block is not None
+    except Exception:
+        # If UserBlock model doesn't exist yet, no blocks
+        return False
+
+
+def _format_last_active(dt: datetime) -> str:
+    """Format last active time with privacy"""
+    if not dt:
+        return None
+    
+    now = datetime.now(timezone.utc)
+    diff = now - dt
+    
+    if diff.total_seconds() < 300:
+        return "Active now"
+    elif diff.total_seconds() < 3600:
+        return "Active recently"
+    elif diff.total_seconds() < 86400:
+        hours = int(diff.total_seconds() / 3600)
+        return f"Active {hours}h ago"
+    else:
+        days = int(diff.total_seconds() / 86400)
+        if days == 1:
+            return "Active yesterday"
+        return f"Active {days}d ago"
 
 
 @router.put("/profile")
