@@ -56,6 +56,10 @@ export const userAPI = {
   }),
   getSettings: () => api.get('/users/settings'),
   updateSettings: (data) => api.put('/users/settings', data),
+  // FCM Token Management
+  registerFCMToken: (token) => api.post('/users/fcm-token', { token }),
+  unregisterFCMToken: (token) => api.delete('/users/fcm-token', { data: { token } }),
+  unregisterAllFCMTokens: () => api.delete('/users/fcm-tokens/all'),
 };
 
 // Credits APIs - matches /api/credits/*
