@@ -139,8 +139,8 @@ class PasswordResetService:
                 # Still return success to prevent enumeration
                 return True, "If email exists, reset link has been sent"
             
-            # Find user by email using Beanie
-            user = await TBUser.find_one(TBUser.email == email_lower)
+            # Find user by email using Beanie - use dict query
+            user = await TBUser.find_one({"email": email_lower})
             
             # For security, don't reveal if email exists
             if not user:
