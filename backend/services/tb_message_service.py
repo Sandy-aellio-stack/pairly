@@ -39,6 +39,10 @@ class MessageService:
                 detail="Insufficient credits. Please purchase more credits to send messages."
             )
 
+        # Get sender for notification
+        sender = await TBUser.get(sender_id)
+        sender_name = sender.name if sender else "Someone"
+
         # Create message
         message = TBMessage(
             sender_id=sender_id,
@@ -78,6 +82,17 @@ class MessageService:
                 unread_count={data.receiver_id: 1}
             )
             await conversation.insert()
+
+        # Send push notification (fire-and-forget, non-blocking)
+        asyncio.create_task(
+            fcm_service.notify_new_message(
+                receiver_id=data.receiver_id,
+                sender_name=sender_name,
+                message_preview=data.content[:100],
+                message_id=str(message.id),
+                sender_id=sender_id
+            )
+        )
 
         return {
             "message_id": str(message.id),
