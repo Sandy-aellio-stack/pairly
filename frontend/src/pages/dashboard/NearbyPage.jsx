@@ -441,14 +441,17 @@ const NearbyPage = () => {
             
             <div className="flex gap-3">
               <button 
+                onClick={() => navigate(`/dashboard/profile/${selectedUser.id}`)}
+                className="flex-1 py-3 bg-gray-100 text-[#0F172A] rounded-xl font-semibold hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
+              >
+                View Profile
+              </button>
+              <button 
                 onClick={() => handleConnect(selectedUser)}
                 className="flex-1 py-3 bg-[#0F172A] text-white rounded-xl font-semibold hover:bg-gray-800 transition-all flex items-center justify-center gap-2"
               >
                 <MessageCircle size={18} />
-                Connect
-              </button>
-              <button className="p-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all">
-                <Heart size={18} className="text-rose-500" />
+                Message
               </button>
             </div>
           </div>
