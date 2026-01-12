@@ -13,7 +13,7 @@ import logging
 
 logger = logging.getLogger('routes.payments')
 
-router = APIRouter(prefix="/api/payments")
+router = APIRouter(prefix="/api/legacy/payments", tags=["Legacy Payments"])
 
 CREDIT_PACKAGES = {
     "small": {"credits": 50, "amount_usd": 500, "amount_inr": 5000},
