@@ -209,7 +209,8 @@ class WebhookTester:
             
             if response.status_code == 400:
                 error_data = response.json()
-                if "razorpay-signature" in error_data.get("detail", "").lower():
+                error_msg = error_data.get("detail", "") or error_data.get("error", "")
+                if "razorpay-signature" in error_msg.lower():
                     self.log_test("razorpay_webhook_missing_signature", "PASS", "Correctly rejected missing signature")
                 else:
                     self.log_test("razorpay_webhook_missing_signature", "FAIL", f"Wrong error message: {error_data}")
