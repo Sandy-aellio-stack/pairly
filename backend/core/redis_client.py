@@ -196,5 +196,58 @@ class RedisClient:
         if self.redis:
             await self.redis.delete(f"sessions:{user_id}")
 
+    async def health_check(self) -> dict:
+        """Comprehensive health check for Redis"""
+        if not self.redis:
+            return {
+                "status": "disconnected",
+                "connected": False,
+                "error": "Redis client not initialized"
+            }
+
+        try:
+            # Test ping
+            await self.redis.ping()
+
+            # Test write
+            test_key = "health_check_test"
+            await self.redis.setex(test_key, 10, "ok")
+
+            # Test read
+            test_value = await self.redis.get(test_key)
+
+            # Cleanup
+            await self.redis.delete(test_key)
+
+            if test_value == "ok":
+                return {
+                    "status": "healthy",
+                    "connected": True,
+                    "url": self._mask_url(self.redis_url),
+                    "operations": ["ping", "set", "get", "delete"]
+                }
+            else:
+                return {
+                    "status": "degraded",
+                    "connected": True,
+                    "error": "Operations test failed"
+                }
+        except Exception as e:
+            return {
+                "status": "unhealthy",
+                "connected": False,
+                "error": str(e)
+            }
+
+    def _mask_url(self, url: str) -> str:
+        """Mask password in Redis URL for logging"""
+        if "@" in url:
+            parts = url.split("@")
+            if ":" in parts[0]:
+                proto_user_pass = parts[0].split(":")
+                if len(proto_user_pass) >= 3:
+                    return f"{proto_user_pass[0]}://***:***@{parts[1]}"
+        return url
+
 
 redis_client = RedisClient()

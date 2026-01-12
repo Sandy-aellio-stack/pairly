@@ -133,6 +133,62 @@ async def health_check():
     }
 
 
+@app.get("/api/health/redis")
+async def health_check_redis():
+    """Check Redis connection and operations"""
+    health = await redis_client.health_check()
+
+    status_code = 200
+    if health["status"] == "unhealthy" or health["status"] == "disconnected":
+        status_code = 503
+    elif health["status"] == "degraded":
+        status_code = 200
+
+    return JSONResponse(
+        status_code=status_code,
+        content=health
+    )
+
+
+@app.get("/api/health/detailed")
+async def health_check_detailed():
+    """Detailed health check for all services"""
+    redis_health = await redis_client.health_check()
+
+    # Check MongoDB
+    mongo_status = "unknown"
+    try:
+        if mongo_client:
+            await mongo_client.admin.command('ping')
+            mongo_status = "connected"
+        else:
+            mongo_status = "disconnected"
+    except Exception as e:
+        mongo_status = f"error: {str(e)}"
+
+    overall_status = "healthy"
+    if redis_health["status"] in ["unhealthy", "disconnected"] or mongo_status != "connected":
+        overall_status = "degraded"
+
+    return {
+        "status": overall_status,
+        "service": "truebond",
+        "version": "1.0.0",
+        "environment": ENVIRONMENT,
+        "services": {
+            "redis": redis_health,
+            "mongodb": {
+                "status": mongo_status,
+                "connected": mongo_status == "connected"
+            },
+            "api": {
+                "status": "healthy",
+                "connected": True
+            }
+        }
+    }
+
+
 @app.get("/")
 async def root():
     return {
