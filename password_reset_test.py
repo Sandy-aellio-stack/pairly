@@ -259,7 +259,8 @@ class PasswordResetTester:
             
             if response.status_code == 400:
                 data = response.json()
-                if "invalid" in data.get("detail", "").lower() or "expired" in data.get("detail", "").lower():
+                error_message = data.get("detail", "") or data.get("error", "")
+                if "invalid" in error_message.lower() or "expired" in error_message.lower():
                     self.log("✓ Reset password properly rejects invalid token (400)")
                     return True
                 else:
