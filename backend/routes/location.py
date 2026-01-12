@@ -6,7 +6,7 @@ from backend.models.user import User
 from backend.models.profile import Profile
 from backend.routes.auth import get_current_user
 
-router = APIRouter(prefix="/api/location", tags=["Location"])
+router = APIRouter(prefix="/api/legacy/location", tags=["Legacy Location"])
 
 
 class LocationUpdateRequest(BaseModel):
