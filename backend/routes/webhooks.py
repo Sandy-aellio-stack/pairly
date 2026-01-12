@@ -15,7 +15,7 @@ from backend.services.payment_webhook_handler import (
     WebhookResult
 )
 
-router = APIRouter(prefix="/webhooks", tags=["webhooks"])
+router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
 logger = logging.getLogger("webhooks")
 
 
