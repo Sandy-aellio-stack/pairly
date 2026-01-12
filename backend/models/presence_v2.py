@@ -24,9 +24,10 @@ class PresenceV2(Document):
     class Settings:
         name = "presence_v2"
         indexes = [
-            "user_id",
-            "status",
-            "last_activity",
-            [("user_id", 1)],  # Unique constraint
-            [("status", 1), ("last_activity", -1)]
+            # Unique user presence
+            [("user_id", 1)],
+            # Status with activity
+            [("status", 1), ("last_activity", -1)],
+            # Last seen lookup
+            [("last_seen", -1)],
         ]
