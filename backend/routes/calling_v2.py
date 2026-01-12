@@ -90,6 +90,17 @@ async def initiate_call(
             "sdp_offer": request.sdp_offer
         })
         
+        # Send push notification for incoming call (fire-and-forget)
+        asyncio.create_task(
+            fcm_service.notify_incoming_call(
+                receiver_id=request.receiver_id,
+                caller_name=user.name if hasattr(user, 'name') else "Someone",
+                call_id=call_session.id,
+                caller_id=str(user.id),
+                call_type="audio"
+            )
+        )
+        
         return CallResponse(
             id=call_session.id,
             caller_id=call_session.caller_id,
