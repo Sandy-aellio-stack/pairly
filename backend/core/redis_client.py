@@ -12,6 +12,11 @@ class RedisClient:
     def __init__(self):
         self.redis: Optional[aioredis.Redis] = None
         self.redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+        self._connected = False
+
+    def is_connected(self) -> bool:
+        """Check if Redis is connected"""
+        return self._connected and self.redis is not None
 
     async def connect(self):
         """Initialize Redis connection"""
@@ -23,16 +28,19 @@ class RedisClient:
                     decode_responses=True
                 )
                 await self.redis.ping()
+                self._connected = True
                 logger.info(f"Redis connected: {self.redis_url}")
             except Exception as e:
                 logger.warning(f"Redis connection failed: {e}")
                 self.redis = None
+                self._connected = False
 
     async def disconnect(self):
         """Close Redis connection"""
         if self.redis:
             await self.redis.close()
             self.redis = None
+            self._connected = False
 
     @asynccontextmanager
     async def acquire_lock(self, key: str, ttl: int = 60):
