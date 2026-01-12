@@ -10,7 +10,7 @@ from backend.services.admin_logging import AdminLoggingService
 from beanie import PydanticObjectId
 
 logger = logging.getLogger('routes.admin_users')
-router = APIRouter(prefix="/api/admin/users", tags=["admin-users"])
+router = APIRouter(prefix="/api/admin/legacy-users", tags=["Admin Legacy Users"])
 
 @router.get("/search")
 async def search_users(
