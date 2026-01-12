@@ -32,10 +32,14 @@ class TBPayment(Document):
     class Settings:
         name = "tb_payments"
         indexes = [
-            "user_id",
-            "provider_order_id",
-            "status",
-            [("created_at", -1)]
+            # User payment history
+            [("user_id", 1), ("created_at", -1)],
+            # Provider order lookup (unique)
+            [("provider_order_id", 1)],
+            # Provider payment lookup
+            [("provider_payment_id", 1)],
+            # Status filtering
+            [("status", 1), ("created_at", -1)],
         ]
 
 
