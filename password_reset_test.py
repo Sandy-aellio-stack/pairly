@@ -52,17 +52,17 @@ class PasswordResetTester:
             register_data = {
                 "name": "Password Reset Test User",
                 "age": 25,
-                "gender": "Male",
+                "gender": "male",
                 "email": self.test_email,
                 "mobile_number": "9876543210",
                 "password": self.test_password,
-                "preferences": {
-                    "interested_in": "Female",
-                    "age_range": {"min": 18, "max": 35},
-                    "max_distance": 50
-                },
-                "intent": "Dating",
-                "city": "Mumbai"
+                "interested_in": "female",
+                "intent": "dating",
+                "city": "Mumbai",
+                "address_line": "Test Address",
+                "state": "Maharashtra",
+                "country": "India",
+                "pincode": "400001"
             }
             
             response = self.session.post(f"{BACKEND_URL}/auth/signup", json=register_data)
