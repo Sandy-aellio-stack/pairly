@@ -36,12 +36,17 @@ from backend.routes.tb_admin_moderation import router as admin_moderation_router
 
 from backend.routes.webhooks import router as webhooks_router
 from backend.mock_auth import router as mock_auth_router
+from backend.core.env_validator import validate_or_exit
+from backend.middleware.exception_handlers import setup_exception_handlers
 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger("truebond")
+
+# Validate environment variables at startup
+validate_or_exit()
 
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "")
@@ -86,21 +91,8 @@ app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(RateLimitMiddleware)
 
-
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    if ENVIRONMENT == "production":
-        logger.error(f"Unhandled exception: {type(exc).__name__}", exc_info=True)
-        return JSONResponse(
-            status_code=500,
-            content={"error": "Internal server error"}
-        )
-    else:
-        logger.error(f"Exception: {exc}", exc_info=True)
-        return JSONResponse(
-            status_code=500,
-            content={"error": "Internal server error", "detail": str(exc)}
-        )
+# Setup comprehensive exception handlers
+setup_exception_handlers(app)
 
 
 app.include_router(auth_router)
@@ -119,8 +111,10 @@ app.include_router(admin_analytics_router)
 app.include_router(admin_settings_router)
 app.include_router(admin_moderation_router)
 
-# Mock auth for testing without MongoDB
-app.include_router(mock_auth_router)
+# Mock auth for development/testing only
+if ENVIRONMENT == "development":
+    app.include_router(mock_auth_router)
+    logger.info("Mock auth enabled (development mode)")
 
 
 @app.get("/api/health")

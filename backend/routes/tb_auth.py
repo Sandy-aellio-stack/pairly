@@ -74,9 +74,13 @@ async def refresh_token(data: RefreshTokenRequest):
 
 
 @router.post("/logout")
-async def logout(user: TBUser = Depends(get_current_user)):
-    """Logout current user"""
-    return await AuthService.logout(user)
+async def logout(
+    user: TBUser = Depends(get_current_user),
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Logout current user and blacklist token"""
+    token = credentials.credentials
+    return await AuthService.logout(user, access_token=token)
 
 
 @router.post("/otp/send")

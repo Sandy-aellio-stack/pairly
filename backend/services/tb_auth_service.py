@@ -63,9 +63,11 @@ class AuthService:
 
     @staticmethod
     def create_access_token(user_id: str) -> str:
+        from uuid import uuid4
         payload = {
             "sub": user_id,
             "type": "access",
+            "jti": str(uuid4()),
             "exp": datetime.now(timezone.utc) + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS),
             "iat": datetime.now(timezone.utc)
         }
@@ -73,9 +75,11 @@ class AuthService:
 
     @staticmethod
     def create_refresh_token(user_id: str) -> str:
+        from uuid import uuid4
         payload = {
             "sub": user_id,
             "type": "refresh",
+            "jti": str(uuid4()),
             "exp": datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
             "iat": datetime.now(timezone.utc)
         }
@@ -206,11 +210,26 @@ class AuthService:
 
     @staticmethod
     async def get_current_user(token: str) -> TBUser:
+        from backend.utils.token_blacklist import token_blacklist
+
         payload = AuthService.decode_token(token)
         if payload.get("type") != "access":
             raise HTTPException(status_code=401, detail="Invalid access token")
 
+        # Check if token is blacklisted
+        jti = payload.get("jti")
+        if jti:
+            is_blacklisted = await token_blacklist.is_blacklisted(jti)
+            if is_blacklisted:
+                raise HTTPException(status_code=401, detail="Token has been revoked")
+
         user_id = payload.get("sub")
+
+        # Check if all user tokens are blacklisted
+        is_user_blacklisted = await token_blacklist.is_user_blacklisted(user_id)
+        if is_user_blacklisted:
+            raise HTTPException(status_code=401, detail="Token has been revoked")
+
         user = await TBUser.get(user_id)
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
@@ -220,7 +239,35 @@ class AuthService:
         return user
 
     @staticmethod
-    async def logout(user: TBUser):
+    async def logout(user: TBUser, access_token: str = None):
+        """
+        Logout user and blacklist the current access token
+
+        Args:
+            user: Current user
+            access_token: Optional access token to blacklist
+        """
+        from backend.utils.token_blacklist import token_blacklist
+        import logging
+
+        logger = logging.getLogger("auth_service")
         user.is_online = False
         await user.save()
+
+        # Blacklist the access token if provided
+        if access_token:
+            try:
+                payload = AuthService.decode_token(access_token)
+                jti = payload.get("jti")
+                if jti:
+                    # Calculate remaining TTL
+                    exp = payload.get("exp")
+                    now = datetime.now(timezone.utc).timestamp()
+                    ttl = int(exp - now)
+                    if ttl > 0:
+                        await token_blacklist.blacklist_token(jti, ttl)
+            except Exception as e:
+                # Log error but don't fail logout
+                logger.error(f"Failed to blacklist token on logout: {e}")
+
         return {"message": "Logged out successfully"}
