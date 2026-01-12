@@ -305,29 +305,34 @@ class JWTSecretValidator:
     
     @classmethod
     def _calculate_entropy(cls, secret: str) -> float:
-        """Calculate Shannon entropy in bits"""
+        """Calculate approximate entropy in bits based on character set"""
         if not secret:
             return 0.0
         
-        # Count character frequencies
-        freq = {}
-        for char in secret:
-            freq[char] = freq.get(char, 0) + 1
-        
-        # Calculate entropy
-        length = len(secret)
-        entropy = 0.0
-        for count in freq.values():
-            p = count / length
-            if p > 0:
-                entropy -= p * (p.bit_length() - 1 + (1 - 1/p if p < 1 else 0))
-        
-        # Approximate entropy based on character set size
-        char_set_size = len(set(secret))
         import math
-        bits_per_char = math.log2(max(char_set_size, 1))
         
-        return bits_per_char * length
+        # Determine character set size based on what's in the secret
+        has_lower = bool(re.search(r"[a-z]", secret))
+        has_upper = bool(re.search(r"[A-Z]", secret))
+        has_digit = bool(re.search(r"[0-9]", secret))
+        has_special = bool(re.search(r"[^A-Za-z0-9]", secret))
+        
+        char_set_size = 0
+        if has_lower:
+            char_set_size += 26
+        if has_upper:
+            char_set_size += 26
+        if has_digit:
+            char_set_size += 10
+        if has_special:
+            char_set_size += 32  # Approximate special chars
+        
+        if char_set_size == 0:
+            char_set_size = 1
+        
+        # Entropy = length * log2(char_set_size)
+        bits_per_char = math.log2(char_set_size)
+        return bits_per_char * len(secret)
     
     @classmethod
     def generate_secure_secret(cls, length: int = 64) -> str:
