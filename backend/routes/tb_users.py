@@ -451,3 +451,91 @@ async def update_user_settings(data: UpdateSettingsRequest, user: TBUser = Depen
         "message": "Settings updated",
         "settings": user.settings.model_dump()
     }
+
+
+# ========== FCM TOKEN MANAGEMENT ENDPOINTS ==========
+
+class RegisterFCMTokenRequest(BaseModel):
+    token: str = Field(..., min_length=10, max_length=500)
+
+
+class DeleteFCMTokenRequest(BaseModel):
+    token: str = Field(..., min_length=10, max_length=500)
+
+
+@router.post("/fcm-token")
+async def register_fcm_token(data: RegisterFCMTokenRequest, user: TBUser = Depends(get_current_user)):
+    """
+    Register an FCM device token for push notifications.
+    
+    - Supports multiple devices per user
+    - Replaces duplicate tokens automatically
+    - Max 5 tokens per user (oldest removed if exceeded)
+    
+    Call this:
+    - After user grants notification permission
+    - On app launch if permission already granted
+    - When FCM token is refreshed
+    """
+    # Initialize fcm_tokens if not exists
+    if not hasattr(user, 'fcm_tokens') or user.fcm_tokens is None:
+        user.fcm_tokens = []
+    
+    token = data.token.strip()
+    
+    # Don't add duplicate tokens
+    if token in user.fcm_tokens:
+        return {"message": "Token already registered", "registered": True}
+    
+    # Add new token
+    user.fcm_tokens.append(token)
+    
+    # Keep only the last 5 tokens (remove oldest if exceeded)
+    if len(user.fcm_tokens) > 5:
+        user.fcm_tokens = user.fcm_tokens[-5:]
+    
+    await user.save()
+    
+    return {"message": "FCM token registered", "registered": True, "device_count": len(user.fcm_tokens)}
+
+
+@router.delete("/fcm-token")
+async def unregister_fcm_token(data: DeleteFCMTokenRequest, user: TBUser = Depends(get_current_user)):
+    """
+    Unregister an FCM device token.
+    
+    Call this:
+    - On user logout
+    - When user disables notifications
+    - On app uninstall (if detectable)
+    """
+    if not hasattr(user, 'fcm_tokens') or user.fcm_tokens is None:
+        return {"message": "No tokens registered", "removed": False}
+    
+    token = data.token.strip()
+    
+    if token in user.fcm_tokens:
+        user.fcm_tokens.remove(token)
+        await user.save()
+        return {"message": "FCM token removed", "removed": True, "device_count": len(user.fcm_tokens)}
+    
+    return {"message": "Token not found", "removed": False}
+
+
+@router.delete("/fcm-tokens/all")
+async def unregister_all_fcm_tokens(user: TBUser = Depends(get_current_user)):
+    """
+    Unregister all FCM tokens for the user.
+    
+    Use this for:
+    - Complete logout from all devices
+    - Disabling all push notifications
+    """
+    if not hasattr(user, 'fcm_tokens') or not user.fcm_tokens:
+        return {"message": "No tokens to remove", "removed": 0}
+    
+    removed_count = len(user.fcm_tokens)
+    user.fcm_tokens = []
+    await user.save()
+    
+    return {"message": "All FCM tokens removed", "removed": removed_count}
