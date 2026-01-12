@@ -35,6 +35,7 @@ from backend.routes.tb_admin_settings import router as admin_settings_router
 from backend.routes.tb_admin_moderation import router as admin_moderation_router
 
 from backend.routes.webhooks import router as webhooks_router
+from backend.mock_auth import router as mock_auth_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -117,6 +118,9 @@ app.include_router(admin_users_router)
 app.include_router(admin_analytics_router)
 app.include_router(admin_settings_router)
 app.include_router(admin_moderation_router)
+
+# Mock auth for testing without MongoDB
+app.include_router(mock_auth_router)
 
 
 @app.get("/api/health")
