@@ -12,6 +12,7 @@ import logging
 from backend.tb_database import init_db, close_db
 from backend.socket_server import create_socket_app, sio
 from backend.core.redis_client import redis_client
+from backend.core.security_config import security_config, validate_security_config
 from backend.middleware.security import (
     SecurityHeadersMiddleware,
     RequestLoggingMiddleware,
@@ -47,6 +48,18 @@ logger = logging.getLogger("truebond")
 
 # Validate environment variables at startup
 validate_or_exit()
+
+# Validate security configuration
+security_valid, security_errors = validate_security_config()
+if not security_valid:
+    logger.critical("Security configuration validation failed:")
+    for error in security_errors:
+        logger.critical(f"  ❌ {error}")
+    if security_config.is_production:
+        import sys
+        sys.exit(1)
+else:
+    logger.info("Security configuration validated successfully")
 
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "")
