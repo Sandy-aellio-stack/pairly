@@ -127,19 +127,23 @@ async def get_me(user: TBUser = Depends(get_current_user)):
 async def forgot_password(request: ForgotPasswordRequest):
     """
     Request password reset link.
-    Sends reset link to user's email if account exists.
+    
+    Security:
+    - Always returns success to prevent email enumeration
+    - Rate limited to 5 requests per email per hour
+    - Token expires in 15 minutes
+    - Token is hashed before storage
     """
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5000")
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
     success, message = await password_reset_service.create_reset_token(
         email=request.email,
-        db=None,
         frontend_url=frontend_url
     )
 
     # Always return success to prevent email enumeration
     return {
-        "message": "If email exists, reset link has been sent",
+        "message": "If an account exists with this email, you will receive a password reset link shortly.",
         "success": True
     }
 
@@ -148,12 +152,16 @@ async def forgot_password(request: ForgotPasswordRequest):
 async def reset_password(request: ResetPasswordRequest):
     """
     Reset password using token from email.
-    Token is valid for 10 minutes.
+    
+    Security:
+    - Token is validated and must not be expired
+    - Password must meet strength requirements
+    - Token is invalidated immediately after successful use
+    - Confirmation email is sent after password change
     """
     success, message = await password_reset_service.reset_password(
         token=request.token,
-        new_password=request.new_password,
-        db=None
+        new_password=request.new_password
     )
 
     if not success:
@@ -165,16 +173,16 @@ async def reset_password(request: ResetPasswordRequest):
     }
 
 
-@router.post("/validate-reset-token")
+@router.get("/validate-reset-token")
 async def validate_reset_token(token: str):
     """
     Validate if a reset token is still valid.
-    Useful for frontend to check before showing reset form.
+    Frontend uses this to check before showing reset form.
     """
-    user_id = await password_reset_service.validate_reset_token(token, db)
+    token_data = await password_reset_service.validate_reset_token(token)
 
-    if not user_id:
-        raise HTTPException(status_code=400, detail="Invalid or expired token")
+    if not token_data:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset link")
 
     return {
         "valid": True,
