@@ -159,6 +159,7 @@ function App() {
           <Route path="chat" element={<ChatPage />} />
           <Route path="nearby" element={<NearbyPage />} />
           <Route path="profile" element={<ProfilePage />} />
+          <Route path="profile/:userId" element={<ProfileViewerPage />} />
           <Route path="credits" element={<CreditsPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
