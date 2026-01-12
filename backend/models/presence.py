@@ -12,3 +12,9 @@ class Presence(Document):
 
     class Settings:
         name = "presence"
+        indexes = [
+            # Unique user presence
+            [("user_id", 1)],
+            # Status with last seen
+            [("status", 1), ("last_seen", -1)],
+        ]
