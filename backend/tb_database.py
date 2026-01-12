@@ -51,6 +51,7 @@ async def init_db():
                 TBOTP,
                 AppSettings,
                 TBReport,
+                UserBlock,
                 TBNotification,
                 WebhookEvent,
                 WebhookDLQ
