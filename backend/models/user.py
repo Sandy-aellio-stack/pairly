@@ -29,5 +29,10 @@ class User(Document):
     class Settings:
         name = "users"
         indexes = [
-            [("email", 1)]
+            # Unique email index
+            [("email", 1)],
+            # Filtering indexes
+            [("role", 1)],
+            [("is_suspended", 1)],
+            [("created_at", -1)],
         ]
