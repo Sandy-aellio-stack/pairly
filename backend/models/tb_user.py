@@ -111,7 +111,17 @@ class TBUser(Document):
     class Settings:
         name = "tb_users"
         indexes = [
+            # Unique indexes
+            [("email", 1)],
+            [("mobile_number", 1)],
+            # Geospatial index for location-based queries
             [("location", "2dsphere")],
+            # Status and filtering indexes
+            [("is_active", 1)],
+            [("created_at", -1)],
+            # Search/discovery indexes
+            [("gender", 1), ("age", 1)],
+            [("is_online", 1), ("location_updated_at", -1)],
         ]
 
 
