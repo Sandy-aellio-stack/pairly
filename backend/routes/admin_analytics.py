@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 from beanie import PydanticObjectId
 
-router = APIRouter(prefix="/api/admin/security")
+router = APIRouter(prefix="/api/admin/security-analytics", tags=["Admin Security Analytics"])
 
 
 async def require_admin(user: User = Depends(lambda: None)):
