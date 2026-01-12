@@ -21,7 +21,7 @@ from backend.utils.jwt_revocation import is_token_revoked, revoke_token
 from backend.utils.refresh_store import set_user_refresh_jti, validate_user_refresh_jti
 import uuid
 
-router = APIRouter(prefix="/api/auth")
+router = APIRouter(prefix="/api/legacy/auth", tags=["Legacy Auth"])
 pwd_context = CryptContext(schemes=["bcrypt"])
 security = HTTPBearer()
 
