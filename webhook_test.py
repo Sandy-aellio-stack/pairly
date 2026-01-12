@@ -161,21 +161,7 @@ class WebhookTester:
                 headers={"stripe-signature": "mock_signature_for_testing"}
             )
             
-            if response.status_code == 200:
-                data = response.json()
-                self.log_test("stripe_webhook_mock_signature", "PASS", 
-                            f"Status: {data.get('status')}, Result: {data.get('result')}")
-            elif response.status_code == 500:
-                error_data = response.json()
-                if "CollectionWasNotInitialized" in error_data.get("type", ""):
-                    self.log_test("stripe_webhook_mock_signature", "PASS", 
-                                "Webhook processed but failed due to MongoDB not available (expected in test environment)")
-                else:
-                    self.log_test("stripe_webhook_mock_signature", "FAIL", 
-                                f"HTTP {response.status_code}: {response.text}")
-            else:
-                self.log_test("stripe_webhook_mock_signature", "FAIL", 
-                            f"HTTP {response.status_code}: {response.text}")
+            self.handle_response("stripe_webhook_mock_signature", response)
                 
         except Exception as e:
             self.log_test("stripe_webhook_mock_signature", "FAIL", f"Exception: {str(e)}")
