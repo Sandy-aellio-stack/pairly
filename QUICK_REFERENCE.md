@@ -3,9 +3,9 @@
 ## 🚀 Quick Start
 
 ### Access URLs
-- **Landing Page**: https://project-analyzer-92.preview.emergentagent.com
-- **User Dashboard**: https://project-analyzer-92.preview.emergentagent.com/dashboard
-- **Admin Dashboard**: https://project-analyzer-92.preview.emergentagent.com/admin
+- **Landing Page**: https://truebond-notify.preview.emergentagent.com
+- **User Dashboard**: https://truebond-notify.preview.emergentagent.com/dashboard
+- **Admin Dashboard**: https://truebond-notify.preview.emergentagent.com/admin
 
 ### Test Credentials
 ```
