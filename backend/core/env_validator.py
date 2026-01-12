@@ -4,6 +4,7 @@ Ensures all required environment variables are set before app starts
 """
 import os
 import sys
+import re
 import logging
 from typing import List, Tuple
 
@@ -13,6 +14,54 @@ logger = logging.getLogger("env_validator")
 class EnvValidationError(Exception):
     """Raised when required environment variables are missing"""
     pass
+
+
+# Known weak JWT secrets to reject
+WEAK_JWT_PATTERNS = [
+    r"change[-_]?(this|me|in[-_]?production)",
+    r"^(password|secret|key|token)$",
+    r"^your[-_]?secret",
+    r"^my[-_]?secret",
+    r"^test[-_]?secret",
+    r"^dev[-_]?secret",
+    r"example|sample|placeholder",
+]
+
+
+def validate_jwt_secret(secret: str, is_production: bool) -> Tuple[bool, List[str]]:
+    """
+    Validate JWT secret strength.
+    Returns (is_valid, list_of_errors)
+    """
+    errors = []
+    
+    if not secret:
+        errors.append("JWT_SECRET is required")
+        return False, errors
+    
+    # Minimum length check
+    min_length = 64 if is_production else 32
+    if len(secret) < min_length:
+        errors.append(f"JWT_SECRET must be at least {min_length} characters (currently {len(secret)})")
+    
+    # Check for weak patterns
+    for pattern in WEAK_JWT_PATTERNS:
+        if re.search(pattern, secret, re.IGNORECASE):
+            errors.append(f"JWT_SECRET contains weak pattern - not suitable for production")
+            break
+    
+    # Production-specific: require character diversity
+    if is_production:
+        has_upper = bool(re.search(r"[A-Z]", secret))
+        has_lower = bool(re.search(r"[a-z]", secret))
+        has_digit = bool(re.search(r"[0-9]", secret))
+        has_special = bool(re.search(r"[^A-Za-z0-9]", secret))
+        
+        char_classes = sum([has_upper, has_lower, has_digit, has_special])
+        if char_classes < 3:
+            errors.append(f"JWT_SECRET needs more character diversity (has {char_classes}/4 types, need 3+)")
+    
+    return len(errors) == 0, errors
 
 
 def validate_environment() -> Tuple[bool, List[str]]:
@@ -45,8 +94,16 @@ def validate_environment() -> Tuple[bool, List[str]]:
         value = os.getenv(var_name)
         if not value or value.strip() == "":
             errors.append(f"{var_name} is required ({description})")
-        elif var_name == "JWT_SECRET" and len(value) < 32:
-            errors.append(f"{var_name} must be at least 32 characters long (currently {len(value)})")
+
+    # Special validation for JWT_SECRET
+    jwt_secret = os.getenv("JWT_SECRET", "")
+    jwt_valid, jwt_errors = validate_jwt_secret(jwt_secret, is_production)
+    if not jwt_valid:
+        if is_production:
+            errors.extend(jwt_errors)
+        else:
+            for err in jwt_errors:
+                warnings.append(f"JWT_SECRET: {err}")
 
     # Check production-specific vars
     if is_production:
@@ -54,6 +111,11 @@ def validate_environment() -> Tuple[bool, List[str]]:
             value = os.getenv(var_name)
             if not value or value.strip() == "":
                 errors.append(f"{var_name} is required in production ({description})")
+        
+        # Validate CORS is not wildcard in production
+        cors_origins = os.getenv("CORS_ORIGINS", "")
+        if cors_origins == "*":
+            errors.append("CORS_ORIGINS cannot be '*' in production - set specific origins")
 
     # Optional but recommended
     recommended_vars = [
