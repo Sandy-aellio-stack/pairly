@@ -6,7 +6,7 @@ from backend.middleware.rate_limiter import get_banned_ips, unban_ip
 from backend.services.ws_rate_limiter import mute_user, unmute_user, list_muted
 from backend.services.audit import log_event
 
-router = APIRouter(prefix="/api/admin/security")
+router = APIRouter(prefix="/api/admin/security/basic", tags=["Admin Security Basic"])
 
 
 class UnbanRequest(BaseModel):
