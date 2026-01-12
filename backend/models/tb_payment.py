@@ -14,6 +14,7 @@ class PaymentStatus(str, Enum):
 
 class PaymentProvider(str, Enum):
     STRIPE = "stripe"
+    RAZORPAY = "razorpay"
 
 
 class TBPayment(Document):
@@ -28,6 +29,9 @@ class TBPayment(Document):
     error_message: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     completed_at: Optional[datetime] = None
+    
+    # Webhook tracking for idempotency
+    webhook_event_id: Optional[str] = None
 
     class Settings:
         name = "tb_payments"
