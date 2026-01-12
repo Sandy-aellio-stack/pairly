@@ -147,10 +147,6 @@ class PrivacyLocation:
         c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
         
         return R * c
-            return False
-        
-        age = (datetime.now(timezone.utc) - updated_at).total_seconds()
-        return age < ttl_seconds
 
 
 class LocationService:
