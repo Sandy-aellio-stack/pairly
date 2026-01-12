@@ -88,16 +88,17 @@ app = FastAPI(
     redoc_url="/redoc" if ENVIRONMENT != "production" else None
 )
 
-allowed_origins = ["*"]
-if ENVIRONMENT == "production" and FRONTEND_URL:
-    allowed_origins = [FRONTEND_URL]
+# CORS Configuration - Environment-based
+# Uses security_config which automatically configures based on ENVIRONMENT
+logger.info(f"CORS configuration: origins={security_config.cors_origins}, env={ENVIRONMENT}")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
+    allow_origins=security_config.cors_origins,
+    allow_credentials=security_config.cors_allow_credentials,
+    allow_methods=security_config.cors_allow_methods,
+    allow_headers=security_config.cors_allow_headers,
+    max_age=security_config.cors_max_age,
 )
 
 app.add_middleware(SecurityHeadersMiddleware)
