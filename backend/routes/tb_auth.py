@@ -2,12 +2,15 @@ from fastapi import APIRouter, Depends, HTTPException, Header
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional
 from pydantic import BaseModel, EmailStr
+import os
 
 from backend.models.tb_user import TBUser, UserOwnProfile
 from backend.services.tb_auth_service import (
     AuthService, SignupRequest, LoginRequest, TokenResponse
 )
 from backend.services.tb_otp_service import OTPService
+from backend.services.password_reset_service import password_reset_service
+from backend.tb_database import get_database
 
 router = APIRouter(prefix="/api/auth", tags=["TrueBond Auth"])
 security = HTTPBearer()
@@ -30,6 +33,15 @@ class VerifyOTPRequest(BaseModel):
 
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
 
 
 @router.post("/signup", response_model=dict)
@@ -105,4 +117,63 @@ async def get_me(user: TBUser = Depends(get_current_user)):
         "is_verified": user.is_verified,
         "is_online": user.is_online,
         "created_at": user.created_at.isoformat()
+    }
+
+
+@router.post("/forgot-password")
+async def forgot_password(request: ForgotPasswordRequest, db=Depends(get_database)):
+    """
+    Request password reset link.
+    Sends reset link to user's email if account exists.
+    """
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5000")
+
+    success, message = await password_reset_service.create_reset_token(
+        email=request.email,
+        db=db,
+        frontend_url=frontend_url
+    )
+
+    # Always return success to prevent email enumeration
+    return {
+        "message": "If email exists, reset link has been sent",
+        "success": True
+    }
+
+
+@router.post("/reset-password")
+async def reset_password(request: ResetPasswordRequest, db=Depends(get_database)):
+    """
+    Reset password using token from email.
+    Token is valid for 10 minutes.
+    """
+    success, message = await password_reset_service.reset_password(
+        token=request.token,
+        new_password=request.new_password,
+        db=db
+    )
+
+    if not success:
+        raise HTTPException(status_code=400, detail=message)
+
+    return {
+        "message": message,
+        "success": True
+    }
+
+
+@router.post("/validate-reset-token")
+async def validate_reset_token(token: str, db=Depends(get_database)):
+    """
+    Validate if a reset token is still valid.
+    Useful for frontend to check before showing reset form.
+    """
+    user_id = await password_reset_service.validate_reset_token(token, db)
+
+    if not user_id:
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
+
+    return {
+        "valid": True,
+        "message": "Token is valid"
     }

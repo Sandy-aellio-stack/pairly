@@ -15,6 +15,8 @@ import LandingPage from '@/pages/LandingPage';
 import LoginPage from '@/pages/LoginPage';
 import SignupPage from '@/pages/SignupPage';
 import VerifyOTPPage from '@/pages/VerifyOTPPage';
+import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
+import ResetPasswordPage from '@/pages/ResetPasswordPage';
 import TermsPage from '@/pages/TermsPage';
 import PrivacyPage from '@/pages/PrivacyPage';
 import AboutPage from '@/pages/AboutPage';
@@ -125,7 +127,17 @@ function App() {
           </PublicRoute>
         } />
         <Route path="/verify-otp" element={<VerifyOTPPage />} />
-        
+        <Route path="/forgot-password" element={
+          <PublicRoute>
+            <ForgotPasswordPage />
+          </PublicRoute>
+        } />
+        <Route path="/reset-password" element={
+          <PublicRoute>
+            <ResetPasswordPage />
+          </PublicRoute>
+        } />
+
         {/* Info Pages */}
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
