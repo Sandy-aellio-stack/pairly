@@ -1,5 +1,5 @@
 """
-Real-Time WebSocket Server for TrueBond
+Real-Time WebSocket Server for Luveloop
 Production-ready implementation with Redis Pub/Sub.
 
 Architecture:

@@ -1,5 +1,5 @@
 """
-Firebase Cloud Messaging (FCM) Service for TrueBond
+Firebase Cloud Messaging (FCM) Service for Luveloop
 Production-ready, non-blocking push notification system.
 
 Architecture:

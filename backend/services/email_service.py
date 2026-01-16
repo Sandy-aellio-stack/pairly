@@ -1,5 +1,5 @@
 """
-Email Service for TrueBond
+Email Service for Luveloop
 Handles sending emails for password resets, notifications, etc.
 """
 import os
@@ -17,7 +17,7 @@ class EmailService:
 
     def __init__(self):
         self.enabled = os.getenv("EMAIL_ENABLED", "false").lower() == "true"
-        self.from_email = os.getenv("EMAIL_FROM", "noreply@truebond.app")
+        self.from_email = os.getenv("EMAIL_FROM", "noreply@luveloop.app")
         self.smtp_host = os.getenv("SMTP_HOST")
         self.smtp_port = os.getenv("SMTP_PORT")
         self.smtp_user = os.getenv("SMTP_USER")
@@ -131,7 +131,7 @@ class EmailService:
                 </div>
                 <div class="content">
                     <p>{greeting},</p>
-                    <p>We received a request to reset your password for your TrueBond account.</p>
+                    <p>We received a request to reset your password for your Luveloop account.</p>
                     <p>Click the button below to reset your password:</p>
                     <p style="text-align: center;">
                         <a href="{reset_link}" class="button">Reset Password</a>
@@ -148,7 +148,7 @@ class EmailService:
                        Your password will remain unchanged.</p>
                 </div>
                 <div class="footer">
-                    <p>&copy; {datetime.now().year} TrueBond. All rights reserved.</p>
+                    <p>&copy; {datetime.now().year} Luveloop. All rights reserved.</p>
                     <p>This is an automated message. Please do not reply to this email.</p>
                 </div>
             </div>
@@ -159,7 +159,7 @@ class EmailService:
         text = f"""
         {greeting},
 
-        We received a request to reset your password for your TrueBond account.
+        We received a request to reset your password for your Luveloop account.
 
         Click this link to reset your password:
         {reset_link}
@@ -171,12 +171,12 @@ class EmailService:
 
         If you didn't request a password reset, you can safely ignore this email.
 
-        TrueBond Team
+        Luveloop Team
         """
 
         return await self.send_email(
             to=to,
-            subject="Reset Your TrueBond Password",
+            subject="Reset Your Luveloop Password",
             html=html,
             text=text
         )
@@ -211,12 +211,12 @@ class EmailService:
                 </div>
                 <div class="content">
                     <p>{greeting},</p>
-                    <p>Your TrueBond password has been successfully changed.</p>
+                    <p>Your Luveloop password has been successfully changed.</p>
                     <p><strong>Changed at:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}</p>
                     <p>If you didn't make this change, please contact our support team immediately.</p>
                 </div>
                 <div class="footer">
-                    <p>&copy; {datetime.now().year} TrueBond. All rights reserved.</p>
+                    <p>&copy; {datetime.now().year} Luveloop. All rights reserved.</p>
                 </div>
             </div>
         </body>
