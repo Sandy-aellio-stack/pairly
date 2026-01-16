@@ -21,6 +21,7 @@ REFRESH_TOKEN_EXPIRE_DAYS = 30
 
 # Request schemas
 class SignupRequest(BaseModel):
+    # REQUIRED fields
     name: str = Field(min_length=2, max_length=50)
     email: EmailStr
     mobile_number: str = Field(min_length=10, max_length=15)
@@ -28,16 +29,19 @@ class SignupRequest(BaseModel):
     age: int = Field(ge=18, le=100)
     gender: Gender
     interested_in: Gender
+    
+    # OPTIONAL fields with defaults
     intent: Intent = Intent.DATING
     min_age: int = Field(ge=18, default=18)
     max_age: int = Field(le=100, default=50)
     max_distance_km: int = Field(ge=1, le=500, default=50)
-    # Address (private)
-    address_line: str
-    city: str
-    state: str
-    country: str
-    pincode: str
+    
+    # Address fields - OPTIONAL with safe defaults
+    address_line: str = Field(default="NA")
+    city: str = Field(default="NA")
+    state: str = Field(default="NA")
+    country: str = Field(default="India")
+    pincode: str = Field(default="000000")
 
 
 class LoginRequest(BaseModel):
