@@ -1,7 +1,7 @@
-# TrueBond - Dating App PRD
+# Luveloop - Dating App PRD
 
 ## Product Overview
-TrueBond is a credit-based dating application with real-time messaging, geolocation-based discovery, and video/audio calling features.
+Luveloop is a credit-based dating application with real-time messaging, geolocation-based discovery, and video/audio calling features.
 
 **Completion Status:** ~70-75% production-ready
 
