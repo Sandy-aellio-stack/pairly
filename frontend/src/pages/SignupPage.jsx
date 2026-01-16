@@ -113,23 +113,29 @@ const SignupPage = () => {
     setIsLoading(true);
 
     try {
+      // Build signup payload with guaranteed defaults for optional fields
       const signupData = {
-        name: formData.name,
-        email: formData.email,
-        mobile_number: formData.mobile_number,
+        // Required fields
+        name: formData.name.trim(),
+        email: formData.email.trim().toLowerCase(),
+        mobile_number: formData.mobile_number.trim(),
         password: formData.password,
-        age: parseInt(formData.age),
-        gender: formData.gender,
-        interested_in: formData.interested_in,
-        intent: formData.intent,
-        min_age: parseInt(formData.min_age),
-        max_age: parseInt(formData.max_age),
+        age: parseInt(formData.age, 10),
+        gender: formData.gender,  // Must be: "male" | "female" | "other"
+        interested_in: formData.interested_in,  // Must be: "male" | "female" | "other"
+        
+        // Optional fields with safe defaults
+        intent: formData.intent || 'dating',
+        min_age: parseInt(formData.min_age, 10) || 18,
+        max_age: parseInt(formData.max_age, 10) || 50,
         max_distance_km: 50,
-        address_line: formData.address_line || 'Not provided',
-        city: formData.city || 'Not provided',
-        state: formData.state || 'Not provided',
-        country: formData.country || 'India',
-        pincode: formData.pincode || '000000',
+        
+        // Address fields - always send with defaults
+        address_line: formData.address_line?.trim() || 'NA',
+        city: formData.city?.trim() || 'NA',
+        state: formData.state?.trim() || 'NA',
+        country: formData.country?.trim() || 'India',
+        pincode: formData.pincode?.trim() || '000000',
       };
 
       await signup(signupData);
@@ -137,7 +143,21 @@ const SignupPage = () => {
       toast.success('Welcome to TrueBond! 🎉 You received 10 free coins!');
       navigate('/dashboard');
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Registration failed. Please try again.');
+      // Handle field-specific validation errors
+      const errorDetail = error.response?.data?.detail;
+      
+      if (typeof errorDetail === 'string') {
+        toast.error(errorDetail);
+      } else if (Array.isArray(errorDetail)) {
+        // Pydantic validation errors come as array
+        const fieldErrors = errorDetail.map(err => {
+          const field = err.loc?.slice(-1)[0] || 'field';
+          return `${field}: ${err.msg}`;
+        }).join(', ');
+        toast.error(fieldErrors || 'Validation failed');
+      } else {
+        toast.error('Registration failed. Please check your details and try again.');
+      }
     } finally {
       setIsLoading(false);
     }
