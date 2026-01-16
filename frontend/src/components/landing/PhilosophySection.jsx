@@ -78,7 +78,7 @@ const PhilosophySection = () => {
             Connection Takes Time
           </h2>
           <p className="text-xl text-gray-600 leading-relaxed">
-            Real bonds aren't built in a swipe. We designed TrueBond to slow things down and let relationships grow naturally.
+            Real bonds aren't built in a swipe. We designed Luveloop to slow things down and let relationships grow naturally.
           </p>
         </div>
 

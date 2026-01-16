@@ -25,7 +25,7 @@ const HeroSection = ({ onGetStarted, onWaitlist }) => {
             
             <div className="space-y-6">
               <p className="text-xl md:text-2xl text-gray-700 leading-relaxed">
-                TrueBond helps you connect with people who share your values and intentions. 
+                Luveloop helps you connect with people who share your values and intentions. 
                 <span className="font-semibold text-[#0F172A]">Real conversations, genuine bonds</span> — 
                 all in a calm, welcoming space.
               </p>
@@ -84,7 +84,7 @@ const HeroSection = ({ onGetStarted, onWaitlist }) => {
             <div className="absolute inset-0 flex items-center justify-center">
               <img 
                 src="https://customer-assets.emergentagent.com/job_datebond/artifacts/zn3pqli0_Gemini_Generated_Image_ttgcrgttgcrgttgc.png" 
-                alt="TrueBond - Connect with real people" 
+                alt="Luveloop - Connect with real people" 
                 className="max-w-full max-h-full object-contain rounded-3xl shadow-2xl"
               />
             </div>

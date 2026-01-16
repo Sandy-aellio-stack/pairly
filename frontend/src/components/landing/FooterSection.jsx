@@ -20,7 +20,7 @@ const FooterSection = () => {
               <div className="w-10 h-10 rounded-lg bg-[#E9D5FF] flex items-center justify-center">
                 <Heart size={20} className="text-[#0F172A]" fill="currentColor" />
               </div>
-              <span className="text-xl font-bold">TrueBond</span>
+              <span className="text-xl font-bold">Luveloop</span>
             </Link>
             <p className="text-gray-400 text-sm mb-4">
               Building meaningful connections through conversation-first dating.
@@ -61,7 +61,7 @@ const FooterSection = () => {
         <div className="border-t border-gray-800 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <p className="text-sm text-gray-400">
-              © {currentYear} TrueBond. All rights reserved. Made with ❤️ in India.
+              © {currentYear} Luveloop. All rights reserved. Made with ❤️ in India.
             </p>
             <div className="flex items-center space-x-4 text-sm text-gray-400">
               <div className="flex items-center space-x-1">
