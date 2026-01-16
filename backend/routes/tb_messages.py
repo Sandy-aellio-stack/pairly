@@ -1,5 +1,5 @@
 """
-TrueBond Messages API
+Luveloop Messages API
 REST endpoints for messaging with WebSocket integration.
 
 IMPORTANT: REST API is the PRIMARY method for sending messages.
@@ -26,7 +26,7 @@ from backend.socket_server import sio, emit_message_to_user, emit_notification_t
 from backend.core.redis_pubsub import redis_pubsub
 import logging
 
-router = APIRouter(prefix="/api/messages", tags=["TrueBond Messages"])
+router = APIRouter(prefix="/api/messages", tags=["Luveloop Messages"])
 logger = logging.getLogger("messages")
 
 

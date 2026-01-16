@@ -7,7 +7,7 @@ from backend.models.tb_report import TBReport, ReportStatus
 from backend.models.tb_user import TBUser
 from backend.routes.tb_admin_auth import get_current_admin
 
-router = APIRouter(prefix="/api/admin/moderation", tags=["TrueBond Admin Moderation"])
+router = APIRouter(prefix="/api/admin/moderation", tags=["Luveloop Admin Moderation"])
 
 
 @router.get("/reports")

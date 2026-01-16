@@ -9,7 +9,7 @@ import uuid
 from backend.models.tb_user import TBUser
 from backend.routes.tb_auth import get_current_user
 
-router = APIRouter(prefix="/api/notifications", tags=["TrueBond Notifications"])
+router = APIRouter(prefix="/api/notifications", tags=["Luveloop Notifications"])
 
 
 class TBNotification(Document):

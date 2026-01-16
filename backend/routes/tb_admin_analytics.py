@@ -8,7 +8,7 @@ from backend.models.tb_message import TBMessage
 from backend.models.tb_payment import TBPayment
 from backend.routes.tb_admin_auth import get_current_admin
 
-router = APIRouter(prefix="/api/admin/analytics", tags=["TrueBond Admin Analytics"])
+router = APIRouter(prefix="/api/admin/analytics", tags=["Luveloop Admin Analytics"])
 
 
 @router.get("/overview")

@@ -9,7 +9,7 @@ import os
 from backend.models.tb_user import TBUser
 from backend.models.app_settings import AppSettings
 
-router = APIRouter(prefix="/api/admin", tags=["TrueBond Admin Auth"])
+router = APIRouter(prefix="/api/admin", tags=["Luveloop Admin Auth"])
 security = HTTPBearer()
 
 JWT_SECRET = os.getenv("JWT_SECRET", "truebond-admin-secret")

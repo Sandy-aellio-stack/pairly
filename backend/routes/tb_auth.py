@@ -11,7 +11,7 @@ from backend.services.tb_auth_service import (
 from backend.services.tb_otp_service import OTPService
 from backend.services.password_reset_service import password_reset_service
 
-router = APIRouter(prefix="/api/auth", tags=["TrueBond Auth"])
+router = APIRouter(prefix="/api/auth", tags=["Luveloop Auth"])
 security = HTTPBearer()
 
 

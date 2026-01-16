@@ -10,7 +10,7 @@ from backend.models.tb_report import TBReport, ReportStatus
 from backend.routes.tb_auth import get_current_user
 from backend.services.tb_location_service import PrivacyLocation
 
-router = APIRouter(prefix="/api/users", tags=["TrueBond Users"])
+router = APIRouter(prefix="/api/users", tags=["Luveloop Users"])
 
 
 class UpdateProfileRequest(BaseModel):

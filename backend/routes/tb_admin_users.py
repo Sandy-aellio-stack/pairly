@@ -7,7 +7,7 @@ from backend.models.tb_user import TBUser
 from backend.models.tb_credit import TBCreditTransaction
 from backend.routes.tb_admin_auth import get_current_admin
 
-router = APIRouter(prefix="/api/admin/users", tags=["TrueBond Admin Users"])
+router = APIRouter(prefix="/api/admin/users", tags=["Luveloop Admin Users"])
 
 
 @router.get("")
