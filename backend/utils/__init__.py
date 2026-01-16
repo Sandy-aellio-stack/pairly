@@ -1,5 +1,5 @@
 """
-Utility functions and helpers for TrueBond backend
+Utility functions and helpers for Luveloop backend
 """
 from .transaction import (
     with_transaction,

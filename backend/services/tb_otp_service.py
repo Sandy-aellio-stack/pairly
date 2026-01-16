@@ -46,7 +46,7 @@ class OTPService:
                     },
                     json={
                         "to": mobile_number,
-                        "body": f"Your TrueBond verification code is: {otp_code}. Valid for 10 minutes."
+                        "body": f"Your Luveloop verification code is: {otp_code}. Valid for 10 minutes."
                     },
                     timeout=30
                 )

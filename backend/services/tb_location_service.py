@@ -1,5 +1,5 @@
 """
-Privacy-Safe Geolocation Service for TrueBond
+Privacy-Safe Geolocation Service for Luveloop
 Handles location updates and nearby user queries with strict privacy controls.
 
 Privacy Safeguards:
