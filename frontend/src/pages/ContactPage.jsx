@@ -35,7 +35,7 @@ const ContactPage = () => {
             <div className="w-10 h-10 rounded-xl bg-[#0F172A] flex items-center justify-center">
               <Heart size={20} className="text-white" fill="white" />
             </div>
-            <span className="text-xl font-bold text-[#0F172A]">TrueBond</span>
+            <span className="text-xl font-bold text-[#0F172A]">Luveloop</span>
           </Link>
           <Link to="/" className="flex items-center gap-2 text-gray-600 hover:text-[#0F172A]">
             <ArrowLeft size={20} />
@@ -62,7 +62,7 @@ const ContactPage = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold text-[#0F172A]">Email</h3>
-                  <p className="text-gray-600">support@truebond.com</p>
+                  <p className="text-gray-600">support@luveloop.com</p>
                   <p className="text-sm text-gray-500">We respond within 24 hours</p>
                 </div>
               </div>

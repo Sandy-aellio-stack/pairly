@@ -1,5 +1,5 @@
 /**
- * FCM Push Notification Service for TrueBond
+ * FCM Push Notification Service for Luveloop
  * 
  * Handles Firebase Cloud Messaging token registration and permission management.
  * 
@@ -161,7 +161,7 @@ const handleForegroundMessage = (payload) => {
     new Notification(title, {
       body: body,
       icon: '/logo192.png',
-      tag: data.reference_id || 'truebond-notification',
+      tag: data.reference_id || 'luveloop-notification',
       data: data,
     });
   }
