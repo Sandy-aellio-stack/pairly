@@ -118,7 +118,7 @@ const LandingPage = () => {
             <div className="w-10 h-10 rounded-xl bg-[#0F172A] flex items-center justify-center">
               <Heart size={20} className="text-white" fill="white" />
             </div>
-            <span className="text-xl font-bold text-[#0F172A]">TrueBond</span>
+            <span className="text-xl font-bold text-[#0F172A]">Luveloop</span>
           </div>
 
           {/* Auth Buttons - Right */}

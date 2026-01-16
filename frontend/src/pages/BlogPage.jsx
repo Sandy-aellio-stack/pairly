@@ -64,7 +64,7 @@ const BlogPage = () => {
             <div className="w-10 h-10 rounded-xl bg-[#0F172A] flex items-center justify-center">
               <Heart size={20} className="text-white" fill="white" />
             </div>
-            <span className="text-xl font-bold text-[#0F172A]">TrueBond</span>
+            <span className="text-xl font-bold text-[#0F172A]">Luveloop</span>
           </Link>
           <Link to="/" className="flex items-center gap-2 text-gray-600 hover:text-[#0F172A]">
             <ArrowLeft size={20} />
@@ -76,7 +76,7 @@ const BlogPage = () => {
       {/* Hero */}
       <section className="bg-gradient-to-br from-[#E9D5FF] via-[#FCE7F3] to-[#DBEAFE] py-16">
         <div className="max-w-4xl mx-auto px-6 text-center">
-          <h1 className="text-4xl font-bold text-[#0F172A] mb-4">TrueBond Blog</h1>
+          <h1 className="text-4xl font-bold text-[#0F172A] mb-4">Luveloop Blog</h1>
           <p className="text-xl text-gray-700">Insights on meaningful connections, dating, and relationships</p>
         </div>
       </section>

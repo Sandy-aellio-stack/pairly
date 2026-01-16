@@ -140,7 +140,7 @@ const SignupPage = () => {
 
       await signup(signupData);
       
-      toast.success('Welcome to TrueBond! 🎉 You received 10 free coins!');
+      toast.success('Welcome to Luveloop! 🎉 You received 10 free coins!');
       navigate('/dashboard');
     } catch (error) {
       // Handle field-specific validation errors
@@ -237,7 +237,7 @@ const SignupPage = () => {
             <div className="w-12 h-12 rounded-xl bg-[#0F172A] flex items-center justify-center">
               <Heart size={24} className="text-white" fill="white" />
             </div>
-            <span className="text-2xl font-bold text-[#0F172A]">TrueBond</span>
+            <span className="text-2xl font-bold text-[#0F172A]">Luveloop</span>
           </Link>
 
           {/* Progress Steps */}

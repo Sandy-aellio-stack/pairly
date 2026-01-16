@@ -47,7 +47,7 @@ const LoginPage = () => {
             <div className="w-12 h-12 rounded-xl bg-[#0F172A] flex items-center justify-center">
               <Heart size={24} className="text-white" fill="white" />
             </div>
-            <span className="text-2xl font-bold text-[#0F172A]">TrueBond</span>
+            <span className="text-2xl font-bold text-[#0F172A]">Luveloop</span>
           </Link>
 
           <h1 className="text-3xl font-bold text-[#0F172A] mb-2">Welcome back</h1>
