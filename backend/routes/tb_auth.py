@@ -46,13 +46,21 @@ class ResetPasswordRequest(BaseModel):
 @router.post("/signup", response_model=dict)
 async def signup(data: SignupRequest):
     """Register a new user - requires age >= 18"""
-    user, tokens = await AuthService.signup(data)
-    return {
-        "message": "Account created successfully",
-        "user_id": str(user.id),
-        "credits_balance": user.credits_balance,
-        "tokens": tokens.model_dump()
-    }
+    try:
+        user, tokens = await AuthService.signup(data)
+        return {
+            "message": "Account created successfully",
+            "user_id": str(user.id),
+            "credits_balance": user.credits_balance,
+            "tokens": tokens.model_dump()
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Log the actual error for debugging
+        import logging
+        logging.error(f"Signup error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
 
 
 @router.post("/login", response_model=dict)
