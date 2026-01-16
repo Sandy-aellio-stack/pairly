@@ -131,7 +131,7 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
             <Heart size={20} className="text-white" fill="white" />
           </div>
-          <span className="text-xl font-bold text-gray-900">TrueBond</span>
+          <span className="text-xl font-bold text-gray-900">Luveloop</span>
         </div>
 
         {mode === 'login' ? (

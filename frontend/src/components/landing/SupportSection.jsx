@@ -3,8 +3,8 @@ import { Search, MessageSquare, Mail, Phone, ChevronDown, ChevronUp, ArrowRight,
 
 const faqs = [
   {
-    question: 'How is TrueBond different from other dating apps?',
-    answer: "TrueBond prioritizes meaningful conversations over superficial swiping. We use intent-based profiles and conversation-first matching to help you connect with people who share your values and relationship goals.",
+    question: 'How is Luveloop different from other dating apps?',
+    answer: "Luveloop prioritizes meaningful conversations over superficial swiping. We use intent-based profiles and conversation-first matching to help you connect with people who share your values and relationship goals.",
   },
   {
     question: 'How does the coin system work?',
@@ -19,7 +19,7 @@ const faqs = [
     answer: 'Most users start having meaningful conversations within 24 hours of creating their profile. However, we encourage taking your time to build genuine connections rather than rushing the process.',
   },
   {
-    question: 'Can I try TrueBond before committing?',
+    question: 'Can I try Luveloop before committing?',
     answer: 'Yes! New users receive 10 free conversation coins to experience our platform. You can create your profile, get matched, and start conversations risk-free.',
   },
 ];
@@ -145,7 +145,7 @@ const SupportSection = () => {
                   </div>
                   <div className="flex-1">
                     <h4 className="font-bold text-[#0F172A]">Email Us</h4>
-                    <p className="text-gray-500 text-sm">support@truebond.com • We'll respond within 24 hours</p>
+                    <p className="text-gray-500 text-sm">support@luveloop.com • We'll respond within 24 hours</p>
                   </div>
                   <ArrowRight size={20} className="text-gray-400" />
                 </div>
@@ -167,7 +167,7 @@ const SupportSection = () => {
 
             <div className="mt-8 text-center">
               <p className="text-gray-600">
-                TrueBond grows with its community. <span className="font-semibold text-[#0F172A]">Your voice matters.</span>
+                Luveloop grows with its community. <span className="font-semibold text-[#0F172A]">Your voice matters.</span>
               </p>
             </div>
           </div>

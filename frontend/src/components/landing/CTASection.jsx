@@ -24,7 +24,7 @@ const CTASection = ({ onGetStarted }) => {
           </h2>
           
           <p className="text-xl text-white/90 max-w-2xl mx-auto">
-            Join TrueBond and start having conversations that actually matter.
+            Join Luveloop and start having conversations that actually matter.
             No games, no gimmicks—just real people looking for real connection.
           </p>
           

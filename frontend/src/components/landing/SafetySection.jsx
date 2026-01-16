@@ -36,7 +36,7 @@ const SafetySection = () => {
             Your Safety Matters
           </h2>
           <p className="text-xl text-gray-600">
-            TrueBond is built with multiple layers of protection. Your safety is not optional—it's foundational.
+            Luveloop is built with multiple layers of protection. Your safety is not optional—it's foundational.
           </p>
         </div>
         
