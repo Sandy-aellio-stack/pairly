@@ -22,17 +22,17 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5000,
+    port: 3000,
     host: '0.0.0.0',
     strictPort: true,
     allowedHosts: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://localhost:8001',
         changeOrigin: true,
       },
       '/socket.io': {
-        target: 'http://localhost:8000',
+        target: 'http://localhost:8001',
         changeOrigin: true,
         ws: true,
       },
