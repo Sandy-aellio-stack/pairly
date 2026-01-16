@@ -378,7 +378,7 @@ const SettingsPage = () => {
 
       {/* App Info */}
       <div className="mt-8 text-center text-gray-400 text-sm">
-        <p>TrueBond v1.0.0</p>
+        <p>Luveloop v1.0.0</p>
         <p className="mt-1">Made with love in India</p>
       </div>
     </div>

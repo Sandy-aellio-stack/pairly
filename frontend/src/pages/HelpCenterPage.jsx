@@ -4,7 +4,7 @@ import { Heart, ArrowLeft, Search, Book, CreditCard, Shield, Users, MessageCircl
 import HeartCursor from '@/components/HeartCursor';
 
 const categories = [
-  { Icon: Book, title: 'Getting Started', count: 12, description: 'Learn the basics of TrueBond' },
+  { Icon: Book, title: 'Getting Started', count: 12, description: 'Learn the basics of Luveloop' },
   { Icon: Users, title: 'Profile & Matching', count: 15, description: 'Optimize your profile and matches' },
   { Icon: MessageCircle, title: 'Messaging', count: 10, description: 'Chat features and coin system' },
   { Icon: CreditCard, title: 'Coins & Payments', count: 8, description: 'Purchasing and using coins' },
@@ -34,7 +34,7 @@ const HelpCenterPage = () => {
             <div className="w-10 h-10 rounded-xl bg-[#0F172A] flex items-center justify-center">
               <Heart size={20} className="text-white" fill="white" />
             </div>
-            <span className="text-xl font-bold text-[#0F172A]">TrueBond</span>
+            <span className="text-xl font-bold text-[#0F172A]">Luveloop</span>
           </Link>
           <Link to="/" className="flex items-center gap-2 text-gray-600 hover:text-[#0F172A]">
             <ArrowLeft size={20} />

@@ -439,7 +439,7 @@ const ProfileViewerPage = () => {
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 text-center mb-2">Report {profile?.name}</h3>
                 <p className="text-gray-600 text-sm text-center">
-                  Help us keep TrueBond safe. Reports are reviewed by our team.
+                  Help us keep Luveloop safe. Reports are reviewed by our team.
                 </p>
               </div>
               
