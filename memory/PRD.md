@@ -121,16 +121,28 @@ TrueBond is a credit-based dating application with real-time messaging, geolocat
   - Created frontend FCM service with Firebase SDK
   - Updated authStore for FCM init/cleanup
 
+- ✅ Fixed Registration Flow (Permanent Fix)
+  - Made address fields optional with safe defaults in backend
+  - `address_line`, `city`, `state` → default: "NA"
+  - `country` → default: "India"
+  - `pincode` → default: "000000"
+  - Improved frontend error handling with field-specific messages
+  - Registration now works with minimal required fields only
+
 ### Files Modified/Created
 - `backend/services/fcm_service.py` (NEW)
+- `backend/services/tb_auth_service.py` (MODIFIED - optional address fields)
+- `backend/routes/tb_auth.py` (MODIFIED - better error handling)
 - `backend/models/tb_user.py` (MODIFIED)
 - `backend/routes/tb_users.py` (MODIFIED)
 - `backend/services/tb_message_service.py` (MODIFIED)
 - `backend/routes/calling_v2.py` (MODIFIED)
+- `frontend/src/pages/SignupPage.jsx` (MODIFIED - defaults + error handling)
 - `frontend/src/services/fcm.js` (NEW)
 - `frontend/src/services/api.js` (MODIFIED)
 - `frontend/src/store/authStore.js` (MODIFIED)
 - `FCM_PUSH_NOTIFICATIONS.md` (NEW - Documentation)
+- `TRUEBOND_FULL_AUDIT_REPORT.md` (NEW - Full audit)
 
 ## Backlog
 
