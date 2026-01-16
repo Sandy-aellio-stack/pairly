@@ -62,7 +62,7 @@ const DashboardPage = () => {
     <div>
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-[#0F172A] mb-2">Welcome back, Admin</h1>
-        <p className="text-gray-600">Here&apos;s what&apos;s happening with TrueBond today.</p>
+        <p className="text-gray-600">Here&apos;s what&apos;s happening with Luveloop today.</p>
       </div>
 
       {/* Stats Cards */}

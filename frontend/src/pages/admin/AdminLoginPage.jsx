@@ -35,7 +35,7 @@ const AdminLoginPage = () => {
           <div className="w-16 h-16 rounded-2xl bg-[#E9D5FF] flex items-center justify-center mx-auto mb-4">
             <Heart size={32} className="text-[#0F172A]" fill="currentColor" />
           </div>
-          <h1 className="text-2xl font-bold text-white">TrueBond Admin</h1>
+          <h1 className="text-2xl font-bold text-white">Luveloop Admin</h1>
           <p className="text-white/60 mt-2">Sign in to manage your platform</p>
         </div>
 
@@ -50,7 +50,7 @@ const AdminLoginPage = () => {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@truebond.com"
+                  placeholder="admin@luveloop.com"
                   className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-[#0F172A] outline-none"
                   required
                 />
@@ -88,15 +88,15 @@ const AdminLoginPage = () => {
           {/* Demo Credentials */}
           <div className="mt-6 p-4 bg-gray-50 rounded-xl">
             <p className="text-sm font-medium text-gray-700 mb-2">Demo Credentials:</p>
-            <p className="text-xs text-gray-500">Super Admin: admin@truebond.com / admin123</p>
-            <p className="text-xs text-gray-500">Moderator: moderator@truebond.com / mod123</p>
+            <p className="text-xs text-gray-500">Super Admin: admin@luveloop.com / admin123</p>
+            <p className="text-xs text-gray-500">Moderator: moderator@luveloop.com / mod123</p>
           </div>
         </form>
 
         {/* Back Link */}
         <div className="text-center mt-6">
           <a href="/" className="text-white/60 hover:text-white text-sm">
-            ← Back to TrueBond
+            ← Back to Luveloop
           </a>
         </div>
       </div>

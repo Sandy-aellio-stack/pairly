@@ -7,7 +7,7 @@ const AdminSettingsPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [settings, setSettings] = useState({
-    appName: 'TrueBond',
+    appName: 'Luveloop',
     tagline: 'Real connections, meaningful bonds',
     maintenanceMode: false,
     defaultSearchRadius: 50,

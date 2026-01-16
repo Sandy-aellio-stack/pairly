@@ -3,9 +3,9 @@ import { FileText, Calendar, User, Shield, Settings, Loader2 } from 'lucide-reac
 
 // Sample log data - in production this would come from an API
 const sampleLogs = [
-  { id: 1, action: 'User Suspended', admin: 'admin@truebond.com', target: 'User123', timestamp: '2024-12-18 15:30:22', severity: 'warning' },
-  { id: 2, action: 'Settings Updated', admin: 'admin@truebond.com', target: 'Message Cost: 1 → 2', timestamp: '2024-12-18 14:22:10', severity: 'info' },
-  { id: 3, action: 'Content Removed', admin: 'moderator@truebond.com', target: 'Report #1234', timestamp: '2024-12-18 12:45:33', severity: 'warning' },
+  { id: 1, action: 'User Suspended', admin: 'admin@luveloop.com', target: 'User123', timestamp: '2024-12-18 15:30:22', severity: 'warning' },
+  { id: 2, action: 'Settings Updated', admin: 'admin@luveloop.com', target: 'Message Cost: 1 → 2', timestamp: '2024-12-18 14:22:10', severity: 'info' },
+  { id: 3, action: 'Content Removed', admin: 'moderator@luveloop.com', target: 'Report #1234', timestamp: '2024-12-18 12:45:33', severity: 'warning' },
   { id: 4, action: 'User Reactivated', admin: 'admin@truebond.com', target: 'User456', timestamp: '2024-12-18 11:20:55', severity: 'info' },
   { id: 5, action: 'User Banned', admin: 'admin@truebond.com', target: 'User789', timestamp: '2024-12-18 10:15:42', severity: 'critical' },
   { id: 6, action: 'Admin Login', admin: 'admin@truebond.com', target: '-', timestamp: '2024-12-18 09:00:00', severity: 'info' },
