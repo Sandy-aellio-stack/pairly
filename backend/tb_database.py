@@ -4,7 +4,7 @@ import os
 import asyncio
 import certifi
 
-# TrueBond Models
+# Luveloop Models
 from backend.models.tb_user import TBUser
 from backend.models.tb_credit import TBCreditTransaction
 from backend.models.tb_message import TBMessage, TBConversation
