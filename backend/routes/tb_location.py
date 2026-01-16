@@ -1,5 +1,5 @@
 """
-TrueBond Location API
+Luveloop Location API
 Privacy-safe geolocation endpoints.
 
 Privacy Guarantees:
@@ -18,7 +18,7 @@ from backend.models.tb_user import TBUser
 from backend.routes.tb_auth import get_current_user
 from backend.services.tb_location_service import LocationService, LocationUpdateRequest
 
-router = APIRouter(prefix="/api/location", tags=["TrueBond Location"])
+router = APIRouter(prefix="/api/location", tags=["Luveloop Location"])
 
 
 @router.post("/update")

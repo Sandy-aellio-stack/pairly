@@ -89,7 +89,7 @@ async def stripe_credits_webhook(
     stripe_signature: Optional[str] = Header(None, alias="stripe-signature")
 ):
     """
-    Dedicated Stripe webhook for TrueBond credit purchases.
+    Dedicated Stripe webhook for Luveloop credit purchases.
     
     This is the ONLY endpoint that adds credits to user accounts.
     Credits are NEVER added from frontend or verify endpoints.
@@ -222,7 +222,7 @@ async def razorpay_credits_webhook(
     x_razorpay_signature: Optional[str] = Header(None, alias="X-Razorpay-Signature")
 ):
     """
-    Dedicated Razorpay webhook for TrueBond credit purchases.
+    Dedicated Razorpay webhook for Luveloop credit purchases.
     
     This is the ONLY endpoint that adds credits for Razorpay payments.
     Credits are NEVER added from frontend or verify endpoints.
