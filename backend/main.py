@@ -1,5 +1,5 @@
 """
-TrueBond - Dating App Backend
+Luveloop - Dating App Backend
 Production-ready FastAPI backend with MongoDB
 """
 from fastapi import FastAPI, Request
@@ -44,7 +44,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-logger = logging.getLogger("truebond")
+logger = logging.getLogger("luveloop")
 
 # Validate environment variables at startup
 validate_or_exit()
@@ -78,7 +78,7 @@ async def lifespan(app: FastAPI):
     from backend.socket_server import init_websocket_pubsub
     await init_websocket_pubsub()
     
-    logger.info("TrueBond Backend Started")
+    logger.info("Luveloop Backend Started")
     yield
     await close_db(mongo_client)
     
@@ -90,7 +90,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="TrueBond API",
+    title="Luveloop API",
     description="Dating App Backend - Credit-based messaging with live location",
     version="1.0.0",
     lifespan=lifespan,
@@ -145,7 +145,7 @@ if ENVIRONMENT == "development":
 async def health_check():
     return {
         "status": "healthy",
-        "service": "truebond",
+        "service": "luveloop",
         "version": "1.0.0",
         "environment": ENVIRONMENT
     }
@@ -190,7 +190,7 @@ async def health_check_detailed():
 
     return {
         "status": overall_status,
-        "service": "truebond",
+        "service": "luveloop",
         "version": "1.0.0",
         "environment": ENVIRONMENT,
         "services": {
@@ -210,7 +210,7 @@ async def health_check_detailed():
 @app.get("/")
 async def root():
     return {
-        "app": "TrueBond",
+        "app": "Luveloop",
         "version": "1.0.0",
         "docs": "/docs" if ENVIRONMENT != "production" else None,
         "health": "/api/health"
