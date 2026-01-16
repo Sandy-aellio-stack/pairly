@@ -121,13 +121,13 @@ Luveloop is a credit-based dating application with real-time messaging, geolocat
   - Created frontend FCM service with Firebase SDK
   - Updated authStore for FCM init/cleanup
 
-- ✅ Fixed Registration Flow (Permanent Fix)
-  - Made address fields optional with safe defaults in backend
-  - `address_line`, `city`, `state` → default: "NA"
-  - `country` → default: "India"
-  - `pincode` → default: "000000"
-  - Improved frontend error handling with field-specific messages
-  - Registration now works with minimal required fields only
+- ✅ Rebranded Application (TrueBond → Luveloop)
+  - Updated all frontend UI text, titles, headers, footers
+  - Updated page metadata (title, description)
+  - Updated backend FastAPI title/description
+  - Updated log labels and startup messages
+  - Updated email templates
+  - MongoDB connection and data NOT modified
 
 ### Files Modified/Created
 - `backend/services/fcm_service.py` (NEW)
