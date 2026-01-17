@@ -184,28 +184,29 @@ const SignupPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex">
-      <HeartCursor />
-      
-      {/* Left Side - Image */}
-      <div className="hidden lg:flex w-2/5 bg-gradient-to-br from-[#E9D5FF] via-[#FCE7F3] to-[#DBEAFE] items-center justify-center p-12 sticky top-0 h-screen">
-        <div className="max-w-lg text-center">
-          <div className="relative">
-            <div className="w-64 h-64 mx-auto rounded-full bg-white/30 backdrop-blur-sm flex items-center justify-center">
-              <Heart size={120} className="text-rose-400" fill="currentColor" />
-            </div>
-            <div className="absolute -top-4 -left-4 w-20 h-20 rounded-full bg-white shadow-lg flex items-center justify-center animate-float">
-              <span className="text-3xl">🌟</span>
-            </div>
-            <div className="absolute -bottom-4 -right-4 w-16 h-16 rounded-full bg-white shadow-lg flex items-center justify-center animate-float-delay-1">
-              <span className="text-2xl">💝</span>
-            </div>
-          </div>
-          <h2 className="text-2xl font-bold text-[#0F172A] mt-8">Start Your Journey</h2>
-          <p className="text-gray-600 mt-2">Create meaningful connections that last a lifetime</p>
+    <div className="min-h-screen flex">
+      {/* Left Side - Romantic Image */}
+      <div className="hidden lg:flex w-2/5 relative overflow-hidden sticky top-0 h-screen">
+        {/* Gradient Background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#E8D5E7] via-[#F5E6E8] to-[#FDE8D7]" />
+        
+        {/* Decorative blobs */}
+        <div className="absolute top-10 left-10 w-64 h-64 bg-pink-300/30 rounded-full blur-3xl" />
+        <div className="absolute bottom-20 right-10 w-80 h-80 bg-orange-200/30 rounded-full blur-3xl" />
+        
+        <div className="relative z-10 flex flex-col items-center justify-center w-full p-8">
+          {/* Hero Image */}
+          <img 
+            src="https://customer-assets.emergentagent.com/job_truebond-notify/artifacts/8q937866_Gemini_Generated_Image_c05duoc05duoc05d.png" 
+            alt="Find your perfect match" 
+            className="w-full max-w-sm object-contain drop-shadow-2xl rounded-2xl mb-6"
+          />
+          
+          <h2 className="text-2xl font-bold text-[#0F172A]">Start Your Journey</h2>
+          <p className="text-gray-700 mt-2 text-center">Create meaningful connections that last a lifetime ✨</p>
           
           {/* Signup Benefits */}
-          <div className="mt-8 text-left bg-white/50 rounded-xl p-6 backdrop-blur-sm">
+          <div className="mt-6 text-left bg-white/70 backdrop-blur-sm rounded-xl p-5 w-full max-w-xs shadow-lg">
             <p className="font-semibold text-[#0F172A] mb-3">What you get:</p>
             <ul className="space-y-2 text-sm text-gray-700">
               <li className="flex items-center gap-2">
@@ -225,6 +226,14 @@ const SignupPage = () => {
                 Privacy protected
               </li>
             </ul>
+          </div>
+          
+          {/* Floating hearts */}
+          <div className="absolute top-1/4 left-1/6 animate-pulse">
+            <Heart size={20} className="text-pink-400" fill="currentColor" />
+          </div>
+          <div className="absolute bottom-1/4 right-1/6 animate-pulse delay-300">
+            <Heart size={16} className="text-rose-400" fill="currentColor" />
           </div>
         </div>
       </div>
