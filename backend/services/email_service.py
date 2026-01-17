@@ -229,5 +229,89 @@ class EmailService:
             html=html
         )
 
+    async def send_otp_email(
+        self,
+        to_email: str,
+        otp_code: str,
+        user_name: Optional[str] = None
+    ) -> bool:
+        """
+        Send OTP verification email.
+        
+        Args:
+            to_email: Recipient email
+            otp_code: 6-digit OTP code
+            user_name: User's name (optional)
+        
+        Returns:
+            True if email sent successfully
+        """
+        greeting = f"Hi {user_name}" if user_name else "Hi"
+
+        html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                           color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }}
+                .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }}
+                .otp-code {{ font-size: 36px; font-weight: bold; color: #667eea; letter-spacing: 8px;
+                            text-align: center; padding: 20px; background: white; border-radius: 8px;
+                            margin: 20px 0; border: 2px dashed #667eea; }}
+                .footer {{ text-align: center; margin-top: 20px; color: #666; font-size: 12px; }}
+                .warning {{ background: #fff3cd; border-left: 4px solid #ffc107;
+                           padding: 10px; margin: 20px 0; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>🔐 Email Verification Code</h1>
+                </div>
+                <div class="content">
+                    <p>{greeting},</p>
+                    <p>Your Luveloop verification code is:</p>
+                    <div class="otp-code">{otp_code}</div>
+                    <p style="text-align: center; color: #666;">Enter this code to verify your email address.</p>
+                    <div class="warning">
+                        <strong>⚠️ Security Notice:</strong><br>
+                        • This code will expire in 10 minutes<br>
+                        • Never share this code with anyone<br>
+                        • Luveloop will never ask for your OTP via call or message
+                    </div>
+                    <p>If you didn't request this code, please ignore this email.</p>
+                </div>
+                <div class="footer">
+                    <p>&copy; {datetime.now().year} Luveloop. All rights reserved.</p>
+                    <p>This is an automated message. Please do not reply to this email.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+        text = f"""
+        {greeting},
+
+        Your Luveloop verification code is: {otp_code}
+
+        This code will expire in 10 minutes.
+        Never share this code with anyone.
+
+        If you didn't request this code, please ignore this email.
+
+        Luveloop Team
+        """
+
+        return await self.send_email(
+            to=to_email,
+            subject=f"Your Luveloop Verification Code: {otp_code}",
+            html=html,
+            text=text
+        )
+
 
 email_service = EmailService()
