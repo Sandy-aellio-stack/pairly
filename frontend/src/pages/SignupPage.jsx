@@ -239,11 +239,11 @@ const SignupPage = () => {
       </div>
 
       {/* Right Side - Form */}
-      <div className="flex-1 flex items-center justify-center px-6 py-12 overflow-y-auto">
+      <div className="flex-1 flex items-center justify-center px-6 py-12 overflow-y-auto bg-white">
         <div className="w-full max-w-lg">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-xl bg-[#0F172A] flex items-center justify-center">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center shadow-lg">
               <Heart size={24} className="text-white" fill="white" />
             </div>
             <span className="text-2xl font-bold text-[#0F172A]">Luveloop</span>
@@ -255,17 +255,17 @@ const SignupPage = () => {
               <div key={s.num} className="flex items-center">
                 <div className="flex flex-col items-center">
                   <div className={`w-12 h-12 rounded-full flex items-center justify-center font-semibold transition-all ${
-                    step >= s.num ? 'bg-[#0F172A] text-white' : 'bg-gray-200 text-gray-500'
+                    step >= s.num ? 'bg-gradient-to-br from-pink-500 to-rose-500 text-white' : 'bg-gray-200 text-gray-500'
                   }`}>
                     {step > s.num ? <Check size={20} /> : <s.icon size={20} />}
                   </div>
-                  <span className={`text-xs mt-1 ${step >= s.num ? 'text-[#0F172A]' : 'text-gray-400'}`}>
+                  <span className={`text-xs mt-1 ${step >= s.num ? 'text-pink-600' : 'text-gray-400'}`}>
                     {s.label}
                   </span>
                 </div>
                 {i < steps.length - 1 && (
                   <div className={`w-12 h-1 mx-2 rounded transition-all ${
-                    step > s.num ? 'bg-[#0F172A]' : 'bg-gray-200'
+                    step > s.num ? 'bg-gradient-to-r from-pink-500 to-rose-500' : 'bg-gray-200'
                   }`} />
                 )}
               </div>
