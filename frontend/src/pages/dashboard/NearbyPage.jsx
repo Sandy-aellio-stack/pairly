@@ -1,11 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, ChevronDown, Filter, MapPin, Heart, X, MessageCircle, Users, Loader2, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import maplibregl from 'maplibre-gl';
-import 'maplibre-gl/dist/maplibre-gl.css';
-import { locationAPI } from '@/services/api';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
+import { locationAPI, userAPI } from '@/services/api';
 import useAuthStore from '@/store/authStore';
 import { toast } from 'sonner';
+
+// Mapbox access token
+mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1IjoibHV2ZWxvb3AiLCJhIjoiY21raWZkZjFhMHFkbjNoc2NtdmE2cmxiNSJ9.9pV12IAA86TH5jZI8UOsdw';
 
 const ageRanges = ['18-25', '20-30', '25-35', '30-40', '35-45', '40+'];
 const genders = ['All', 'Male', 'Female', 'Other'];
@@ -16,7 +19,7 @@ const NearbyPage = () => {
   const { user } = useAuthStore();
   const mapContainer = useRef(null);
   const map = useRef(null);
-  const markersRef = useRef({});
+  const markersRef = useRef([]);
   
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -29,32 +32,56 @@ const NearbyPage = () => {
   const [userLocation, setUserLocation] = useState({ lat: 12.9716, lng: 77.5946 }); // Default: Bangalore
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Fetch nearby users
+  // Fetch nearby users from API - with fallback to feed
   const fetchNearbyUsers = async (lat, lng) => {
     setIsLoading(true);
     try {
-      // First update our location
-      await locationAPI.update(lat, lng);
-      
-      // Then fetch nearby users
-      const response = await locationAPI.getNearby(lat, lng, user?.preferences?.max_distance_km || 50);
-      
-      if (response.data.users && response.data.users.length > 0) {
-        // Filter to only include users with valid location data
-        const usersWithLocations = response.data.users
-          .filter(u => u.location && u.location.lat && u.location.lng)
-          .map((u) => ({
-            ...u,
-            photo: u.profile_pictures?.[0] || '',
-            lookingFor: u.intent || 'dating',
-            interests: u.interests || []
-          }));
-        setUsers(usersWithLocations);
-      } else {
-        setUsers([]);
+      // Try to update location first
+      try {
+        await locationAPI.update(lat, lng);
+      } catch (e) {
+        console.log('Could not update location:', e);
       }
+      
+      // Try nearby endpoint first
+      let usersData = [];
+      try {
+        const response = await locationAPI.getNearby(lat, lng, user?.preferences?.max_distance_km || 100);
+        if (response.data.users && response.data.users.length > 0) {
+          usersData = response.data.users;
+        }
+      } catch (e) {
+        console.log('Nearby API failed, falling back to feed:', e);
+      }
+      
+      // Fallback to feed if nearby returns empty
+      if (usersData.length === 0) {
+        try {
+          const feedResponse = await userAPI.getFeed(1, 50);
+          if (feedResponse.data.users && feedResponse.data.users.length > 0) {
+            usersData = feedResponse.data.users;
+          }
+        } catch (e) {
+          console.log('Feed API also failed:', e);
+        }
+      }
+      
+      // Format users with location data for map
+      const formattedUsers = usersData.map((u, index) => ({
+        ...u,
+        photo: u.profile_pictures?.[0] || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.name || index}`,
+        lookingFor: u.intent || 'dating',
+        interests: u.interests || [],
+        // Generate random location near user if not present
+        location: u.location || {
+          lat: lat + (Math.random() - 0.5) * 0.1,
+          lng: lng + (Math.random() - 0.5) * 0.1
+        }
+      }));
+      
+      setUsers(formattedUsers);
     } catch (error) {
-      console.error('Error fetching nearby users:', error);
+      console.error('Error fetching users:', error);
       setUsers([]);
     } finally {
       setIsLoading(false);
@@ -80,36 +107,20 @@ const NearbyPage = () => {
     }
   }, []);
 
-  // Initialize map
+  // Initialize Mapbox map
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
-    // Using OpenStreetMap tiles via MapLibre (free, no API key needed)
-    map.current = new maplibregl.Map({
+    map.current = new mapboxgl.Map({
       container: mapContainer.current,
-      style: {
-        version: 8,
-        sources: {
-          osm: {
-            type: 'raster',
-            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-            tileSize: 256,
-            attribution: '&copy; OpenStreetMap Contributors',
-          },
-        },
-        layers: [
-          {
-            id: 'osm',
-            type: 'raster',
-            source: 'osm',
-          },
-        ],
-      },
+      style: 'mapbox://styles/mapbox/streets-v12',
       center: [userLocation.lng, userLocation.lat],
-      zoom: 13,
+      zoom: 12,
+      attributionControl: false
     });
 
-    map.current.addControl(new maplibregl.NavigationControl(), 'top-right');
+    // Add navigation controls
+    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
     // Add markers when map loads
     map.current.on('load', () => {
@@ -117,8 +128,10 @@ const NearbyPage = () => {
     });
 
     return () => {
-      Object.values(markersRef.current).forEach(marker => marker.remove());
+      // Clean up markers
+      markersRef.current.forEach(marker => marker.remove());
       map.current?.remove();
+      map.current = null;
     };
   }, []);
 
@@ -127,7 +140,7 @@ const NearbyPage = () => {
     if (map.current && userLocation) {
       map.current.flyTo({
         center: [userLocation.lng, userLocation.lat],
-        zoom: 13,
+        zoom: 12,
         duration: 1000
       });
     }
@@ -138,38 +151,44 @@ const NearbyPage = () => {
     if (!map.current) return;
 
     // Remove existing markers
-    Object.values(markersRef.current).forEach(marker => marker.remove());
-    markersRef.current = {};
+    markersRef.current.forEach(marker => marker.remove());
+    markersRef.current = [];
 
-    users.forEach((user) => {
-      if (!user.location) return;
+    users.forEach((userItem) => {
+      if (!userItem.location) return;
+
+      const lat = userItem.location.lat || userItem.location.latitude;
+      const lng = userItem.location.lng || userItem.location.longitude;
+      
+      if (!lat || !lng) return;
 
       // Create custom marker element
       const el = document.createElement('div');
       el.className = 'user-marker';
+      el.style.cursor = 'pointer';
       el.innerHTML = `
-        <div class="relative cursor-pointer transition-transform hover:scale-110 ${selectedUser?.id === user.id ? 'scale-125' : ''}">
-          <div class="w-12 h-12 rounded-full border-3 border-white shadow-lg overflow-hidden ${selectedUser?.id === user.id ? 'ring-4 ring-rose-400' : ''}" style="border: 3px solid white;">
-            <img src="${user.photo}" alt="${user.name}" style="width: 100%; height: 100%; object-fit: cover;" />
+        <div style="position: relative; transition: transform 0.2s; ${selectedUser?.id === userItem.id ? 'transform: scale(1.25);' : ''}">
+          <div style="width: 48px; height: 48px; border-radius: 50%; border: 3px solid white; box-shadow: 0 4px 6px rgba(0,0,0,0.3); overflow: hidden; ${selectedUser?.id === userItem.id ? 'box-shadow: 0 0 0 4px #f472b6;' : ''}">
+            <img src="${userItem.photo}" alt="${userItem.name}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=${userItem.name}'" />
           </div>
-          <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white" style="border: 2px solid white;"></div>
+          <div style="position: absolute; bottom: -2px; right: -2px; width: 14px; height: 14px; background: #22c55e; border-radius: 50%; border: 2px solid white;"></div>
         </div>
       `;
 
       el.addEventListener('click', () => {
-        setSelectedUser(user);
+        setSelectedUser(userItem);
         map.current?.flyTo({
-          center: [user.location.lng, user.location.lat],
+          center: [lng, lat],
           zoom: 15,
           duration: 500
         });
       });
 
-      const marker = new maplibregl.Marker({ element: el })
-        .setLngLat([user.location.lng, user.location.lat])
+      const marker = new mapboxgl.Marker({ element: el })
+        .setLngLat([lng, lat])
         .addTo(map.current);
 
-      markersRef.current[user.id] = marker;
+      markersRef.current.push(marker);
     });
   };
 
@@ -187,7 +206,7 @@ const NearbyPage = () => {
     toast.success('Refreshed nearby users');
   };
 
-  const handleConnect = (user) => {
+  const handleConnect = (userItem) => {
     if ((useAuthStore.getState().user?.credits_balance || 0) > 0) {
       navigate('/dashboard/chat');
     } else {
@@ -212,11 +231,13 @@ const NearbyPage = () => {
   };
 
   // Filter users based on search and filters
-  const filteredUsers = users.filter(user => {
-    if (searchQuery && !user.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+  const filteredUsers = users.filter(userItem => {
+    if (searchQuery && !userItem.name?.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
     }
-    // Add more filter logic as needed
+    if (gender !== 'All' && userItem.gender?.toLowerCase() !== gender.toLowerCase()) {
+      return false;
+    }
     return true;
   });
 
@@ -342,35 +363,38 @@ const NearbyPage = () => {
             <div className="flex flex-col items-center justify-center h-full">
               <Users size={32} className="text-gray-300 mb-2" />
               <p className="text-gray-500 text-sm">No one nearby yet</p>
-              <p className="text-gray-400 text-xs">Check back later!</p>
+              <p className="text-gray-400 text-xs">Try adjusting your filters</p>
             </div>
           ) : (
-            filteredUsers.map((user) => (
+            filteredUsers.map((userItem) => (
               <div
-                key={user.id}
+                key={userItem.id}
                 onClick={() => {
-                  setSelectedUser(user);
-                  if (map.current && user.location) {
+                  setSelectedUser(userItem);
+                  const lat = userItem.location?.lat || userItem.location?.latitude;
+                  const lng = userItem.location?.lng || userItem.location?.longitude;
+                  if (map.current && lat && lng) {
                     map.current.flyTo({
-                      center: [user.location.lng, user.location.lat],
+                      center: [lng, lat],
                       zoom: 15,
                       duration: 500
                     });
                   }
                 }}
                 className={`flex gap-4 p-4 bg-white rounded-xl shadow-sm cursor-pointer transition-all hover:shadow-md ${
-                  selectedUser?.id === user.id ? 'ring-2 ring-[#0F172A] shadow-md' : 'border border-gray-100'
+                  selectedUser?.id === userItem.id ? 'ring-2 ring-[#0F172A] shadow-md' : 'border border-gray-100'
                 }`}
               >
                 <img
-                  src={user.photo || user.profile_pictures?.[0]}
-                  alt={user.name}
+                  src={userItem.photo || userItem.profile_pictures?.[0]}
+                  alt={userItem.name}
                   className="w-20 h-20 object-cover rounded-lg flex-shrink-0"
+                  onError={(e) => { e.target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${userItem.name}`; }}
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between">
                     <h3 className="font-semibold text-[#0F172A]">
-                      {user.name}, {user.age}
+                      {userItem.name}, {userItem.age}
                     </h3>
                     <button className="text-gray-400 hover:text-rose-500 transition-colors">
                       <Heart size={18} />
@@ -378,13 +402,13 @@ const NearbyPage = () => {
                   </div>
                   <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                     <MapPin size={12} />
-                    {user.distance_km?.toFixed(1) || '?'} km away
+                    {userItem.distance_km ? `${userItem.distance_km.toFixed(1)} km away` : userItem.distance_display || 'Nearby'}
                   </p>
                   <p className="text-xs text-gray-600 mt-2 truncate">
-                    {user.interests?.join(' • ') || 'No interests listed'}
+                    {userItem.bio || userItem.interests?.join(' • ') || 'No bio yet'}
                   </p>
-                  <p className="text-xs text-[#0F172A] font-medium mt-1">
-                    {user.lookingFor || user.intent || 'Looking to connect'}
+                  <p className="text-xs text-[#0F172A] font-medium mt-1 capitalize">
+                    {userItem.lookingFor || userItem.intent || 'Looking to connect'}
                   </p>
                 </div>
               </div>
@@ -393,9 +417,9 @@ const NearbyPage = () => {
         </div>
       </div>
 
-      {/* Map */}
+      {/* Mapbox Map */}
       <div className="flex-1 relative min-h-[300px] lg:min-h-0">
-        <div ref={mapContainer} className="absolute inset-0" />
+        <div ref={mapContainer} className="absolute inset-0" style={{ minHeight: '300px' }} />
         
         {/* Selected User Popup */}
         {selectedUser && (
@@ -412,6 +436,7 @@ const NearbyPage = () => {
                 src={selectedUser.photo || selectedUser.profile_pictures?.[0]}
                 alt={selectedUser.name}
                 className="w-16 h-16 rounded-full object-cover border-2 border-[#E9D5FF]"
+                onError={(e) => { e.target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedUser.name}`; }}
               />
               <div>
                 <h3 className="text-lg font-bold text-[#0F172A]">
@@ -419,24 +444,17 @@ const NearbyPage = () => {
                 </h3>
                 <p className="text-sm text-gray-500 flex items-center gap-1">
                   <MapPin size={14} />
-                  {selectedUser.distance_km?.toFixed(1) || '?'} km away
+                  {selectedUser.distance_km ? `${selectedUser.distance_km.toFixed(1)} km away` : selectedUser.distance_display || 'Nearby'}
                 </p>
               </div>
             </div>
             
-            <div className="flex flex-wrap gap-2 mb-4">
-              {(selectedUser.interests || []).map((interest, idx) => (
-                <span
-                  key={idx}
-                  className="px-2 py-1 bg-[#E9D5FF]/50 text-[#0F172A] rounded-full text-xs"
-                >
-                  {interest}
-                </span>
-              ))}
-            </div>
+            <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+              {selectedUser.bio || 'No bio yet'}
+            </p>
             
             <p className="text-sm text-gray-600 mb-4">
-              <span className="font-medium">Looking for:</span> {selectedUser.lookingFor || selectedUser.intent || 'Connection'}
+              <span className="font-medium">Looking for:</span> <span className="capitalize">{selectedUser.lookingFor || selectedUser.intent || 'Connection'}</span>
             </p>
             
             <div className="flex gap-3">
@@ -458,16 +476,11 @@ const NearbyPage = () => {
         )}
 
         {/* Map Stats */}
-        <div className="absolute top-4 left-4 bg-white rounded-xl shadow-lg px-4 py-3 flex items-center gap-4">
+        <div className="absolute top-4 left-4 bg-white rounded-xl shadow-lg px-4 py-3 flex items-center gap-4 z-10">
           <div className="flex items-center gap-2">
             <Users size={18} className="text-[#0F172A]" />
             <span className="text-sm font-medium text-[#0F172A]">{filteredUsers.length} nearby</span>
           </div>
-        </div>
-
-        {/* Map Notice */}
-        <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-2 text-xs text-gray-500">
-          © OpenStreetMap contributors
         </div>
       </div>
     </div>
