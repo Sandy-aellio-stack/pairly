@@ -358,7 +358,7 @@ const NearbyPage = () => {
                 </div>
               </div>
             )}
-          </>
+          </div>
         ) : (
           /* List View */
           <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 overflow-y-auto h-full">
