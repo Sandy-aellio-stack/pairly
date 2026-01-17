@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, Send, MoreVertical, Phone, Video, ArrowLeft, Image, Smile, Coins, Loader2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { messagesAPI } from '@/services/api';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { messagesAPI, userAPI } from '@/services/api';
 import useAuthStore from '@/store/authStore';
 import { toast } from 'sonner';
 
 const ChatPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, refreshCredits } = useAuthStore();
   const [conversations, setConversations] = useState([]);
   const [selectedChat, setSelectedChat] = useState(null);
@@ -17,6 +18,35 @@ const ChatPage = () => {
   const [isSending, setIsSending] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const messagesEndRef = useRef(null);
+
+  // Handle ?user=userId query param to start new conversation
+  useEffect(() => {
+    const targetUserId = searchParams.get('user');
+    if (targetUserId) {
+      // Fetch the user profile and start a conversation
+      const startNewChat = async () => {
+        try {
+          const response = await userAPI.getProfile(targetUserId);
+          const targetUser = response.data;
+          // Create a chat object from the user profile
+          const newChat = {
+            id: targetUserId,
+            name: targetUser.name,
+            avatar: targetUser.profile_pictures?.[0],
+            profile_pictures: targetUser.profile_pictures,
+            online: targetUser.is_online,
+          };
+          setSelectedChat(newChat);
+          // Clear the query param from URL
+          navigate('/dashboard/chat', { replace: true });
+        } catch (error) {
+          console.error('Failed to load user for chat:', error);
+          toast.error('Could not start conversation with this user');
+        }
+      };
+      startNewChat();
+    }
+  }, [searchParams, navigate]);
 
   // Fetch conversations on mount
   useEffect(() => {
