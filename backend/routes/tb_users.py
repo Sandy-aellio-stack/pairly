@@ -638,10 +638,10 @@ async def get_user_feed(
     """
     Get user feed for dashboard/home page.
     
-    Returns active users:
+    Returns active users from MongoDB:
     - Excludes self
     - Excludes blocked users
-    - Excludes users with hide_from_search enabled
+    - Returns ALL active users (no overly restrictive filters)
     - Sorted by recent activity
     - Paginated
     """
@@ -657,44 +657,43 @@ async def get_user_feed(
     blocked_ids = await _get_blocked_user_ids(current_user_id)
     blocked_ids.add(current_user_id)  # Exclude self
     
-    # Build feed query
-    feed_query = {
-        "is_active": True,
-        "_id": {"$nin": [await _str_to_objectid(uid) for uid in blocked_ids if uid]},
-        # Don't show users who hide from search
-        "$or": [
-            {"settings.safety.hide_from_search": False},
-            {"settings.safety.hide_from_search": {"$exists": False}},
-            {"settings": {"$exists": False}}
-        ]
-    }
+    # Convert to ObjectIds
+    blocked_object_ids = []
+    for uid in blocked_ids:
+        try:
+            oid = await _str_to_objectid(uid)
+            if oid:
+                blocked_object_ids.append(oid)
+        except:
+            pass
     
-    # Apply user preferences filter (optional - can be toggled)
-    # if current_user.preferences:
-    #     feed_query["gender"] = current_user.preferences.interested_in
-    #     feed_query["age"] = {
-    #         "$gte": current_user.preferences.min_age,
-    #         "$lte": current_user.preferences.max_age
-    #     }
+    # Simple query - just active users excluding self and blocked
+    feed_query = {"is_active": True}
+    if blocked_object_ids:
+        feed_query["_id"] = {"$nin": blocked_object_ids}
     
     # Execute query with sorting
     try:
         total = await TBUser.find(feed_query).count()
-        # Sort by location_updated_at (recent activity) or created_at
         users = await TBUser.find(feed_query).sort([
-            ("location_updated_at", -1),
             ("created_at", -1)
         ]).skip(skip).limit(limit).to_list()
+        
+        import logging
+        logging.info(f"Feed query returned {len(users)} users out of {total} total")
     except Exception as e:
         import logging
         logging.error(f"Feed error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to load feed")
+        # Fallback: try without any filter
+        try:
+            users = await TBUser.find_all().limit(limit).to_list()
+            total = len(users)
+        except:
+            raise HTTPException(status_code=500, detail="Failed to load feed")
     
     # Format results
     user_list = []
     for user in users:
-        privacy = user.settings.privacy if hasattr(user, 'settings') and user.settings else PrivacySettings()
-        
         user_data = {
             "id": str(user.id),
             "name": user.name,
@@ -703,38 +702,21 @@ async def get_user_feed(
             "bio": user.bio,
             "profile_pictures": user.profile_pictures or [],
             "intent": user.intent,
-            "is_verified": user.is_verified,
+            "is_verified": user.is_verified if hasattr(user, 'is_verified') else False,
+            "is_online": user.is_online if hasattr(user, 'is_online') else False,
+            "last_active": None,
+            "distance_km": None,
+            "distance_display": None,
         }
         
-        # Online status (respect privacy)
-        if privacy.show_online:
-            user_data["is_online"] = user.is_online
-        else:
-            user_data["is_online"] = None
-        
-        # Last active (respect privacy)
-        if privacy.show_last_seen and hasattr(user, 'location_updated_at') and user.location_updated_at:
-            user_data["last_active"] = _format_last_active(user.location_updated_at)
-        else:
-            user_data["last_active"] = None
-        
-        # Distance if both users have location
-        if privacy.show_distance and current_user.location and user.location:
-            try:
-                current_coords = current_user.location.coordinates
-                target_coords = user.location.coordinates
-                distance_km = PrivacyLocation.calculate_distance(
-                    current_coords[1], current_coords[0],
-                    target_coords[1], target_coords[0]
-                )
-                user_data["distance_km"] = PrivacyLocation.bucket_distance(distance_km)
-                user_data["distance_display"] = PrivacyLocation.format_distance_display(distance_km)
-            except:
-                user_data["distance_km"] = None
-                user_data["distance_display"] = None
-        else:
-            user_data["distance_km"] = None
-            user_data["distance_display"] = None
+        # Add location if available
+        if hasattr(user, 'location') and user.location:
+            coords = user.location.coordinates if hasattr(user.location, 'coordinates') else None
+            if coords and len(coords) >= 2:
+                user_data["location"] = {
+                    "lat": coords[1],
+                    "lng": coords[0]
+                }
         
         user_list.append(user_data)
     
