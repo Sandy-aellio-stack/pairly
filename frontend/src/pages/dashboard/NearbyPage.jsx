@@ -206,7 +206,7 @@ const NearbyPage = () => {
   });
 
   return (
-    <div className="h-[calc(100vh-80px)] flex flex-col">
+    <div className="h-full flex flex-col" style={{ minHeight: 'calc(100vh - 200px)' }}>
       {/* Header */}
       <div className="bg-white border-b px-4 py-3">
         <div className="flex items-center justify-between gap-4">
