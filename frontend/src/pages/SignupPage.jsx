@@ -1,10 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, Mail, Lock, Eye, EyeOff, ArrowRight, User, Check, Calendar, Users, MapPin, Camera, Phone } from 'lucide-react';
+import { Heart, Mail, Lock, Eye, EyeOff, ArrowRight, User, Check, Calendar, Users, MapPin, Camera, Phone, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import useAuthStore from '@/store/authStore';
-import api from '@/services/api';
-import HeartCursor from '@/components/HeartCursor';
 
 const SignupPage = () => {
   const navigate = useNavigate();
