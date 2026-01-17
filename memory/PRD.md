@@ -131,7 +131,7 @@ Luveloop is a credit-based dating application with real-time messaging, geolocat
 
 - ✅ Production Deployment Fixes
   - Created `/api/users/search` endpoint (name/email search with pagination)
-  - Created `/api/users/feed` endpoint (dashboard user list)
+  - Created `/api/users/feed` endpoint (dashboard user list from MongoDB)
   - Created `/api/auth/otp/send-email` and `/api/auth/otp/verify-email` endpoints
   - Updated OTP model with email field
   - Added OTP email template to email service
@@ -140,6 +140,14 @@ Luveloop is a credit-based dating application with real-time messaging, geolocat
   - Created production .env files (backend and frontend)
   - Created Nginx configuration file
   - Created deployment script
+
+- ✅ Critical Production Fixes (January 17)
+  - **Mapbox Integration**: Replaced OpenStreetMap/Leaflet with Mapbox GL JS
+  - **User Feed**: Simplified query to return ALL active users from MongoDB
+  - **Search**: Fixed case-insensitive search by name
+  - **Nearby Page**: Now uses Mapbox with custom user markers
+  - **API Fallback**: Feed endpoint falls back if nearby fails
+  - Added VITE_MAPBOX_TOKEN to frontend .env
 
 ### Files Modified/Created
 - `backend/services/fcm_service.py` (NEW)
