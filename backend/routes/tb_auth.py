@@ -25,8 +25,17 @@ class SendOTPRequest(BaseModel):
     mobile_number: str
 
 
+class SendEmailOTPRequest(BaseModel):
+    email: EmailStr
+
+
 class VerifyOTPRequest(BaseModel):
     mobile_number: str
+    otp_code: str
+
+
+class VerifyEmailOTPRequest(BaseModel):
+    email: EmailStr
     otp_code: str
 
 
