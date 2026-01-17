@@ -84,23 +84,15 @@ const NearbyPage = () => {
     }
   }, []);
 
-  // Initialize Mapbox - using a flag to track initialization
-  const [mapReady, setMapReady] = useState(false);
-  
-  useEffect(() => {
-    // Delay map initialization to ensure DOM is ready
-    const timer = setTimeout(() => {
-      setMapReady(true);
-    }, 100);
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    if (!mapReady || !mapContainer.current || map.current) return;
-
+  // Initialize Mapbox using callback ref
+  const initializeMap = (container) => {
+    if (!container || map.current) return;
+    
+    console.log('Initializing map with container:', container);
+    
     try {
       map.current = new mapboxgl.Map({
-        container: mapContainer.current,
+        container: container,
         style: 'mapbox://styles/mapbox/streets-v12',
         center: [userLocation.lng, userLocation.lat],
         zoom: 11,
@@ -110,6 +102,7 @@ const NearbyPage = () => {
       map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
       map.current.on('load', () => {
+        console.log('Map loaded successfully');
         addMarkers();
       });
       
@@ -119,13 +112,18 @@ const NearbyPage = () => {
     } catch (err) {
       console.error('Failed to initialize map:', err);
     }
-
+  };
+  
+  // Cleanup map on unmount
+  useEffect(() => {
     return () => {
-      markersRef.current.forEach(marker => marker.remove());
-      map.current?.remove();
-      map.current = null;
+      if (map.current) {
+        markersRef.current.forEach(marker => marker.remove());
+        map.current.remove();
+        map.current = null;
+      }
     };
-  }, [mapReady]);
+  }, []);
 
   // Update map when location changes
   useEffect(() => {
