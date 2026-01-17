@@ -559,12 +559,11 @@ async def search_users(
     current_user: TBUser = Depends(get_current_user)
 ):
     """
-    Search users by name, username, or email.
+    Search users by name, age, or gender.
     
     - Case-insensitive search
     - Excludes current user
     - Excludes blocked users
-    - Excludes deactivated users
     - Paginated results
     """
     if page < 1:
@@ -579,25 +578,34 @@ async def search_users(
     blocked_ids = await _get_blocked_user_ids(current_user_id)
     blocked_ids.add(current_user_id)  # Exclude self
     
+    # Convert to ObjectIds
+    blocked_object_ids = []
+    for uid in blocked_ids:
+        try:
+            oid = await _str_to_objectid(uid)
+            if oid:
+                blocked_object_ids.append(oid)
+        except:
+            pass
+    
     # Build search query
-    search_query = {
-        "is_active": True,
-        "_id": {"$nin": [await _str_to_objectid(uid) for uid in blocked_ids if uid]}
-    }
+    search_query = {"is_active": True}
+    if blocked_object_ids:
+        search_query["_id"] = {"$nin": blocked_object_ids}
     
     # Add text search if query provided
     if q and q.strip():
         search_term = q.strip()
-        # Case-insensitive regex search on name and email
-        search_query["$or"] = [
-            {"name": {"$regex": search_term, "$options": "i"}},
-            {"email": {"$regex": search_term, "$options": "i"}},
-        ]
+        # Case-insensitive regex search on name
+        search_query["name"] = {"$regex": search_term, "$options": "i"}
     
     # Execute search
     try:
         total = await TBUser.find(search_query).count()
         users = await TBUser.find(search_query).skip(skip).limit(limit).to_list()
+        
+        import logging
+        logging.info(f"Search query '{q}' returned {len(users)} users")
     except Exception as e:
         import logging
         logging.error(f"Search error: {e}")
@@ -614,8 +622,8 @@ async def search_users(
             "bio": user.bio,
             "profile_pictures": user.profile_pictures[:1] if user.profile_pictures else [],
             "intent": user.intent,
-            "is_verified": user.is_verified,
-            "is_online": user.is_online if hasattr(user, 'settings') and user.settings and user.settings.privacy.show_online else None,
+            "is_verified": user.is_verified if hasattr(user, 'is_verified') else False,
+            "is_online": user.is_online if hasattr(user, 'is_online') else False,
         })
     
     return {
