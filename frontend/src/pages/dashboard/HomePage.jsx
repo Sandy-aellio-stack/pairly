@@ -140,6 +140,52 @@ const HomePage = () => {
 
   return (
     <div className="max-w-6xl mx-auto px-4">
+      {/* Search Bar */}
+      <div className="mb-6">
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="Search users by name..."
+            value={searchQuery}
+            onChange={(e) => handleSearch(e.target.value)}
+            className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0F172A]/20"
+          />
+          {isSearching && (
+            <Loader2 className="absolute right-4 top-1/2 transform -translate-y-1/2 w-5 h-5 animate-spin text-gray-400" />
+          )}
+        </div>
+        
+        {/* Search Results Dropdown */}
+        {searchQuery && searchResults.length > 0 && (
+          <div className="absolute z-50 mt-2 w-full max-w-md bg-white rounded-xl shadow-lg border border-gray-200 max-h-80 overflow-y-auto">
+            {searchResults.map((result) => (
+              <div
+                key={result.id}
+                onClick={() => handleViewProfile(result.id)}
+                className="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer"
+              >
+                <img
+                  src={result.profile_pictures?.[0] || 'https://via.placeholder.com/40'}
+                  alt={result.name}
+                  className="w-10 h-10 rounded-full object-cover"
+                />
+                <div>
+                  <p className="font-medium text-[#0F172A]">{result.name}, {result.age}</p>
+                  <p className="text-sm text-gray-500">{result.bio?.slice(0, 50) || 'No bio'}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        
+        {searchQuery && searchResults.length === 0 && !isSearching && (
+          <div className="absolute z-50 mt-2 w-full max-w-md bg-white rounded-xl shadow-lg border border-gray-200 p-4 text-center text-gray-500">
+            No users found matching "{searchQuery}"
+          </div>
+        )}
+      </div>
+
       {/* Welcome Section */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-[#0F172A] mb-2">
