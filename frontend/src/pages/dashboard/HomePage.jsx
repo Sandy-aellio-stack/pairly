@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Heart, MessageCircle, MapPin, Sparkles, ChevronRight, X, Loader2 } from 'lucide-react';
+import { Heart, MessageCircle, MapPin, Sparkles, ChevronRight, X, Loader2, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '@/store/authStore';
-import { locationAPI } from '@/services/api';
+import { locationAPI, userAPI } from '@/services/api';
 import { toast } from 'sonner';
 
 const HomePage = () => {
@@ -12,13 +12,18 @@ const HomePage = () => {
   const [profiles, setProfiles] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [userLocation, setUserLocation] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
 
-  // Get user's location and fetch nearby profiles
+  // Fetch user feed on load
   useEffect(() => {
-    const fetchNearbyProfiles = async () => {
+    const fetchUserFeed = async () => {
       setIsLoading(true);
       try {
-        // Try to get user's current location
+        // First try to get location
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
             async (position) => {
@@ -31,39 +36,68 @@ const HomePage = () => {
               } catch (e) {
                 console.log('Could not update location');
               }
-              
-              // Fetch nearby users
-              try {
-                const response = await locationAPI.getNearby(latitude, longitude, 50);
-                if (response.data.users && response.data.users.length > 0) {
-                  setProfiles(response.data.users);
-                } else {
-                  setProfiles([]);
-                }
-              } catch (e) {
-                setProfiles([]);
-              }
-              setIsLoading(false);
             },
             () => {
-              // Geolocation denied, use default location (Bangalore)
               setUserLocation({ lat: 12.9716, lng: 77.5946 });
-              setProfiles([]);
-              setIsLoading(false);
             }
           );
+        }
+
+        // Fetch user feed (not location-dependent)
+        const response = await userAPI.getFeed(1, 20);
+        if (response.data.users && response.data.users.length > 0) {
+          setProfiles(response.data.users);
+          setHasMore(response.data.has_more);
         } else {
           setProfiles([]);
-          setIsLoading(false);
         }
       } catch (error) {
+        console.error('Failed to fetch feed:', error);
         setProfiles([]);
+      } finally {
         setIsLoading(false);
       }
     };
 
-    fetchNearbyProfiles();
+    fetchUserFeed();
   }, []);
+
+  // Search users
+  const handleSearch = async (query) => {
+    setSearchQuery(query);
+    if (!query.trim()) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const response = await userAPI.search(query, 1, 10);
+      setSearchResults(response.data.users || []);
+    } catch (error) {
+      console.error('Search failed:', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Load more users
+  const loadMore = async () => {
+    if (!hasMore) return;
+    
+    try {
+      const response = await userAPI.getFeed(page + 1, 20);
+      if (response.data.users && response.data.users.length > 0) {
+        setProfiles([...profiles, ...response.data.users]);
+        setPage(page + 1);
+        setHasMore(response.data.has_more);
+      }
+    } catch (error) {
+      console.error('Failed to load more:', error);
+    }
+  };
 
   const currentProfile = profiles[currentIndex];
 
@@ -89,12 +123,16 @@ const HomePage = () => {
     }
   };
 
+  const handleViewProfile = (profileId) => {
+    navigate(`/dashboard/profile/${profileId}`);
+  };
+
   if (isLoading) {
     return (
       <div className="max-w-6xl mx-auto px-4 flex items-center justify-center h-[60vh]">
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin text-[#0F172A] mx-auto mb-4" />
-          <p className="text-gray-600">Finding people nearby...</p>
+          <p className="text-gray-600">Loading profiles...</p>
         </div>
       </div>
     );
