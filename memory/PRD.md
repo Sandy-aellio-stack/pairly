@@ -149,6 +149,15 @@ Luveloop is a credit-based dating application with real-time messaging, geolocat
   - **API Fallback**: Feed endpoint falls back if nearby fails
   - Added VITE_MAPBOX_TOKEN to frontend .env
 
+- ✅ Visual Enhancement (January 17)
+  - **Landing Page**: Added romantic gradient background with user-provided illustration
+  - **Login Page**: Split layout with romantic left panel and clean form
+  - **Signup Page**: Romantic background with benefits list
+  - **OTP Page**: Full verification flow with romantic style
+  - **Color Scheme**: Pink/rose gradient theme throughout
+  - **Floating Elements**: Animated cards showing social proof
+  - Floating hearts and sparkle effects
+
 ### Files Modified/Created
 - `backend/services/fcm_service.py` (NEW)
 - `backend/services/tb_auth_service.py` (MODIFIED - optional address fields)
