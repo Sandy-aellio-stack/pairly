@@ -12,7 +12,7 @@ from datetime import datetime
 from typing import Dict, Any, Optional, Tuple
 
 # Configuration - Use the correct backend URL from review request
-BACKEND_URL = "https://truebond-notify.preview.emergentagent.com/api"
+BACKEND_URL = "https://luveloop.preview.emergentagent.com/api"
 
 class TrueBondAdminTester:
     def __init__(self):

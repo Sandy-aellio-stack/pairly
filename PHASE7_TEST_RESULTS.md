@@ -79,7 +79,7 @@ Total: 10/10 tests passed (100% success rate)
 **Result:** PASS
 
 **Test Cases:**
-1. ✅ Allowed origin (https://truebond-notify.preview.emergentagent.com): Accepted
+1. ✅ Allowed origin (https://luveloop.preview.emergentagent.com): Accepted
 2. ✅ Unauthorized origin (https://malicious-site.com): Rejected
 
 **Configuration:**

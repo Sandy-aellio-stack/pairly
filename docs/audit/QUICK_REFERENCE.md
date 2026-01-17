@@ -3,9 +3,9 @@
 ## 🚀 Quick Start
 
 ### Access URLs
-- **Landing Page**: https://truebond-notify.preview.emergentagent.com
-- **User Dashboard**: https://truebond-notify.preview.emergentagent.com/dashboard
-- **Admin Dashboard**: https://truebond-notify.preview.emergentagent.com/admin
+- **Landing Page**: https://luveloop.preview.emergentagent.com
+- **User Dashboard**: https://luveloop.preview.emergentagent.com/dashboard
+- **Admin Dashboard**: https://luveloop.preview.emergentagent.com/admin
 
 ### Test Credentials
 ```

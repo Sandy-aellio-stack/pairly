@@ -13,7 +13,7 @@ from datetime import datetime
 from typing import Dict, Any
 
 # Test Configuration
-BASE_URL = "https://truebond-notify.preview.emergentagent.com"
+BASE_URL = "https://luveloop.preview.emergentagent.com"
 WEBHOOK_BASE = f"{BASE_URL}/api/webhooks"
 
 class WebhookTester:

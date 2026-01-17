@@ -15,7 +15,7 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 
 # Configuration - Use the correct backend URL from environment
-BACKEND_URL = "https://truebond-notify.preview.emergentagent.com/api"
+BACKEND_URL = "https://luveloop.preview.emergentagent.com/api"
 
 class PasswordResetTester:
     def __init__(self):
