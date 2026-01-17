@@ -41,8 +41,16 @@ export const authAPI = {
   login: (data) => api.post('/auth/login', data),
   logout: () => api.post('/auth/logout'),
   getMe: () => api.get('/auth/me'),
+  // Mobile OTP
   sendOTP: (mobile_number) => api.post('/auth/otp/send', { mobile_number }),
   verifyOTP: (mobile_number, otp_code) => api.post('/auth/otp/verify', { mobile_number, otp_code }),
+  // Email OTP
+  sendEmailOTP: (email) => api.post('/auth/otp/send-email', { email }),
+  verifyEmailOTP: (email, otp_code) => api.post('/auth/otp/verify-email', { email, otp_code }),
+  // Password Reset
+  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+  resetPassword: (token, new_password) => api.post('/auth/reset-password', { token, new_password }),
+  validateResetToken: (token) => api.get(`/auth/validate-reset-token?token=${token}`),
 };
 
 // User APIs - matches /api/users/*
@@ -56,6 +64,14 @@ export const userAPI = {
   }),
   getSettings: () => api.get('/users/settings'),
   updateSettings: (data) => api.put('/users/settings', data),
+  // User Search & Feed
+  search: (query, page = 1, limit = 20) => api.get(`/users/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`),
+  getFeed: (page = 1, limit = 20) => api.get(`/users/feed?page=${page}&limit=${limit}`),
+  // Block/Report
+  blockUser: (userId, reason) => api.post(`/users/block/${userId}`, { reason }),
+  unblockUser: (userId) => api.delete(`/users/block/${userId}`),
+  getBlockedUsers: () => api.get('/users/blocked'),
+  reportUser: (userId, reason, report_type = 'profile') => api.post(`/users/report/${userId}`, { reason, report_type }),
   // FCM Token Management
   registerFCMToken: (token) => api.post('/users/fcm-token', { token }),
   unregisterFCMToken: (token) => api.delete('/users/fcm-token', { data: { token } }),
