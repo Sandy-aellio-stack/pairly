@@ -261,7 +261,7 @@ const NearbyPage = () => {
             </div>
           </div>
         ) : viewMode === 'map' ? (
-          <>
+          <div className="relative w-full h-full" style={{ minHeight: '500px' }}>
             {/* Full-width Map */}
             <div ref={initializeMap} className="absolute inset-0" />
             
