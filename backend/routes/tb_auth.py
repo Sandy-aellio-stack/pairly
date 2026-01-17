@@ -105,6 +105,15 @@ async def send_otp(data: SendOTPRequest):
     return await OTPService.send_otp(data.mobile_number)
 
 
+@router.post("/otp/send-email")
+async def send_email_otp(data: SendEmailOTPRequest):
+    """
+    Send OTP to email address for verification.
+    Used for: signup verification, email verification, password reset
+    """
+    return await OTPService.send_email_otp(data.email)
+
+
 @router.post("/otp/verify")
 async def verify_otp(data: VerifyOTPRequest, user: TBUser = Depends(get_current_user)):
     """Verify OTP and mark user as verified"""
@@ -117,6 +126,24 @@ async def verify_otp(data: VerifyOTPRequest, user: TBUser = Depends(get_current_
     await user.save()
     
     return {"message": "Mobile number verified successfully"}
+
+
+@router.post("/otp/verify-email")
+async def verify_email_otp(data: VerifyEmailOTPRequest):
+    """
+    Verify email OTP without requiring authentication.
+    Used for: signup verification, password reset flow
+    """
+    is_valid = await OTPService.verify_email_otp(data.email, data.otp_code)
+    
+    if is_valid:
+        # If user exists, mark email as verified
+        user = await TBUser.find_one({"email": data.email})
+        if user:
+            user.is_verified = True
+            await user.save()
+    
+    return {"message": "Email verified successfully", "verified": True}
 
 
 @router.get("/me", response_model=dict)
