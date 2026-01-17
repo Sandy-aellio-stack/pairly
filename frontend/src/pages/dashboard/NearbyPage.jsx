@@ -252,7 +252,7 @@ const NearbyPage = () => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 relative" id="nearby-map-container">
+      <div className="flex-1 relative" id="nearby-map-container" style={{ minHeight: '500px' }}>
         {isLoading ? (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
             <div className="text-center">
