@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, ChevronDown, Filter, MapPin, Heart, X, MessageCircle, Users, Loader2, RefreshCw } from 'lucide-react';
+import { Search, Filter, MapPin, Heart, X, MessageCircle, Users, Loader2, RefreshCw, List, Map as MapIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -9,10 +9,6 @@ import { toast } from 'sonner';
 
 // Mapbox access token
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1IjoibHV2ZWxvb3AiLCJhIjoiY21raWZkZjFhMHFkbjNoc2NtdmE2cmxiNSJ9.9pV12IAA86TH5jZI8UOsdw';
-
-const ageRanges = ['18-25', '20-30', '25-35', '30-40', '35-45', '40+'];
-const genders = ['All', 'Male', 'Female', 'Other'];
-const interestOptions = ['Hiking', 'Coffee', 'Music', 'Travel', 'Photography', 'Art', 'Gaming', 'Tech', 'Yoga', 'Reading', 'Fitness', 'Cooking'];
 
 const NearbyPage = () => {
   const navigate = useNavigate();
@@ -24,58 +20,40 @@ const NearbyPage = () => {
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [ageRange, setAgeRange] = useState('20-30');
-  const [gender, setGender] = useState('All');
-  const [interests, setInterests] = useState([]);
-  const [showFilters, setShowFilters] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [userLocation, setUserLocation] = useState({ lat: 12.9716, lng: 77.5946 }); // Default: Bangalore
+  const [userLocation, setUserLocation] = useState({ lat: 12.9716, lng: 77.5946 });
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [viewMode, setViewMode] = useState('map'); // 'map' or 'list'
 
-  // Fetch nearby users from API - with fallback to feed
-  const fetchNearbyUsers = async (lat, lng) => {
+  // Fetch users
+  const fetchUsers = async (lat, lng) => {
     setIsLoading(true);
     try {
-      // Try to update location first
+      // Try to update location
       try {
         await locationAPI.update(lat, lng);
       } catch (e) {
-        console.log('Could not update location:', e);
+        console.log('Could not update location');
       }
       
-      // Try nearby endpoint first
+      // Get users from feed (more reliable than nearby)
       let usersData = [];
       try {
-        const response = await locationAPI.getNearby(lat, lng, user?.preferences?.max_distance_km || 100);
-        if (response.data.users && response.data.users.length > 0) {
-          usersData = response.data.users;
+        const feedResponse = await userAPI.getFeed(1, 50);
+        if (feedResponse.data.users && feedResponse.data.users.length > 0) {
+          usersData = feedResponse.data.users;
         }
       } catch (e) {
-        console.log('Nearby API failed, falling back to feed:', e);
+        console.log('Feed API failed:', e);
       }
       
-      // Fallback to feed if nearby returns empty
-      if (usersData.length === 0) {
-        try {
-          const feedResponse = await userAPI.getFeed(1, 50);
-          if (feedResponse.data.users && feedResponse.data.users.length > 0) {
-            usersData = feedResponse.data.users;
-          }
-        } catch (e) {
-          console.log('Feed API also failed:', e);
-        }
-      }
-      
-      // Format users with location data for map
+      // Format users with location for map
       const formattedUsers = usersData.map((u, index) => ({
         ...u,
         photo: u.profile_pictures?.[0] || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.name || index}`,
-        lookingFor: u.intent || 'dating',
-        interests: u.interests || [],
-        // Generate random location near user if not present
         location: u.location || {
-          lat: lat + (Math.random() - 0.5) * 0.1,
-          lng: lng + (Math.random() - 0.5) * 0.1
+          lat: lat + (Math.random() - 0.5) * 0.08,
+          lng: lng + (Math.random() - 0.5) * 0.08
         }
       }));
       
@@ -88,26 +66,25 @@ const NearbyPage = () => {
     }
   };
 
-  // Get user location and fetch nearby users
+  // Get location and fetch users
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
           setUserLocation({ lat: latitude, lng: longitude });
-          fetchNearbyUsers(latitude, longitude);
+          fetchUsers(latitude, longitude);
         },
         () => {
-          // Geolocation denied, use default
-          fetchNearbyUsers(userLocation.lat, userLocation.lng);
+          fetchUsers(userLocation.lat, userLocation.lng);
         }
       );
     } else {
-      fetchNearbyUsers(userLocation.lat, userLocation.lng);
+      fetchUsers(userLocation.lat, userLocation.lng);
     }
   }, []);
 
-  // Initialize Mapbox map
+  // Initialize Mapbox
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
@@ -115,60 +92,51 @@ const NearbyPage = () => {
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/streets-v12',
       center: [userLocation.lng, userLocation.lat],
-      zoom: 12,
+      zoom: 11,
       attributionControl: false
     });
 
-    // Add navigation controls
     map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
-    // Add markers when map loads
     map.current.on('load', () => {
       addMarkers();
     });
 
     return () => {
-      // Clean up markers
       markersRef.current.forEach(marker => marker.remove());
       map.current?.remove();
       map.current = null;
     };
   }, []);
 
-  // Update map center when user location changes
+  // Update map when location changes
   useEffect(() => {
     if (map.current && userLocation) {
       map.current.flyTo({
         center: [userLocation.lng, userLocation.lat],
-        zoom: 12,
+        zoom: 11,
         duration: 1000
       });
     }
   }, [userLocation]);
 
-  // Add markers for users
+  // Add user markers
   const addMarkers = () => {
     if (!map.current) return;
 
-    // Remove existing markers
     markersRef.current.forEach(marker => marker.remove());
     markersRef.current = [];
 
     users.forEach((userItem) => {
-      if (!userItem.location) return;
-
-      const lat = userItem.location.lat || userItem.location.latitude;
-      const lng = userItem.location.lng || userItem.location.longitude;
+      const lat = userItem.location?.lat || userItem.location?.latitude;
+      const lng = userItem.location?.lng || userItem.location?.longitude;
       
       if (!lat || !lng) return;
 
-      // Create custom marker element
       const el = document.createElement('div');
-      el.className = 'user-marker';
-      el.style.cursor = 'pointer';
       el.innerHTML = `
-        <div style="position: relative; transition: transform 0.2s; ${selectedUser?.id === userItem.id ? 'transform: scale(1.25);' : ''}">
-          <div style="width: 48px; height: 48px; border-radius: 50%; border: 3px solid white; box-shadow: 0 4px 6px rgba(0,0,0,0.3); overflow: hidden; ${selectedUser?.id === userItem.id ? 'box-shadow: 0 0 0 4px #f472b6;' : ''}">
+        <div style="cursor: pointer; transition: transform 0.2s;">
+          <div style="width: 50px; height: 50px; border-radius: 50%; border: 3px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.3); overflow: hidden; background: white;">
             <img src="${userItem.photo}" alt="${userItem.name}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=${userItem.name}'" />
           </div>
           <div style="position: absolute; bottom: -2px; right: -2px; width: 14px; height: 14px; background: #22c55e; border-radius: 50%; border: 2px solid white;"></div>
@@ -177,11 +145,7 @@ const NearbyPage = () => {
 
       el.addEventListener('click', () => {
         setSelectedUser(userItem);
-        map.current?.flyTo({
-          center: [lng, lat],
-          zoom: 15,
-          duration: 500
-        });
+        map.current?.flyTo({ center: [lng, lat], zoom: 14, duration: 500 });
       });
 
       const marker = new mapboxgl.Marker({ element: el })
@@ -192,296 +156,238 @@ const NearbyPage = () => {
     });
   };
 
-  // Update markers when selected user or users list changes
   useEffect(() => {
     if (map.current?.isStyleLoaded()) {
       addMarkers();
     }
-  }, [selectedUser, users]);
+  }, [users]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await fetchNearbyUsers(userLocation.lat, userLocation.lng);
+    await fetchUsers(userLocation.lat, userLocation.lng);
     setIsRefreshing(false);
-    toast.success('Refreshed nearby users');
+    toast.success('Refreshed!');
   };
 
-  const handleConnect = (userItem) => {
-    if ((useAuthStore.getState().user?.credits_balance || 0) > 0) {
-      navigate('/dashboard/chat');
+  const handleMessage = (userItem) => {
+    if ((user?.credits_balance || 0) > 0) {
+      navigate(`/dashboard/chat?user=${userItem.id}`);
     } else {
       toast.error('You need coins to send messages!');
       navigate('/dashboard/credits');
     }
   };
 
-  const toggleInterest = (interest) => {
-    if (interests.includes(interest)) {
-      setInterests(interests.filter(i => i !== interest));
-    } else {
-      setInterests([...interests, interest]);
-    }
+  const handleViewProfile = (userId) => {
+    navigate(`/dashboard/profile/${userId}`);
   };
 
-  const clearFilters = () => {
-    setSearchQuery('');
-    setAgeRange('20-30');
-    setGender('All');
-    setInterests([]);
-  };
-
-  // Filter users based on search and filters
-  const filteredUsers = users.filter(userItem => {
-    if (searchQuery && !userItem.name?.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return false;
-    }
-    if (gender !== 'All' && userItem.gender?.toLowerCase() !== gender.toLowerCase()) {
+  const filteredUsers = users.filter(u => {
+    if (searchQuery && !u.name?.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
     }
     return true;
   });
 
   return (
-    <div className="h-[calc(100vh-140px)] bg-[#F8FAFC] flex flex-col lg:flex-row">
-      {/* Left Panel - User List */}
-      <div className="w-full lg:w-[420px] flex flex-col border-b lg:border-b-0 lg:border-r border-gray-200 bg-white h-1/2 lg:h-full">
-        {/* Header */}
-        <div className="p-4 border-b border-gray-100">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-bold text-[#0F172A]">Nearby People</h1>
-            <button
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-            >
-              <RefreshCw size={20} className={`text-gray-600 ${isRefreshing ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
+    <div className="h-[calc(100vh-80px)] flex flex-col">
+      {/* Header */}
+      <div className="bg-white border-b px-4 py-3">
+        <div className="flex items-center justify-between gap-4">
+          <h1 className="text-xl font-bold text-[#0F172A]">Nearby People</h1>
           
-          {/* Search Bar */}
-          <div className="relative mb-4">
+          {/* Search */}
+          <div className="flex-1 max-w-md relative">
             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="Search nearby..."
+              placeholder="Search by name..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-[#0F172A] focus:ring-2 focus:ring-[#E9D5FF] outline-none text-sm"
+              className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:border-[#0F172A] focus:ring-1 focus:ring-[#0F172A] outline-none text-sm"
             />
           </div>
-
-          {/* Filter Toggle */}
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2 text-sm text-gray-600 hover:text-[#0F172A]"
-          >
-            <Filter size={16} />
-            Filters
-            <ChevronDown size={16} className={`transition-transform ${showFilters ? 'rotate-180' : ''}`} />
-          </button>
-
-          {/* Filters */}
-          {showFilters && (
-            <div className="mt-4 p-4 bg-gray-50 rounded-xl space-y-4">
-              <div>
-                <label className="text-xs font-medium text-gray-500 mb-2 block">Age Range</label>
-                <div className="flex flex-wrap gap-2">
-                  {ageRanges.map(range => (
-                    <button
-                      key={range}
-                      onClick={() => setAgeRange(range)}
-                      className={`px-3 py-1 text-xs rounded-full transition-all ${
-                        ageRange === range
-                          ? 'bg-[#0F172A] text-white'
-                          : 'bg-white border border-gray-200 text-gray-600 hover:border-[#0F172A]'
-                      }`}
-                    >
-                      {range}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-gray-500 mb-2 block">Gender</label>
-                <div className="flex flex-wrap gap-2">
-                  {genders.map(g => (
-                    <button
-                      key={g}
-                      onClick={() => setGender(g)}
-                      className={`px-3 py-1 text-xs rounded-full transition-all ${
-                        gender === g
-                          ? 'bg-[#0F172A] text-white'
-                          : 'bg-white border border-gray-200 text-gray-600 hover:border-[#0F172A]'
-                      }`}
-                    >
-                      {g}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-gray-500 mb-2 block">Interests</label>
-                <div className="flex flex-wrap gap-2">
-                  {interestOptions.slice(0, 8).map(interest => (
-                    <button
-                      key={interest}
-                      onClick={() => toggleInterest(interest)}
-                      className={`px-3 py-1 text-xs rounded-full transition-all ${
-                        interests.includes(interest)
-                          ? 'bg-[#E9D5FF] text-[#0F172A]'
-                          : 'bg-white border border-gray-200 text-gray-600 hover:border-[#E9D5FF]'
-                      }`}
-                    >
-                      {interest}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
+          
+          {/* View toggle & Refresh */}
+          <div className="flex items-center gap-2">
+            <div className="flex bg-gray-100 rounded-lg p-1">
               <button
-                onClick={clearFilters}
-                className="text-xs text-gray-500 hover:text-[#0F172A]"
+                onClick={() => setViewMode('map')}
+                className={`p-2 rounded-md transition-colors ${viewMode === 'map' ? 'bg-white shadow-sm' : 'text-gray-500'}`}
               >
-                Clear all filters
+                <MapIcon size={18} />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 rounded-md transition-colors ${viewMode === 'list' ? 'bg-white shadow-sm' : 'text-gray-500'}`}
+              >
+                <List size={18} />
               </button>
             </div>
-          )}
-        </div>
-
-        {/* User List */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <Loader2 className="w-8 h-8 animate-spin text-[#0F172A] mx-auto mb-2" />
-                <p className="text-gray-500 text-sm">Finding people nearby...</p>
-              </div>
-            </div>
-          ) : filteredUsers.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full">
-              <Users size={32} className="text-gray-300 mb-2" />
-              <p className="text-gray-500 text-sm">No one nearby yet</p>
-              <p className="text-gray-400 text-xs">Try adjusting your filters</p>
-            </div>
-          ) : (
-            filteredUsers.map((userItem) => (
-              <div
-                key={userItem.id}
-                onClick={() => {
-                  setSelectedUser(userItem);
-                  const lat = userItem.location?.lat || userItem.location?.latitude;
-                  const lng = userItem.location?.lng || userItem.location?.longitude;
-                  if (map.current && lat && lng) {
-                    map.current.flyTo({
-                      center: [lng, lat],
-                      zoom: 15,
-                      duration: 500
-                    });
-                  }
-                }}
-                className={`flex gap-4 p-4 bg-white rounded-xl shadow-sm cursor-pointer transition-all hover:shadow-md ${
-                  selectedUser?.id === userItem.id ? 'ring-2 ring-[#0F172A] shadow-md' : 'border border-gray-100'
-                }`}
-              >
-                <img
-                  src={userItem.photo || userItem.profile_pictures?.[0]}
-                  alt={userItem.name}
-                  className="w-20 h-20 object-cover rounded-lg flex-shrink-0"
-                  onError={(e) => { e.target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${userItem.name}`; }}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between">
-                    <h3 className="font-semibold text-[#0F172A]">
-                      {userItem.name}, {userItem.age}
-                    </h3>
-                    <button className="text-gray-400 hover:text-rose-500 transition-colors">
-                      <Heart size={18} />
-                    </button>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                    <MapPin size={12} />
-                    {userItem.distance_km ? `${userItem.distance_km.toFixed(1)} km away` : userItem.distance_display || 'Nearby'}
-                  </p>
-                  <p className="text-xs text-gray-600 mt-2 truncate">
-                    {userItem.bio || userItem.interests?.join(' • ') || 'No bio yet'}
-                  </p>
-                  <p className="text-xs text-[#0F172A] font-medium mt-1 capitalize">
-                    {userItem.lookingFor || userItem.intent || 'Looking to connect'}
-                  </p>
-                </div>
-              </div>
-            ))
-          )}
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <RefreshCw size={18} className={`text-gray-600 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Mapbox Map */}
-      <div className="flex-1 relative min-h-[300px] lg:min-h-0">
-        <div ref={mapContainer} className="absolute inset-0" style={{ minHeight: '300px' }} />
-        
-        {/* Selected User Popup */}
-        {selectedUser && (
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-white rounded-2xl shadow-2xl p-6 w-80 z-10">
-            <button
-              onClick={() => setSelectedUser(null)}
-              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
-            >
-              <X size={20} />
-            </button>
+      {/* Main Content */}
+      <div className="flex-1 relative">
+        {isLoading ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
+            <div className="text-center">
+              <Loader2 className="w-10 h-10 animate-spin text-[#0F172A] mx-auto mb-3" />
+              <p className="text-gray-500">Finding people nearby...</p>
+            </div>
+          </div>
+        ) : viewMode === 'map' ? (
+          <>
+            {/* Full-width Map */}
+            <div ref={mapContainer} className="absolute inset-0" />
             
-            <div className="flex items-center gap-4 mb-4">
-              <img
-                src={selectedUser.photo || selectedUser.profile_pictures?.[0]}
-                alt={selectedUser.name}
-                className="w-16 h-16 rounded-full object-cover border-2 border-[#E9D5FF]"
-                onError={(e) => { e.target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedUser.name}`; }}
-              />
-              <div>
-                <h3 className="text-lg font-bold text-[#0F172A]">
-                  {selectedUser.name}, {selectedUser.age}
-                </h3>
-                <p className="text-sm text-gray-500 flex items-center gap-1">
-                  <MapPin size={14} />
-                  {selectedUser.distance_km ? `${selectedUser.distance_km.toFixed(1)} km away` : selectedUser.distance_display || 'Nearby'}
-                </p>
+            {/* User count badge */}
+            <div className="absolute top-4 left-4 bg-white rounded-full px-4 py-2 shadow-lg flex items-center gap-2 z-10">
+              <Users size={18} className="text-[#0F172A]" />
+              <span className="font-semibold">{filteredUsers.length} nearby</span>
+            </div>
+
+            {/* User list overlay (left side) */}
+            <div className="absolute left-4 top-16 bottom-4 w-80 bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden z-10">
+              <div className="p-3 border-b bg-white">
+                <p className="text-sm font-medium text-gray-600">{filteredUsers.length} people found</p>
+              </div>
+              <div className="overflow-y-auto h-[calc(100%-50px)] p-3 space-y-3">
+                {filteredUsers.map((userItem) => (
+                  <div
+                    key={userItem.id}
+                    onClick={() => {
+                      setSelectedUser(userItem);
+                      const lat = userItem.location?.lat;
+                      const lng = userItem.location?.lng;
+                      if (map.current && lat && lng) {
+                        map.current.flyTo({ center: [lng, lat], zoom: 14, duration: 500 });
+                      }
+                    }}
+                    className={`flex gap-3 p-3 rounded-xl cursor-pointer transition-all ${
+                      selectedUser?.id === userItem.id ? 'bg-[#0F172A] text-white' : 'bg-gray-50 hover:bg-gray-100'
+                    }`}
+                  >
+                    <img
+                      src={userItem.photo}
+                      alt={userItem.name}
+                      className="w-14 h-14 object-cover rounded-lg flex-shrink-0"
+                      onError={(e) => { e.target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${userItem.name}`; }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold truncate">{userItem.name}, {userItem.age}</h3>
+                      <p className={`text-xs mt-0.5 flex items-center gap-1 ${selectedUser?.id === userItem.id ? 'text-gray-300' : 'text-gray-500'}`}>
+                        <MapPin size={12} />
+                        {userItem.distance_display || 'Nearby'}
+                      </p>
+                      <p className={`text-xs mt-1 capitalize ${selectedUser?.id === userItem.id ? 'text-gray-300' : 'text-gray-600'}`}>
+                        {userItem.intent || 'Dating'}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-            
-            <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-              {selectedUser.bio || 'No bio yet'}
-            </p>
-            
-            <p className="text-sm text-gray-600 mb-4">
-              <span className="font-medium">Looking for:</span> <span className="capitalize">{selectedUser.lookingFor || selectedUser.intent || 'Connection'}</span>
-            </p>
-            
-            <div className="flex gap-3">
-              <button 
-                onClick={() => navigate(`/dashboard/profile/${selectedUser.id}`)}
-                className="flex-1 py-3 bg-gray-100 text-[#0F172A] rounded-xl font-semibold hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
+
+            {/* Selected user popup */}
+            {selectedUser && (
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white rounded-2xl shadow-2xl p-5 w-96 z-20">
+                <button
+                  onClick={() => setSelectedUser(null)}
+                  className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
+                >
+                  <X size={20} />
+                </button>
+                
+                <div className="flex items-center gap-4 mb-4">
+                  <img
+                    src={selectedUser.photo}
+                    alt={selectedUser.name}
+                    className="w-16 h-16 rounded-full object-cover border-2 border-gray-100"
+                    onError={(e) => { e.target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedUser.name}`; }}
+                  />
+                  <div>
+                    <h3 className="text-lg font-bold text-[#0F172A]">{selectedUser.name}, {selectedUser.age}</h3>
+                    <p className="text-sm text-gray-500 flex items-center gap-1">
+                      <MapPin size={14} />
+                      {selectedUser.distance_display || 'Nearby'}
+                    </p>
+                  </div>
+                </div>
+                
+                <p className="text-sm text-gray-600 mb-4 line-clamp-2">{selectedUser.bio || 'No bio yet'}</p>
+                
+                <div className="flex gap-3">
+                  <button 
+                    onClick={() => handleViewProfile(selectedUser.id)}
+                    className="flex-1 py-2.5 bg-gray-100 text-[#0F172A] rounded-xl font-medium hover:bg-gray-200 transition-colors"
+                  >
+                    View Profile
+                  </button>
+                  <button 
+                    onClick={() => handleMessage(selectedUser)}
+                    className="flex-1 py-2.5 bg-[#0F172A] text-white rounded-xl font-medium hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <MessageCircle size={18} />
+                    Message
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          /* List View */
+          <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 overflow-y-auto h-full">
+            {filteredUsers.map((userItem) => (
+              <div
+                key={userItem.id}
+                className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
               >
-                View Profile
-              </button>
-              <button 
-                onClick={() => handleConnect(selectedUser)}
-                className="flex-1 py-3 bg-[#0F172A] text-white rounded-xl font-semibold hover:bg-gray-800 transition-all flex items-center justify-center gap-2"
-              >
-                <MessageCircle size={18} />
-                Message
-              </button>
-            </div>
+                <div className="aspect-square relative">
+                  <img
+                    src={userItem.photo}
+                    alt={userItem.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => { e.target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${userItem.name}`; }}
+                  />
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
+                    <h3 className="text-white font-bold text-lg">{userItem.name}, {userItem.age}</h3>
+                    <p className="text-white/80 text-sm flex items-center gap-1">
+                      <MapPin size={12} />
+                      {userItem.distance_display || 'Nearby'}
+                    </p>
+                  </div>
+                </div>
+                <div className="p-4">
+                  <p className="text-sm text-gray-600 line-clamp-2 mb-3">{userItem.bio || 'No bio yet'}</p>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => handleViewProfile(userItem.id)}
+                      className="flex-1 py-2 text-sm bg-gray-100 text-[#0F172A] rounded-lg font-medium hover:bg-gray-200"
+                    >
+                      Profile
+                    </button>
+                    <button 
+                      onClick={() => handleMessage(userItem)}
+                      className="flex-1 py-2 text-sm bg-[#0F172A] text-white rounded-lg font-medium hover:bg-gray-800 flex items-center justify-center gap-1"
+                    >
+                      <MessageCircle size={14} />
+                      Message
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
-
-        {/* Map Stats */}
-        <div className="absolute top-4 left-4 bg-white rounded-xl shadow-lg px-4 py-3 flex items-center gap-4 z-10">
-          <div className="flex items-center gap-2">
-            <Users size={18} className="text-[#0F172A]" />
-            <span className="text-sm font-medium text-[#0F172A]">{filteredUsers.length} nearby</span>
-          </div>
-        </div>
       </div>
     </div>
   );
