@@ -349,6 +349,18 @@ const HomePage = () => {
           </div>
         </div>
       </div>
+
+      {/* Load More Button */}
+      {hasMore && (
+        <div className="flex justify-center mt-8">
+          <button
+            onClick={loadMore}
+            className="px-6 py-3 bg-[#0F172A] text-white rounded-xl hover:bg-[#1E293B] transition-colors"
+          >
+            Load More Profiles
+          </button>
+        </div>
+      )}
     </div>
   );
 };
