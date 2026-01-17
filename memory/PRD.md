@@ -129,18 +129,36 @@ Luveloop is a credit-based dating application with real-time messaging, geolocat
   - Updated email templates
   - MongoDB connection and data NOT modified
 
+- ✅ Production Deployment Fixes
+  - Created `/api/users/search` endpoint (name/email search with pagination)
+  - Created `/api/users/feed` endpoint (dashboard user list)
+  - Created `/api/auth/otp/send-email` and `/api/auth/otp/verify-email` endpoints
+  - Updated OTP model with email field
+  - Added OTP email template to email service
+  - Updated frontend HomePage with search and user feed
+  - Updated frontend API service with new endpoints
+  - Created production .env files (backend and frontend)
+  - Created Nginx configuration file
+  - Created deployment script
+
 ### Files Modified/Created
 - `backend/services/fcm_service.py` (NEW)
 - `backend/services/tb_auth_service.py` (MODIFIED - optional address fields)
-- `backend/routes/tb_auth.py` (MODIFIED - better error handling)
+- `backend/services/tb_otp_service.py` (MODIFIED - email OTP)
+- `backend/services/email_service.py` (MODIFIED - OTP email)
+- `backend/routes/tb_auth.py` (MODIFIED - email OTP endpoints)
+- `backend/routes/tb_users.py` (MODIFIED - search, feed endpoints)
 - `backend/models/tb_user.py` (MODIFIED)
-- `backend/routes/tb_users.py` (MODIFIED)
-- `backend/services/tb_message_service.py` (MODIFIED)
-- `backend/routes/calling_v2.py` (MODIFIED)
+- `backend/models/tb_otp.py` (MODIFIED - email field)
+- `backend/.env.production` (NEW)
+- `frontend/.env.production` (NEW)
 - `frontend/src/pages/SignupPage.jsx` (MODIFIED - defaults + error handling)
+- `frontend/src/pages/dashboard/HomePage.jsx` (MODIFIED - search, feed)
 - `frontend/src/services/fcm.js` (NEW)
-- `frontend/src/services/api.js` (MODIFIED)
+- `frontend/src/services/api.js` (MODIFIED - new endpoints)
 - `frontend/src/store/authStore.js` (MODIFIED)
+- `nginx-luveloop.conf` (NEW)
+- `deploy.sh` (NEW)
 - `FCM_PUSH_NOTIFICATIONS.md` (NEW - Documentation)
 - `TRUEBOND_FULL_AUDIT_REPORT.md` (NEW - Full audit)
 
