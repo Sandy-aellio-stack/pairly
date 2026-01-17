@@ -539,3 +539,236 @@ async def unregister_all_fcm_tokens(user: TBUser = Depends(get_current_user)):
     await user.save()
     
     return {"message": "All FCM tokens removed", "removed": removed_count}
+
+
+# ========== USER SEARCH ENDPOINT ==========
+
+class SearchUsersResponse(BaseModel):
+    users: List[dict]
+    total: int
+    page: int
+    limit: int
+    has_more: bool
+
+
+@router.get("/search")
+async def search_users(
+    q: str = "",
+    page: int = 1,
+    limit: int = 20,
+    current_user: TBUser = Depends(get_current_user)
+):
+    """
+    Search users by name, username, or email.
+    
+    - Case-insensitive search
+    - Excludes current user
+    - Excludes blocked users
+    - Excludes deactivated users
+    - Paginated results
+    """
+    if page < 1:
+        page = 1
+    if limit < 1 or limit > 50:
+        limit = 20
+    
+    skip = (page - 1) * limit
+    current_user_id = str(current_user.id)
+    
+    # Get blocked user IDs (both directions)
+    blocked_ids = await _get_blocked_user_ids(current_user_id)
+    blocked_ids.add(current_user_id)  # Exclude self
+    
+    # Build search query
+    search_query = {
+        "is_active": True,
+        "_id": {"$nin": [await _str_to_objectid(uid) for uid in blocked_ids if uid]}
+    }
+    
+    # Add text search if query provided
+    if q and q.strip():
+        search_term = q.strip()
+        # Case-insensitive regex search on name and email
+        search_query["$or"] = [
+            {"name": {"$regex": search_term, "$options": "i"}},
+            {"email": {"$regex": search_term, "$options": "i"}},
+        ]
+    
+    # Execute search
+    try:
+        total = await TBUser.find(search_query).count()
+        users = await TBUser.find(search_query).skip(skip).limit(limit).to_list()
+    except Exception as e:
+        import logging
+        logging.error(f"Search error: {e}")
+        raise HTTPException(status_code=500, detail="Search failed")
+    
+    # Format results
+    user_list = []
+    for user in users:
+        user_list.append({
+            "id": str(user.id),
+            "name": user.name,
+            "age": user.age,
+            "gender": user.gender,
+            "bio": user.bio,
+            "profile_pictures": user.profile_pictures[:1] if user.profile_pictures else [],
+            "intent": user.intent,
+            "is_verified": user.is_verified,
+            "is_online": user.is_online if hasattr(user, 'settings') and user.settings and user.settings.privacy.show_online else None,
+        })
+    
+    return {
+        "users": user_list,
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "has_more": skip + len(users) < total
+    }
+
+
+# ========== USER FEED ENDPOINT (DASHBOARD) ==========
+
+@router.get("/feed")
+async def get_user_feed(
+    page: int = 1,
+    limit: int = 20,
+    current_user: TBUser = Depends(get_current_user)
+):
+    """
+    Get user feed for dashboard/home page.
+    
+    Returns active users:
+    - Excludes self
+    - Excludes blocked users
+    - Excludes users with hide_from_search enabled
+    - Sorted by recent activity
+    - Paginated
+    """
+    if page < 1:
+        page = 1
+    if limit < 1 or limit > 50:
+        limit = 20
+    
+    skip = (page - 1) * limit
+    current_user_id = str(current_user.id)
+    
+    # Get blocked user IDs
+    blocked_ids = await _get_blocked_user_ids(current_user_id)
+    blocked_ids.add(current_user_id)  # Exclude self
+    
+    # Build feed query
+    feed_query = {
+        "is_active": True,
+        "_id": {"$nin": [await _str_to_objectid(uid) for uid in blocked_ids if uid]},
+        # Don't show users who hide from search
+        "$or": [
+            {"settings.safety.hide_from_search": False},
+            {"settings.safety.hide_from_search": {"$exists": False}},
+            {"settings": {"$exists": False}}
+        ]
+    }
+    
+    # Apply user preferences filter (optional - can be toggled)
+    # if current_user.preferences:
+    #     feed_query["gender"] = current_user.preferences.interested_in
+    #     feed_query["age"] = {
+    #         "$gte": current_user.preferences.min_age,
+    #         "$lte": current_user.preferences.max_age
+    #     }
+    
+    # Execute query with sorting
+    try:
+        total = await TBUser.find(feed_query).count()
+        # Sort by location_updated_at (recent activity) or created_at
+        users = await TBUser.find(feed_query).sort([
+            ("location_updated_at", -1),
+            ("created_at", -1)
+        ]).skip(skip).limit(limit).to_list()
+    except Exception as e:
+        import logging
+        logging.error(f"Feed error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to load feed")
+    
+    # Format results
+    user_list = []
+    for user in users:
+        privacy = user.settings.privacy if hasattr(user, 'settings') and user.settings else PrivacySettings()
+        
+        user_data = {
+            "id": str(user.id),
+            "name": user.name,
+            "age": user.age,
+            "gender": user.gender,
+            "bio": user.bio,
+            "profile_pictures": user.profile_pictures or [],
+            "intent": user.intent,
+            "is_verified": user.is_verified,
+        }
+        
+        # Online status (respect privacy)
+        if privacy.show_online:
+            user_data["is_online"] = user.is_online
+        else:
+            user_data["is_online"] = None
+        
+        # Last active (respect privacy)
+        if privacy.show_last_seen and hasattr(user, 'location_updated_at') and user.location_updated_at:
+            user_data["last_active"] = _format_last_active(user.location_updated_at)
+        else:
+            user_data["last_active"] = None
+        
+        # Distance if both users have location
+        if privacy.show_distance and current_user.location and user.location:
+            try:
+                current_coords = current_user.location.coordinates
+                target_coords = user.location.coordinates
+                distance_km = PrivacyLocation.calculate_distance(
+                    current_coords[1], current_coords[0],
+                    target_coords[1], target_coords[0]
+                )
+                user_data["distance_km"] = PrivacyLocation.bucket_distance(distance_km)
+                user_data["distance_display"] = PrivacyLocation.format_distance_display(distance_km)
+            except:
+                user_data["distance_km"] = None
+                user_data["distance_display"] = None
+        else:
+            user_data["distance_km"] = None
+            user_data["distance_display"] = None
+        
+        user_list.append(user_data)
+    
+    return {
+        "users": user_list,
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "has_more": skip + len(users) < total
+    }
+
+
+async def _get_blocked_user_ids(user_id: str) -> set:
+    """Get all user IDs that are blocked (both directions)"""
+    try:
+        from backend.models.user_block import UserBlock
+        
+        # Get users I blocked
+        my_blocks = await UserBlock.find({"blocker_id": user_id}).to_list()
+        blocked_by_me = {b.blocked_id for b in my_blocks}
+        
+        # Get users who blocked me
+        their_blocks = await UserBlock.find({"blocked_id": user_id}).to_list()
+        blocked_me = {b.blocker_id for b in their_blocks}
+        
+        return blocked_by_me | blocked_me
+    except Exception:
+        return set()
+
+
+async def _str_to_objectid(user_id: str):
+    """Convert string to ObjectId for MongoDB queries"""
+    try:
+        from bson import ObjectId
+        return ObjectId(user_id)
+    except:
+        return user_id
