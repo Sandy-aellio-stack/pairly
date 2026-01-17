@@ -263,7 +263,7 @@ const NearbyPage = () => {
         ) : viewMode === 'map' ? (
           <>
             {/* Full-width Map */}
-            <div ref={mapContainer} className="absolute inset-0" />
+            <div ref={initializeMap} className="absolute inset-0" />
             
             {/* User count badge */}
             <div className="absolute top-4 left-4 bg-white rounded-full px-4 py-2 shadow-lg flex items-center gap-2 z-10">
