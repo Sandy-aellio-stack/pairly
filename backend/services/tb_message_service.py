@@ -103,14 +103,23 @@ class MessageService:
     @staticmethod
     async def get_conversations(user_id: str) -> List[dict]:
         """Get all conversations for a user"""
+        # Use $in operator to find documents where participants array contains user_id
         conversations = await TBConversation.find(
-            {"participants": user_id}
+            {"participants": {"$in": [user_id]}}
         ).sort(-TBConversation.last_message_at).to_list()
 
         result = []
         for conv in conversations:
             # Get the other participant
-            other_user_id = [p for p in conv.participants if p != user_id][0]
+            if len(conv.participants) < 2:
+                # Skip invalid conversations with less than 2 participants
+                continue
+            
+            other_user_id = [p for p in conv.participants if p != user_id]
+            if not other_user_id:
+                continue
+            
+            other_user_id = other_user_id[0]
             other_user = await TBUser.get(other_user_id)
 
             if other_user:

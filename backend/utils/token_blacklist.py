@@ -29,7 +29,7 @@ class TokenBlacklist:
         """
         try:
             key = f"{TokenBlacklist.PREFIX}{token_jti}"
-            await redis_client.client.setex(
+            await redis_client.redis.setex(
                 key,
                 expires_in_seconds,
                 "revoked"
@@ -52,7 +52,7 @@ class TokenBlacklist:
         """
         try:
             key = f"{TokenBlacklist.PREFIX}{token_jti}"
-            result = await redis_client.client.get(key)
+            result = await redis_client.redis.get(key)
             return result is not None
         except Exception as e:
             logger.error(f"Failed to check blacklist: {e}")
@@ -71,7 +71,7 @@ class TokenBlacklist:
         try:
             key = f"{TokenBlacklist.USER_PREFIX}{user_id}"
             # Store with 30 day expiry (max token lifetime)
-            await redis_client.client.setex(
+            await redis_client.redis.setex(
                 key,
                 30 * 24 * 60 * 60,  # 30 days
                 "all_revoked"
@@ -94,7 +94,7 @@ class TokenBlacklist:
         """
         try:
             key = f"{TokenBlacklist.USER_PREFIX}{user_id}"
-            result = await redis_client.client.get(key)
+            result = await redis_client.redis.get(key)
             return result is not None
         except Exception as e:
             logger.error(f"Failed to check user blacklist: {e}")

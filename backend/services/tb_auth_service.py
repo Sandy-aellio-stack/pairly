@@ -49,6 +49,34 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class LoginWithOTPRequest(BaseModel):
+    """Request schema for login with OTP"""
+    mobile_number: str = Field(..., min_length=10, max_length=15)
+    otp_code: str = Field(..., min_length=6, max_length=6)
+
+
+class SignupWithOTPRequest(BaseModel):
+    """Request schema for signup with OTP verification"""
+    name: str = Field(min_length=2, max_length=50)
+    email: EmailStr
+    mobile_number: str = Field(min_length=10, max_length=15)
+    password: str = Field(min_length=8)
+    age: int = Field(ge=18, le=100)
+    gender: Gender
+    interested_in: Gender
+    intent: Intent = Intent.DATING
+    min_age: int = Field(ge=18, default=18)
+    max_age: int = Field(le=100, default=50)
+    max_distance_km: int = Field(ge=1, le=500, default=50)
+    otp_code: str = Field(..., min_length=6, max_length=6)
+
+
+class VerifyMobileRequest(BaseModel):
+    """Request schema for verifying mobile number with OTP"""
+    mobile_number: str = Field(..., min_length=10, max_length=15)
+    otp_code: str = Field(..., min_length=6, max_length=6)
+
+
 class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
@@ -275,3 +303,132 @@ class AuthService:
                 logger.error(f"Failed to blacklist token on logout: {e}")
 
         return {"message": "Logged out successfully"}
+
+    # ==================== OTP-BASED AUTHENTICATION ====================
+
+    @staticmethod
+    async def signup_with_otp(data: SignupWithOTPRequest) -> Tuple[TBUser, TokenResponse]:
+        """
+        Signup with OTP verification.
+        User provides mobile number and OTP code to verify ownership before account creation.
+        """
+        # Verify OTP first
+        await OTPService.verify_otp(data.mobile_number, data.otp_code, purpose="signup")
+        
+        # Check age
+        if data.age < 18:
+            raise HTTPException(status_code=400, detail="Must be 18 or older to register")
+
+        try:
+            # Check existing email
+            existing_email = await TBUser.find_one({"email": data.email})
+            if existing_email:
+                raise HTTPException(status_code=400, detail="Email already registered")
+
+            # Check existing mobile
+            existing_mobile = await TBUser.find_one({"mobile_number": data.mobile_number})
+            if existing_mobile:
+                raise HTTPException(status_code=400, detail="Mobile number already registered")
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=503, detail="Database not available. Please try again later.")
+
+        # Create user
+        user = TBUser(
+            name=data.name,
+            email=data.email,
+            mobile_number=data.mobile_number,
+            password_hash=AuthService.hash_password(data.password),
+            age=data.age,
+            gender=data.gender,
+            intent=data.intent,
+            preferences=Preferences(
+                interested_in=data.interested_in,
+                min_age=data.min_age,
+                max_age=data.max_age,
+                max_distance_km=data.max_distance_km
+            ),
+            address=Address(
+                address_line="NA",
+                city="NA",
+                state="NA",
+                country="India",
+                pincode="000000"
+            ),
+            credits_balance=10,  # Signup bonus
+            is_verified=True  # Verified via OTP
+        )
+        await user.insert()
+
+        # Log signup bonus credit
+        transaction = TBCreditTransaction(
+            user_id=str(user.id),
+            amount=10,
+            reason=TransactionReason.SIGNUP_BONUS,
+            balance_after=10,
+            description="Welcome bonus credits"
+        )
+        await transaction.insert()
+
+        # Generate tokens
+        tokens = TokenResponse(
+            access_token=AuthService.create_access_token(str(user.id)),
+            refresh_token=AuthService.create_refresh_token(str(user.id)),
+            user_id=str(user.id)
+        )
+
+        return user, tokens
+
+    @staticmethod
+    async def login_with_otp(data: LoginWithOTPRequest) -> Tuple[TBUser, TokenResponse]:
+        """
+        Login with OTP verification.
+        User provides mobile number and OTP code to authenticate.
+        """
+        # Verify OTP first
+        await OTPService.verify_otp(data.mobile_number, data.otp_code, purpose="login")
+        
+        # Find user by mobile number
+        try:
+            user = await TBUser.find_one({"mobile_number": data.mobile_number})
+        except Exception as e:
+            raise HTTPException(status_code=503, detail="Database not available. Please try again later.")
+        
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found with this mobile number")
+
+        if not user.is_active:
+            raise HTTPException(status_code=403, detail="Account is deactivated")
+
+        # Update last login
+        user.last_login_at = datetime.now(timezone.utc)
+        user.is_online = True
+        await user.save()
+
+        tokens = TokenResponse(
+            access_token=AuthService.create_access_token(str(user.id)),
+            refresh_token=AuthService.create_refresh_token(str(user.id)),
+            user_id=str(user.id)
+        )
+
+        return user, tokens
+
+    @staticmethod
+    async def verify_mobile_number(mobile_number: str, otp_code: str) -> TBUser:
+        """
+        Verify mobile number for existing user.
+        Marks user as verified after successful OTP verification.
+        """
+        # Verify OTP
+        await OTPService.verify_otp(mobile_number, otp_code, purpose="verification")
+        
+        # Find and update user
+        user = await TBUser.find_one({"mobile_number": mobile_number})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        user.is_verified = True
+        await user.save()
+        
+        return user

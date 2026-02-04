@@ -6,7 +6,8 @@ import os
 
 from backend.models.tb_user import TBUser, UserOwnProfile
 from backend.services.tb_auth_service import (
-    AuthService, SignupRequest, LoginRequest, TokenResponse
+    AuthService, SignupRequest, LoginRequest, TokenResponse,
+    SignupWithOTPRequest, LoginWithOTPRequest
 )
 from backend.services.tb_otp_service import OTPService
 from backend.services.password_reset_service import password_reset_service
@@ -144,6 +145,76 @@ async def verify_email_otp(data: VerifyEmailOTPRequest):
             await user.save()
     
     return {"message": "Email verified successfully", "verified": True}
+
+
+# ==================== OTP-BASED LOGIN & SIGNUP ====================
+
+@router.post("/signup-with-otp")
+async def signup_with_otp(data: SignupWithOTPRequest):
+    """
+    Signup with OTP verification.
+    
+    Flow:
+    1. User sends OTP to their mobile number (/api/auth/otp/send)
+    2. User submits signup form with OTP code
+    3. OTP is verified, then account is created
+    
+    Returns JWT tokens on success.
+    """
+    try:
+        user, tokens = await AuthService.signup_with_otp(data)
+        return {
+            "message": "Account created successfully",
+            "user_id": str(user.id),
+            "is_verified": user.is_verified,
+            "credits_balance": user.credits_balance,
+            "tokens": tokens.model_dump()
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        import logging
+        logging.error(f"OTP Signup error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
+
+
+@router.post("/login-with-otp")
+async def login_with_otp(data: LoginWithOTPRequest):
+    """
+    Login with OTP verification.
+    
+    Flow:
+    1. User sends OTP to their mobile number (/api/auth/otp/send)
+    2. User submits login form with OTP code
+    3. OTP is verified, then JWT tokens are returned
+    
+    Returns JWT tokens on success.
+    """
+    user, tokens = await AuthService.login_with_otp(data)
+    return {
+        "message": "Login successful",
+        "user_id": str(user.id),
+        "is_verified": user.is_verified,
+        "tokens": tokens.model_dump()
+    }
+
+
+@router.post("/otp/send-for-signup")
+async def send_otp_for_signup(data: SendOTPRequest):
+    """
+    Send OTP for signup verification.
+    Purpose: signup
+    """
+    return await OTPService.send_otp(data.mobile_number, purpose="signup")
+
+
+@router.post("/otp/send-for-login")
+async def send_otp_for_login(data: SendOTPRequest):
+    """
+    Send OTP for login verification.
+    Purpose: login
+    """
+    return await OTPService.send_otp(data.mobile_number, purpose="login")
 
 
 @router.get("/me", response_model=dict)
