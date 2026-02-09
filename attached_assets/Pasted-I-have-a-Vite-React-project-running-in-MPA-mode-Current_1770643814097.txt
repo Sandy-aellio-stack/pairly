@@ -1,0 +1,94 @@
+I have a Vite + React project running in MPA mode.
+
+Current situation:
+- app.html is my landing page
+- React app is also mounted inside app.html
+- Vite dev server runs on port 5173
+- React Router has a login route:
+  <Route path="/login" element={<LoginPage />} />
+
+Problem:
+When I click "Get Started" on the landing page,
+nothing happens and React login does not load.
+
+I need the landing page button to open the React login page.
+
+IMPORTANT:
+Do NOT convert the landing page into React.
+Keep app.html as static landing.
+Just connect it to the React router.
+
+TASKS TO IMPLEMENT:
+
+1. FIX LANDING BUTTON
+
+In app.html, find any "Get Started" buttons.
+Replace them with a plain anchor link:
+
+<a href="/login">Get Started</a>
+
+Do NOT use onclick handlers.
+Do NOT use React routing inside HTML.
+
+2. FIX VITE ROUTING
+
+In vite.config.js, add middleware so that
+when the browser goes to /login,
+Vite serves app.html (so React can load).
+
+Add this inside defineConfig:
+
+------------------------------------------------
+server: {
+  configureServer: (server) => {
+    server.middlewares.use((req, res, next) => {
+      if (
+        req.url.startsWith('/login') ||
+        req.url.startsWith('/signup') ||
+        req.url.startsWith('/dashboard')
+      ) {
+        req.url = '/app.html';
+      }
+      next();
+    });
+  }
+}
+------------------------------------------------
+
+3. ENSURE REACT ROOT EXISTS
+
+In app.html make sure this exists:
+
+<div id="root"></div>
+
+4. ENSURE REACT MOUNTS
+
+In src/main.jsx:
+
+------------------------------------------------
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./App";
+
+ReactDOM.createRoot(document.getElementById("root")).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+------------------------------------------------
+
+5. ENSURE LOGIN ROUTE EXISTS
+
+In App.jsx confirm:
+
+<Route path="/login" element={<LoginPage />} />
+
+6. AFTER CHANGES
+
+Restart the dev server.
+
+EXPECTED RESULT:
+- Landing page loads
+- Clicking "Get Started" navigates to /login
+- React app loads
+- Login page appears
