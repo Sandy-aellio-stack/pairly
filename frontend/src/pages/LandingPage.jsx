@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Heart, Home, AlertTriangle, Lightbulb, Star, RotateCcw, Shield, CreditCard, HelpCircle, Rocket } from 'lucide-react';
-import HeartCursor from '@/components/HeartCursor';
 import AuthModal from '@/components/AuthModal';
 
 // Landing sections
@@ -51,7 +50,7 @@ const LandingPage = () => {
   };
 
   const handleGetStarted = () => {
-    navigate('/signup');
+    navigate('/login');
   };
 
   const handleWaitlist = () => {
@@ -108,8 +107,6 @@ const LandingPage = () => {
 
   return (
     <div ref={containerRef} className="min-h-screen bg-[#F8FAFC]">
-      <HeartCursor />
-
       {/* TOP HEADER - App Name Left, Auth Right */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-xl border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">

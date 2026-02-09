@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, ArrowLeft, Search, Book, CreditCard, Shield, Users, MessageCircle, Settings, ChevronRight } from 'lucide-react';
-import HeartCursor from '@/components/HeartCursor';
 
 const categories = [
   { Icon: Book, title: 'Getting Started', count: 12, description: 'Learn the basics of Luveloop' },
@@ -26,7 +25,6 @@ const HelpCenterPage = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      <HeartCursor />
       {/* Header */}
       <header className="bg-white border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">

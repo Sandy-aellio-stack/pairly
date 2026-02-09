@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import { Heart, ArrowLeft, Calendar, Clock, ArrowRight } from 'lucide-react';
-import HeartCursor from '@/components/HeartCursor';
 
 const blogPosts = [
   {
@@ -56,7 +55,6 @@ const blogPosts = [
 const BlogPage = () => {
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      <HeartCursor />
       {/* Header */}
       <header className="bg-white border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">

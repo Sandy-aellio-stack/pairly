@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="react-base" content="http://localhost:5173" />
+    <meta name="description" content="Luveloop - Location-based dating app with real connections" />
+    <title>Luveloop | Dating App</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { height: 100%; width: 100%; }
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif; }
+      
+      #landing-page { display: none; }
+      #landing-page.active { display: flex; }
+      
+      #root { display: none; }
+      #root.active { display: block; }
+      
+      .landing-container { 
+        width: 100%; 
+        height: 100vh; 
+        display: flex; 
+        justify-content: center; 
+        align-items: center; 
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+        text-align: center; 
+        padding: 2rem;
+      }
+      
+      .landing-content { max-width: 500px; }
+      .landing-content h1 { color: white; font-size: 2.5rem; margin-bottom: 1rem; font-weight: 700; }
+      .landing-content p { color: rgba(255,255,255,0.9); font-size: 1.1rem; margin-bottom: 2rem; line-height: 1.6; }
+      
+      #get-started { 
+        display: inline-block; 
+        padding: 1rem 2.5rem; 
+        background: white; 
+        color: #667eea; 
+        font-weight: 600; 
+        text-decoration: none; 
+        border-radius: 8px; 
+        font-size: 1.05rem; 
+        cursor: pointer; 
+        border: none; 
+        transition: all 0.3s ease; 
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      }
+      
+      #get-started:hover { 
+        transform: translateY(-2px); 
+        box-shadow: 0 6px 20px rgba(0,0,0,0.3); 
+      }
+      
+      #get-started:active { 
+        transform: translateY(0); 
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Landing Page -->
+    <div id="landing-page" class="active">
+      <div class="landing-container">
+        <div class="landing-content">
+          <h1>Welcome to Luveloop</h1>
+          <p>Connect with people nearby. Real conversations, real connections.</p>
+          <a id="get-started" href="#" role="button">Get Started</a>
+        </div>
+      </div>
+    </div>
+    
+    <!-- React App Container -->
+    <div id="root"></div>
+    
+    <script type="module" src="/src/main.jsx"></script>
+    
+    <script>
+      (function () {
+        // Determine if current path is an app route
+        function isAppRoute(path) {
+          var appRoutes = ['/login', '/signup', '/dashboard', '/verify-otp', '/forgot-password', '/reset-password', '/admin', '/terms', '/privacy', '/about', '/contact', '/help', '/blog', '/careers', '/press', '/call'];
+          return appRoutes.some(function(route) { return path.startsWith(route); });
+        }
+        
+        // Update visibility based on current route
+        function updatePageVisibility() {
+          var landing = document.getElementById('landing-page');
+          var root = document.getElementById('root');
+          var showLanding = !isAppRoute(window.location.pathname);
+          
+          if (landing) {
+            landing.classList.toggle('active', showLanding);
+          }
+          if (root) {
+            root.classList.toggle('active', !showLanding);
+          }
+        }
+        
+        // Initial visibility update
+        updatePageVisibility();
+        
+        // Setup Get Started button
+        var btn = document.getElementById('get-started');
+        if (btn) {
+          btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            window.location.href = '/login';
+          });
+        }
+        
+        // Listen for back/forward navigation
+        window.addEventListener('popstate', updatePageVisibility);
+        
+        // Intercept history changes from React Router
+        var originalPushState = window.history.pushState;
+        window.history.pushState = function() {
+          originalPushState.apply(window.history, arguments);
+          updatePageVisibility();
+        };
+      })();
+    </script>
+  </body>
+</html>

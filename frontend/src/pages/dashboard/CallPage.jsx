@@ -3,7 +3,6 @@ import { Phone, PhoneOff, Video, VideoOff, Mic, MicOff, Volume2, VolumeX, Loader
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import useAuthStore from '@/store/authStore';
 import { toast } from 'sonner';
-import HeartCursor from '@/components/HeartCursor';
 import {
   getSocket,
   callUser,
@@ -337,7 +336,6 @@ const CallPage = () => {
 
   return (
     <div className="fixed inset-0 bg-gradient-to-b from-[#0F172A] to-[#1E293B] flex flex-col items-center justify-center lg:cursor-none">
-      <HeartCursor />
       {callType === 'video' && (
         <video
           ref={remoteVideoRef}

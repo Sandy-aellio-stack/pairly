@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Phone, PhoneOff, Video } from 'lucide-react';
 import { toast } from 'sonner';
 import { getSocket, onIncomingCall, rejectCall } from '@/services/socket';
-import HeartCursor from '@/components/HeartCursor';
 
 const IncomingCallModal = () => {
   const navigate = useNavigate();
@@ -52,7 +51,6 @@ const IncomingCallModal = () => {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 lg:cursor-none">
-      <HeartCursor />
       <div className="bg-white rounded-2xl p-8 max-w-sm w-full mx-4 text-center shadow-2xl">
         <div className="w-20 h-20 rounded-full bg-[#E9D5FF] mx-auto mb-4 flex items-center justify-center animate-pulse">
           {incomingCall.call_type === 'video' ? (

@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 
 export default defineConfig({
+  appType: 'mpa',
   plugins: [react()],
   resolve: {
     alias: {
@@ -22,7 +23,7 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3000,
+    port: 5173,
     host: '0.0.0.0',
     strictPort: true,
     allowedHosts: true,
@@ -37,8 +38,27 @@ export default defineConfig({
         ws: true,
       },
     },
+    configureServer: (server) => {
+      server.middlewares.use((req, res, next) => {
+        if (
+          req.url === "/login" ||
+          req.url.startsWith("/login?") ||
+          req.url.startsWith("/signup") ||
+          req.url.startsWith("/dashboard")
+        ) {
+          req.url = "/app.html";
+        }
+        next();
+      });
+    },
   },
   build: {
     outDir: 'build',
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+        app: path.resolve(__dirname, 'app.html'),
+      },
+    },
   },
 });

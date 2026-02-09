@@ -1,17 +1,16 @@
 import { useEffect } from 'react';
-import { 
-  BrowserRouter, 
-  Routes, 
-  Route, 
+import {
+  BrowserRouter,
+  Routes,
+  Route,
   Navigate,
-  useLocation 
+  useLocation
 } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import useAuthStore from '@/store/authStore';
 import useAdminStore from '@/store/adminStore';
 
 // Pages
-import LandingPage from '@/pages/LandingPage';
 import LoginPage from '@/pages/LoginPage';
 import SignupPage from '@/pages/SignupPage';
 import VerifyOTPPage from '@/pages/VerifyOTPPage';
@@ -50,51 +49,59 @@ import AdminLogPage from '@/pages/admin/AdminLogPage';
 // Scroll to top on route change
 function ScrollToTop() {
   const { pathname } = useLocation();
-  
+
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [pathname]);
-  
+
   return null;
 }
 
 // Protected Route wrapper
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuthStore();
-  
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-  
+
   return children;
 }
 
 // Public Route wrapper (redirect to dashboard if logged in)
 function PublicRoute({ children }) {
   const { isAuthenticated } = useAuthStore();
-  
+
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
-  
+
   return children;
 }
 
 // Admin Protected Route wrapper
 function AdminProtectedRoute({ children }) {
   const { isAuthenticated } = useAdminStore();
-  
+
   if (!isAuthenticated) {
     return <Navigate to="/admin/login" replace />;
   }
-  
+
   return children;
+}
+
+// Redirect to static landing page if hitting root in React
+function LandingRedirect() {
+  useEffect(() => {
+    window.location.href = '/';
+  }, []);
+  return null;
 }
 
 function App() {
   const { initialize, isLoading } = useAuthStore();
   const { initialize: initializeAdmin } = useAdminStore();
-  
+
   useEffect(() => {
     initialize();
     initializeAdmin();
@@ -113,15 +120,13 @@ function App() {
     <BrowserRouter>
       <ScrollToTop />
       <Toaster position="top-center" richColors />
-      
+
       <Routes>
+        {/* Root Landing Page - handled by static HTML via full page reload */}
+        <Route path="/" element={<LandingRedirect />} />
+
         {/* Public Routes */}
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={
-          <PublicRoute>
-            <LoginPage />
-          </PublicRoute>
-        } />
+        <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={
           <PublicRoute>
             <SignupPage />
@@ -148,7 +153,7 @@ function App() {
         <Route path="/blog" element={<BlogPage />} />
         <Route path="/careers" element={<CareersPage />} />
         <Route path="/press" element={<AboutPage />} /> {/* Reuse About for Press */}
-        
+
         {/* Protected Dashboard Routes */}
         <Route path="/dashboard" element={
           <ProtectedRoute>
@@ -164,7 +169,7 @@ function App() {
           <Route path="settings" element={<SettingsPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
         </Route>
-        
+
         {/* Call Page - Full Screen */}
         <Route path="/call/:userId" element={
           <ProtectedRoute>
@@ -174,7 +179,7 @@ function App() {
 
         {/* Admin Login */}
         <Route path="/admin/login" element={<AdminLoginPage />} />
-        
+
         {/* Admin Routes */}
         <Route path="/admin" element={
           <AdminProtectedRoute>
@@ -188,7 +193,7 @@ function App() {
           <Route path="settings" element={<AdminSettingsPage />} />
           <Route path="logs" element={<AdminLogPage />} />
         </Route>
-        
+
         {/* Catch all - redirect to home */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
