@@ -41,10 +41,9 @@ export default defineConfig({
     configureServer: (server) => {
       server.middlewares.use((req, res, next) => {
         if (
-          req.url === "/login" ||
-          req.url.startsWith("/login?") ||
-          req.url.startsWith("/signup") ||
-          req.url.startsWith("/dashboard")
+          req.url.startsWith('/login') ||
+          req.url.startsWith('/signup') ||
+          req.url.startsWith('/dashboard')
         ) {
           req.url = "/app.html";
         }

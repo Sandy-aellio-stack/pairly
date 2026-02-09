@@ -18151,8 +18151,7 @@
                           <div class="framer-1fx6aj6"
                             style="--extracted-r6o4lv:var(--token-e258ed60-9c0a-4916-88a5-57988f16ef6f, rgb(255, 255, 255));--framer-link-text-color:rgb(0, 153, 255);--framer-link-text-decoration:underline;transform:none"
                             data-framer-component-type="RichTextContainer">
-                            <p class="framer-text framer-styles-preset-1l3s2e" data-styles-preset="uOJsmDyCf">Get Started
-                            </p>
+                            <a href="/login" style="text-decoration: none; color: inherit;">Get Started</a>
                           </div>
                         </div>
                       </a><!--/$--></div>
@@ -24089,23 +24088,3 @@
         updatePageVisibility();
       };
 
-      // Handle Get Started button clicks to navigate to login
-      document.addEventListener('DOMContentLoaded', function() {
-        var getStartedBtn = document.querySelector('[data-get-started]') || document.querySelector('.get-started-btn');
-        if (getStartedBtn) {
-          getStartedBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            window.location.href = '/login';
-          });
-        }
-        
-        // Log for debugging
-        console.log('Route management initialized');
-        console.log('Current path:', window.location.pathname);
-      });
-    })();
-  </script>
-
-
-</body>
-</html>
