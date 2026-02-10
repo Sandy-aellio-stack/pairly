@@ -10,6 +10,9 @@ import { Toaster } from 'sonner';
 import useAuthStore from '@/store/authStore';
 import useAdminStore from '@/store/adminStore';
 
+// Components
+import RedirectToLanding from '@/components/RedirectToLanding';
+
 // Pages
 import LoginPage from '@/pages/LoginPage';
 import SignupPage from '@/pages/SignupPage';
@@ -114,6 +117,9 @@ function App() {
       <Toaster position="top-center" richColors />
 
       <Routes>
+        {/* Root redirects to static landing page */}
+        <Route path="/" element={<RedirectToLanding />} />
+        
         {/* Public Routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
