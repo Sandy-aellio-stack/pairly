@@ -23,6 +23,7 @@ import ContactPage from '@/pages/ContactPage';
 import HelpCenterPage from '@/pages/HelpCenterPage';
 import BlogPage from '@/pages/BlogPage';
 import CareersPage from '@/pages/CareersPage';
+import LandingPage from '@/pages/LandingPage';
 
 // Dashboard Pages
 import DashboardLayout from '@/pages/dashboard/DashboardLayout';
@@ -90,14 +91,6 @@ function AdminProtectedRoute({ children }) {
   return children;
 }
 
-// Redirect to static landing page if hitting root in React
-function LandingRedirect() {
-  useEffect(() => {
-    window.location.href = '/';
-  }, []);
-  return null;
-}
-
 function App() {
   const { initialize, isLoading } = useAuthStore();
   const { initialize: initializeAdmin } = useAdminStore();
@@ -122,16 +115,12 @@ function App() {
       <Toaster position="top-center" richColors />
 
       <Routes>
-        {/* Root Landing Page - handled by static HTML via full page reload */}
-        <Route path="/" element={<LandingRedirect />} />
+        {/* Root Landing Page - load static landing inside React */}
+        <Route path="/" element={<LandingPage />} />
 
         {/* Public Routes */}
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={
-          <PublicRoute>
-            <SignupPage />
-          </PublicRoute>
-        } />
+        <Route path="/signup" element={<SignupPage />} />
         <Route path="/verify-otp" element={<VerifyOTPPage />} />
         <Route path="/forgot-password" element={
           <PublicRoute>
