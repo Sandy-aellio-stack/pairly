@@ -10,6 +10,9 @@ export default function LandingPage() {
     const root = rootRef.current;
     if (!root) return;
 
+    // Track if this effect is still current
+    let isCurrent = true;
+
     // decide file
     let file = "/landing/index.html";
     if (location.pathname === "/stories") file = "/landing/stories/index.html";
@@ -17,27 +20,47 @@ export default function LandingPage() {
     if (location.pathname === "/blogs") file = "/landing/blogs/index.html";
 
     fetch(file)
-      .then(r => r.text())
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP error: ${r.status}`);
+        return r.text();
+      })
       .then(html => {
+        // Check if this effect is still current before updating DOM
+        if (!isCurrent) return;
+
         // remove scripts to prevent freeze
         const cleaned = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
         root.innerHTML = cleaned;
 
-        // re-attach navigation for internal links
-        root.querySelectorAll("a[href]").forEach(link => {
-          const href = link.getAttribute("href");
-          if (href && href.startsWith("/")) {
-            link.addEventListener("click", (e) => {
+        // Handle navigation using event delegation
+        const handleClick = (e) => {
+          const link = e.target.closest("a[href]");
+          if (link) {
+            const href = link.getAttribute("href");
+            if (href && href.startsWith("/")) {
               e.preventDefault();
               navigate(href);
-            });
+            }
           }
-        });
+        };
+
+        root.addEventListener("click", handleClick);
+
+        // Store cleanup function
+        return () => {
+          root.removeEventListener("click", handleClick);
+        };
       })
       .catch(err => {
+        if (!isCurrent) return;
         console.error("Failed to load landing page:", err);
         root.innerHTML = "<p>Could not load page</p>";
       });
+
+    // Cleanup function to mark effect as stale
+    return () => {
+      isCurrent = false;
+    };
   }, [location.pathname, navigate]);
 
   return <div id="landing-root" ref={rootRef}></div>;
