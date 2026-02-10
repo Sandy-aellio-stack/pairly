@@ -185,8 +185,8 @@ function App() {
           <Route path="logs" element={<AdminLogPage />} />
         </Route>
 
-        {/* Catch all - redirect to landing */}
-        <Route path="*" element={<Navigate to="/landing/index.html" replace />} />
+        {/* Catch all - redirect to root which then redirects to landing */}
+        <Route path="*" element={<RedirectToLanding />} />
       </Routes>
     </BrowserRouter>
   );
