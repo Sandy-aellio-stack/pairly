@@ -14,6 +14,7 @@ import useAdminStore from '@/store/adminStore';
 import RedirectToLanding from '@/components/RedirectToLanding';
 
 // Pages
+import LandingPage from '@/pages/LandingPage';
 import LoginPage from '@/pages/LoginPage';
 import SignupPage from '@/pages/SignupPage';
 import VerifyOTPPage from '@/pages/VerifyOTPPage';
@@ -117,8 +118,11 @@ function App() {
       <Toaster position="top-center" richColors />
 
       <Routes>
-        {/* Root redirects to static landing page */}
-        <Route path="/" element={<RedirectToLanding />} />
+        {/* Landing pages - served within React router */}
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/stories" element={<LandingPage />} />
+        <Route path="/pricing" element={<LandingPage />} />
+        <Route path="/blogs" element={<LandingPage />} />
         
         {/* Public Routes */}
         <Route path="/login" element={<LoginPage />} />
