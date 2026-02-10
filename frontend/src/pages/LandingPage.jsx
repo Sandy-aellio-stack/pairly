@@ -12,8 +12,9 @@ export default function LandingPage() {
 
     // Track if this effect is still current
     let isCurrent = true;
+    let clickHandler = null;
 
-    // decide file
+    // Decide file
     let file = "/landing/index.html";
     if (location.pathname === "/stories") file = "/landing/stories/index.html";
     if (location.pathname === "/pricing") file = "/landing/pricing/index.html";
@@ -41,7 +42,7 @@ export default function LandingPage() {
         root.innerHTML = bodyContent;
 
         // Handle navigation using event delegation
-        const handleClick = (e) => {
+        clickHandler = (e) => {
           const link = e.target.closest("a[href]");
           if (link) {
             const href = link.getAttribute("href");
@@ -52,12 +53,7 @@ export default function LandingPage() {
           }
         };
 
-        root.addEventListener("click", handleClick);
-
-        // Store cleanup function
-        return () => {
-          root.removeEventListener("click", handleClick);
-        };
+        root.addEventListener("click", clickHandler);
       })
       .catch(err => {
         if (!isCurrent) return;
@@ -65,9 +61,12 @@ export default function LandingPage() {
         root.innerHTML = "<p>Could not load page</p>";
       });
 
-    // Cleanup function to mark effect as stale
+    // Cleanup function to mark effect as stale and remove event listener
     return () => {
       isCurrent = false;
+      if (clickHandler && root) {
+        root.removeEventListener("click", clickHandler);
+      }
     };
   }, [location.pathname, navigate]);
 
