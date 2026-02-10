@@ -1,12 +1,13 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 export default function LandingPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const rootRef = useRef(null);
 
   useEffect(() => {
-    const root = document.getElementById("landing-root");
+    const root = rootRef.current;
     if (!root) return;
 
     // decide file
@@ -39,5 +40,5 @@ export default function LandingPage() {
       });
   }, [location.pathname, navigate]);
 
-  return <div id="landing-root"></div>;
+  return <div id="landing-root" ref={rootRef}></div>;
 }
