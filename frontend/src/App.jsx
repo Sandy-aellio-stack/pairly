@@ -10,6 +10,9 @@ import { Toaster } from 'sonner';
 import useAuthStore from '@/store/authStore';
 import useAdminStore from '@/store/adminStore';
 
+// Components
+import RedirectToLanding from '@/components/RedirectToLanding';
+
 // Pages
 import LoginPage from '@/pages/LoginPage';
 import SignupPage from '@/pages/SignupPage';
@@ -23,7 +26,6 @@ import ContactPage from '@/pages/ContactPage';
 import HelpCenterPage from '@/pages/HelpCenterPage';
 import BlogPage from '@/pages/BlogPage';
 import CareersPage from '@/pages/CareersPage';
-import LandingPage from '@/pages/LandingPage';
 
 // Dashboard Pages
 import DashboardLayout from '@/pages/dashboard/DashboardLayout';
@@ -115,12 +117,9 @@ function App() {
       <Toaster position="top-center" richColors />
 
       <Routes>
-        {/* Root Landing Page - load static landing inside React */}
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/stories" element={<LandingPage />} />
-        <Route path="/pricing" element={<LandingPage />} />
-        <Route path="/blogs" element={<LandingPage />} />
-
+        {/* Root redirects to static landing page */}
+        <Route path="/" element={<RedirectToLanding />} />
+        
         {/* Public Routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
@@ -186,8 +185,8 @@ function App() {
           <Route path="logs" element={<AdminLogPage />} />
         </Route>
 
-        {/* Catch all - redirect to home */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* Catch all - redirect to root which then redirects to landing */}
+        <Route path="*" element={<RedirectToLanding />} />
       </Routes>
     </BrowserRouter>
   );
