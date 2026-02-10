@@ -1,53 +1,76 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 export default function LandingPage() {
+  const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch("/landing/index.html")
-      .then(res => res.text())
+    const root = document.getElementById("landing-root");
+    if (!root) return;
+
+    // decide file
+    let file = "/landing/index.html";
+    if (location.pathname === "/stories") file = "/landing/stories/index.html";
+    if (location.pathname === "/pricing") file = "/landing/pricing/index.html";
+    if (location.pathname === "/blogs") file = "/landing/blogs/index.html";
+
+    fetch(file)
+      .then(r => r.text())
       .then(html => {
-        const root = document.getElementById("landing-root");
-        root.innerHTML = html;
+        // remove scripts to prevent freeze
+        const cleaned = html.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "");
+        root.innerHTML = cleaned;
+        window.scrollTo(0, 0);
       });
 
-    // GLOBAL CLICK INTERCEPTOR
     const handler = (e) => {
-      const link = e.target.closest("a, button");
-      if (!link) return;
+      const a = e.target.closest("a");
+      if (!a) return;
 
-      const text = link.innerText?.toLowerCase() || "";
-
-      // GET STARTED BUTTON
-      if (text.includes("get start")) {
-        e.preventDefault();
-        navigate("/login");
-      }
-
-      // SIGNUP BUTTON
-      if (text.includes("sign up")) {
-        e.preventDefault();
-        navigate("/signup");
-      }
-
-      const href = link.getAttribute("href");
+      const href = a.getAttribute("href");
       if (!href) return;
 
-      if (href.startsWith("/login")) {
+      // LOGIN
+      if (href === "/login") {
         e.preventDefault();
         navigate("/login");
+        return;
       }
 
-      if (href.startsWith("/signup")) {
+      // SIGNUP
+      if (href === "/signup") {
         e.preventDefault();
         navigate("/signup");
+        return;
+      }
+
+      // STORIES
+      if (href.includes("stories")) {
+        e.preventDefault();
+        navigate("/stories");
+        return;
+      }
+
+      // PRICING
+      if (href.includes("pricing")) {
+        e.preventDefault();
+        navigate("/pricing");
+        return;
+      }
+
+      // BLOGS
+      if (href.includes("blogs")) {
+        e.preventDefault();
+        navigate("/blogs");
+        return;
       }
     };
 
     document.addEventListener("click", handler);
     return () => document.removeEventListener("click", handler);
-  }, [navigate]);
+
+  }, [location.pathname, navigate]);
 
   return <div id="landing-root"></div>;
 }
