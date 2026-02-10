@@ -28,9 +28,17 @@ export default function LandingPage() {
         // Check if this effect is still current before updating DOM
         if (!isCurrent) return;
 
-        // remove scripts to prevent freeze
-        const cleaned = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
-        root.innerHTML = cleaned;
+        // Use DOMParser to safely parse and clean HTML
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, "text/html");
+        
+        // Remove all script tags to prevent freeze
+        const scripts = doc.querySelectorAll("script");
+        scripts.forEach(script => script.remove());
+        
+        // Extract the body content (or full document if needed)
+        const bodyContent = doc.body ? doc.body.innerHTML : doc.documentElement.innerHTML;
+        root.innerHTML = bodyContent;
 
         // Handle navigation using event delegation
         const handleClick = (e) => {
