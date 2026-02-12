@@ -1,44 +1,63 @@
-import { useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 
 export default function LandingPage() {
-  const iframeRef = useRef(null);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
-    const iframe = iframeRef.current;
+    const root = document.getElementById("landing-root");
+    if (!root) return;
 
-    iframe.onload = () => {
-      const doc = iframe.contentDocument;
+    // prevent stacking + freeze
+    root.innerHTML = "";
 
-      doc.addEventListener("click", (e) => {
-        const link = e.target.closest("a");
-        if (!link) return;
+    fetch("app.html")
+      .then(res => res.text())
+      .then(html => {
+        root.innerHTML = html;
 
-        const href = link.getAttribute("href");
+        // remove heavy inline scripts that cause freeze
+        root.querySelectorAll("script").forEach(s => s.remove());
 
-        if (href === "/login") {
-          e.preventDefault();
-          navigate("/login");
-        }
-
-        if (href === "/signup") {
-          e.preventDefault();
-          navigate("/signup");
-        }
+        // scroll reset
+        window.scrollTo(0, 0);
       });
-    };
-  }, [navigate]);
 
-  return (
-    <iframe
-      ref={iframeRef}
-      src="/landing/index.html"
-      style={{
-        width: "100%",
-        height: "100vh",
-        border: "none"
-      }}
-    />
-  );
+    const clickHandler = (e) => {
+      const link = e.target.closest("a");
+      if (!link) return;
+
+      const href = link.getAttribute("href") || "";
+
+      // LOGIN
+      if (href.includes("/login")) {
+        e.preventDefault();
+        navigate("/login");
+        return;
+      }
+
+      // SIGNUP
+      if (href.includes("/signup")) {
+        e.preventDefault();
+        navigate("/signup");
+        return;
+      }
+
+      // LOGO → HOME
+      if (href === "/" || link.innerText.toLowerCase().includes("luveloop")) {
+        e.preventDefault();
+        navigate("/");
+        return;
+      }
+    };
+
+    document.addEventListener("click", clickHandler);
+
+    return () => {
+      document.removeEventListener("click", clickHandler);
+    };
+  }, [location.pathname, navigate]);
+
+  return <div id="landing-root"></div>;
 }

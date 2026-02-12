@@ -117,6 +117,9 @@ function App() {
       <Routes>
         {/* Root Landing Page - load static landing inside React */}
         <Route path="/" element={<LandingPage />} />
+        <Route path="/stories" element={<LandingPage />} />
+        <Route path="/pricing" element={<LandingPage />} />
+        <Route path="/blogs" element={<LandingPage />} />
 
         {/* Public Routes */}
         <Route path="/login" element={<LoginPage />} />

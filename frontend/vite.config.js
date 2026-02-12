@@ -11,6 +11,22 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    host: true
-  }
+    host: true,
+    historyApiFallback: {
+      rewrites: [
+        { from: /^\/login/, to: "/react.html" },
+        { from: /^\/signup/, to: "/react.html" },
+        { from: /^\/dashboard/, to: "/react.html" },
+      ],
+    },
+  },
+  build: {
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, "index.html"),
+        app: path.resolve(__dirname, "react.html"),
+      },
+    },
+  },
 });
+
