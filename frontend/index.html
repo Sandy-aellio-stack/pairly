@@ -23977,29 +23977,6 @@
     })();
   </script>
 
-  <!-- Landing page stabilization script - prevents layout shifts after load -->
-  <script>
-    window.addEventListener("load", () => {
-      // Lock layout after first render
-      document.body.classList.add("loaded");
-
-      // Stop framer re-layout by nullifying animator
-      if (window.animator) {
-        window.animator = null;
-      }
-
-      // Remove preview/editor overlays
-      document.querySelectorAll('[data-framer-preview], [data-framer-editor]')
-        .forEach(el => el.remove());
-
-      // Force visibility of all appear-animated elements
-      document.querySelectorAll('[data-framer-appear-id]')
-        .forEach(el => {
-          el.style.opacity = "1";
-          el.style.transform = "none";
-        });
-    });
-  </script>
 </body>
 
 </html>
