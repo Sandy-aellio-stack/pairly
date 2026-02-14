@@ -1,0 +1,177 @@
+You are working inside a Vite + React project.
+
+Server:
+http://localhost:5173
+
+There is a very large merged landing file:
+
+frontend/index.html (~24,000 lines)
+
+This file is already written and must be REPAIRED.
+Do NOT rewrite from scratch.
+Do NOT simplify.
+Do NOT remove Framer code.
+
+The original Framer exports exist here:
+
+public/landing/index.html
+public/landing/stories/index.html
+public/landing/pricing/index.html
+public/landing/blogs/index.html
+
+Those files work perfectly on desktop and mobile.
+
+---------------------------------------------------
+
+CURRENT BUG
+
+Mobile layout renders correctly.
+
+Desktop layout is NOT visible.
+Sections appear blank on desktop.
+Footer missing.
+Alignment broken.
+
+If browser is resized → content sometimes appears.
+
+This means:
+Framer breakpoint runtime is NOT initializing correctly.
+
+Desktop layout container exists but is hidden.
+
+---------------------------------------------------
+
+GOAL
+
+Fix loading order and breakpoint initialization
+inside the existing frontend/index.html.
+
+Do NOT rebuild file.
+Repair it.
+
+---------------------------------------------------
+
+STEP 1 — RESTORE BREAKPOINT RUNTIME
+
+Find and ensure these exist in index.html:
+
+__framer__breakpoints
+__framer__appearAnimationsContent
+Framer runtime script
+animation runtime loader
+
+They MUST load BEFORE page content renders.
+
+If missing or moved, restore from:
+
+public/landing/index.html
+
+---------------------------------------------------
+
+STEP 2 — FIX SCRIPT LOAD ORDER
+
+Ensure scripts load in this order:
+
+1. Framer runtime
+2. Breakpoint script
+3. Animation loader
+4. Page markup
+
+If scripts are deferred or async incorrectly,
+desktop layout will stay hidden.
+
+Move required scripts to <head> if necessary.
+
+---------------------------------------------------
+
+STEP 3 — UNHIDE DESKTOP CONTAINER
+
+Search for containers hidden by:
+
+display:none
+visibility:hidden
+opacity:0
+
+Framer hides desktop layout until runtime executes.
+
+Ensure runtime properly removes hidden styles.
+
+If runtime never runs → desktop stays hidden.
+
+---------------------------------------------------
+
+STEP 4 — FIX DOUBLE RUNTIME
+
+Check if runtime script is duplicated.
+Multiple runtimes can break initialization.
+
+Ensure only ONE copy of:
+
+__framer__breakpoints
+animation loader
+
+---------------------------------------------------
+
+STEP 5 — REMOVE BLOCKING JS
+
+Remove or fix:
+
+window.onload wrappers
+setTimeout loaders
+async script wrappers
+
+These can delay Framer initialization.
+
+---------------------------------------------------
+
+STEP 6 — ENSURE CSS LOADS FIRST
+
+All Framer <style> blocks must be in <head>.
+
+If styles load after DOM → layout breaks.
+
+---------------------------------------------------
+
+STEP 7 — REACT MUST NOT BLOCK
+
+Ensure React root:
+
+<div id="root"></div>
+<script type="module" src="/src/main.jsx"></script>
+
+does NOT run before landing layout.
+
+Landing must initialize first.
+
+---------------------------------------------------
+
+STEP 8 — FIX GET STARTED BUTTON
+
+Replace all "Get Started" buttons with:
+
+<a href="/login">Get Started</a>
+
+---------------------------------------------------
+
+EXPECTED RESULT
+
+Open:
+http://localhost:5173
+
+Desktop:
+✔ full layout visible
+✔ sections aligned
+✔ footer visible
+✔ animations working
+
+Mobile:
+✔ unchanged and correct
+
+No blank desktop screen.
+No missing sections.
+No alignment issues.
+
+You are repairing the existing
+frontend/index.html.
+
+Return the corrected file.
