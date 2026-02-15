@@ -477,36 +477,7 @@ Safety and clarity come first.</p></article></li><li><article style="position:ab
     <!-- End of bodyEnd -->
 
 
-<script>
-(function () {
-  var meta = document.querySelector('meta[name="react-base"]');
-  var base = (meta && meta.content) || "http://localhost:5173";
-  base = base.replace(/\/+$/, "");
 
-  // Find the first existing "Get Start" / "Get Started" element and replace it
-  var candidates = Array.from(document.querySelectorAll('a, button'));
-  var match = candidates.find(function (el) {
-    var t = (el.innerText || el.textContent || '').trim().toLowerCase();
-    return t.indexOf('get start') !== -1 || t.indexOf('get started') !== -1;
-  });
-  if (match) {
-    match.outerHTML = '<a id="get-started" href="/login" role="button">Get Started</a>';
-  }
-
-  // Find an existing "Sign Up" / "Signup" element and replace it
-  var signupCandidate = candidates.find(function (el) {
-    var t = (el.innerText || el.textContent || '').trim().toLowerCase();
-    return t.indexOf('sign up') !== -1 || t.indexOf('signup') !== -1;
-  });
-  if (signupCandidate) {
-    signupCandidate.outerHTML = '<a id="sign-up" href="/signup" role="button">Sign Up</a>';
-  }
-
-  var btn = document.getElementById('get-started');
-  if (!btn) return;
-  // Leave hrefs as relative "/login" and "/signup" so React Router handles navigation in the SPA
-})();
-</script>
 
 <!-- postMessage bridge: notify parent window when landing links clicked -->
 <script>
@@ -521,8 +492,10 @@ Safety and clarity come first.</p></article></li><li><article style="position:ab
       const path = url.pathname;
       if(path === '/login' || path === '/signup'){
         e.preventDefault();
-        if(window.parent && window.parent !== window){
-          window.parent.postMessage({ type: 'landing-navigate', path }, '*');
+        if(window.top && window.top !== window){
+          window.top.location.href = href;
+        } else {
+          window.location.href = href;
         }
       }
     }catch(err){
@@ -550,7 +523,16 @@ document.addEventListener("mousemove", (e) => {
 </script>
 
 
-<div id="global-cursor-root"></div>
-<script type="module" src="/src/globalCursorRuntime.jsx"></script>
+
+
+<script>
+document.addEventListener("click", function(e){
+  const link = e.target.closest("a[href='/login']");
+  if(link){
+    e.preventDefault();
+    window.location.href = "/login";
+  }
+});
+</script>
 
 </body></html>

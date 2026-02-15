@@ -514,7 +514,16 @@ document.addEventListener("mousemove", (e) => {
 </script>
 
 
-<div id="global-cursor-root"></div>
-<script type="module" src="/src/globalCursorRuntime.jsx"></script>
+
+
+<script>
+document.addEventListener("click", function(e){
+  const link = e.target.closest("a[href='/login']");
+  if(link){
+    e.preventDefault();
+    window.location.href = "/login";
+  }
+});
+</script>
 
 </body></html>

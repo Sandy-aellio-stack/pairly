@@ -24,6 +24,7 @@ import HelpCenterPage from '@/pages/HelpCenterPage';
 import BlogPage from '@/pages/BlogPage';
 import CareersPage from '@/pages/CareersPage';
 import LandingPage from '@/pages/LandingPage';
+import LandingWrapper from './LandingWrapper';
 
 // Dashboard Pages
 import DashboardLayout from '@/pages/dashboard/DashboardLayout';
@@ -115,11 +116,11 @@ function App() {
       <Toaster position="top-center" richColors />
 
       <Routes>
-        {/* Root Landing Page - load static landing inside React */}
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/stories" element={<LandingPage />} />
-        <Route path="/pricing" element={<LandingPage />} />
-        <Route path="/blogs" element={<LandingPage />} />
+        {/* Root Landing Page - load static landing inside React iframe */}
+        <Route path="/" element={<LandingWrapper />} />
+        <Route path="/stories" element={<LandingWrapper />} />
+        <Route path="/pricing" element={<LandingWrapper />} />
+        <Route path="/blogs" element={<LandingWrapper />} />
 
         {/* Public Routes */}
         <Route path="/login" element={<LoginPage />} />
