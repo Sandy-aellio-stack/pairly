@@ -51,10 +51,6 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 5001
-externalPort = 3000
-
-[[ports]]
 localPort = 8000
 externalPort = 8000
 
@@ -69,3 +65,4 @@ publicDir = "frontend/build"
 UPSTASH_REDIS_REST_URL = "https://sought-lobster-27261.upstash.io"
 UPSTASH_REDIS_REST_TOKEN = "AWp9AAIncDIyYzBlODBjNGMwZTk0MDQwYjVmMDc3OWNjZGQ4N2E0MHAyMjcyNjE"
 REDIS_URL = "rediss://default:AWp9AAIncDIyYzBlODBjNGMwZTk0MDQwYjVmMDc3OWNjZGQ4N2E0MHAyMjcyNjE@sought-lobster-27261.upstash.io:6379"
+JWT_SECRET = "132b4a111cb26563d6aee157e94d4af7c9f4e22754c4d7e9219de665c316f990a07993a60b1f1e945bb11816d4d48371"
