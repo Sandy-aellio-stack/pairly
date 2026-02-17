@@ -25,6 +25,7 @@ import BlogPage from '@/pages/BlogPage';
 import CareersPage from '@/pages/CareersPage';
 import LandingPage from '@/pages/LandingPage';
 import LandingWrapper from './LandingWrapper';
+import CursorController from '@/components/CursorController';
 
 // Dashboard Pages
 import DashboardLayout from '@/pages/dashboard/DashboardLayout';
@@ -112,6 +113,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <CursorController />
       <ScrollToTop />
       <Toaster position="top-center" richColors />
 
