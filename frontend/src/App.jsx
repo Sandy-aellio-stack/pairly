@@ -118,9 +118,6 @@ function App() {
       <Routes>
         {/* Root Landing Page - load static landing inside React iframe */}
         <Route path="/" element={<LandingWrapper />} />
-        <Route path="/stories" element={<LandingWrapper />} />
-        <Route path="/pricing" element={<LandingWrapper />} />
-        <Route path="/blogs" element={<LandingWrapper />} />
 
         {/* Public Routes */}
         <Route path="/login" element={<LoginPage />} />
