@@ -3,14 +3,14 @@ import secrets
 from typing import Optional, Dict, Any
 from datetime import datetime, timezone, timedelta
 from backend.models.call_session_v2 import CallSessionV2, CallStatus
-from backend.services.credits_service_v2 import CreditsServiceV2
+from backend.services.tb_credit_service import CreditService
+from backend.models.tb_credit import TransactionReason
 from backend.services.ledger.ledger_service import LedgerService
 
 logger = logging.getLogger('service.calling_v2')
 
 class CallingServiceV2:
     def __init__(self):
-        self.credits_service = CreditsServiceV2()
         self.ledger_service = LedgerService()
         self.credits_per_minute = 10  # Default rate
         self.missed_call_timeout_seconds = 25
@@ -19,14 +19,18 @@ class CallingServiceV2:
         self,
         caller_id: str,
         receiver_id: str,
+        call_type: str = "voice",
         sdp_offer: Optional[str] = None
     ) -> CallSessionV2:
         """Initiate a new call"""
         try:
+            # Set rate based on call type
+            rate = 5 if call_type == "voice" else 10
+            
             # Check if caller has enough credits for at least 1 minute
-            caller_balance = await self.credits_service.get_balance(caller_id)
-            if caller_balance < self.credits_per_minute:
-                raise ValueError("Insufficient credits to initiate call")
+            caller_balance = await CreditService.get_balance(caller_id)
+            if caller_balance < rate:
+                raise ValueError(f"Insufficient credits to initiate {call_type} call")
             
             # Create call session
             call_session = CallSessionV2(
@@ -34,9 +38,10 @@ class CallingServiceV2:
                 caller_id=caller_id,
                 receiver_id=receiver_id,
                 status=CallStatus.INITIATED,
-                credits_per_minute=self.credits_per_minute,
+                credits_per_minute=rate,
                 sdp_offer=sdp_offer
             )
+            call_session.metadata["call_type"] = call_type
             await call_session.insert()
             
             logger.info(
@@ -142,31 +147,26 @@ class CallingServiceV2:
         if call_session.status == CallStatus.ENDED:
             return call_session  # Already ended
         
-        # Update status
+        # Update status (this also calculates duration and credits_spent)
         call_session.update_status(CallStatus.ENDED)
         call_session.disconnect_reason = reason or "User ended call"
         
-        # Process billing if call was connected
-        if call_session.status == CallStatus.ENDED and call_session.duration_seconds > 0:
+        # Process billing if call was connected and has duration
+        if call_session.duration_seconds > 0:
             try:
-                # Deduct credits from caller
-                transaction_id = await self.credits_service.deduct_credits(
+                # Determine transaction reason
+                call_type = call_session.metadata.get("call_type", "voice")
+                tx_reason = TransactionReason.VOICE_CALL if call_type == "voice" else TransactionReason.VIDEO_CALL
+                
+                # Deduct credits from caller ATOMICALLY
+                transaction = await CreditService.deduct_credits(
                     user_id=call_session.caller_id,
                     amount=call_session.credits_spent,
-                    description=f"Call to {call_session.receiver_id} ({call_session.duration_seconds}s)",
-                    transaction_type="call"
+                    reason=tx_reason,
+                    reference_id=call_id,
+                    description=f"{call_type.capitalize()} call to {call_session.receiver_id} ({call_session.duration_seconds}s)"
                 )
-                call_session.credits_transaction_id = transaction_id
-                
-                # Record in ledger
-                await self.ledger_service.record_entry(
-                    debit_account=f"user:{call_session.caller_id}",
-                    credit_account="revenue:calls",
-                    amount=call_session.credits_spent,
-                    description=f"Call billing: {call_id}",
-                    reference_type="call",
-                    reference_id=call_id
-                )
+                call_session.credits_transaction_id = str(transaction.id)
                 
                 logger.info(
                     f"Call billing processed",
@@ -179,19 +179,10 @@ class CallingServiceV2:
                 )
             except Exception as e:
                 logger.error(f"Failed to process call billing: {e}", extra={"call_id": call_id}, exc_info=True)
-                # Continue even if billing fails - log for manual reconciliation
+                # Note: If billing fails due to insufficient credits at the end, 
+                # we still end the call but log the failure.
         
         await call_session.save()
-        
-        logger.info(
-            f"Call ended",
-            extra={
-                "call_id": call_id,
-                "user_id": user_id,
-                "duration": call_session.duration_seconds
-            }
-        )
-        
         return call_session
     
     async def add_ice_candidate(

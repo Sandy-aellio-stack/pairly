@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 from backend.models.profile import Profile
 from beanie import PydanticObjectId
 from typing import Dict, Optional
+from fastapi import HTTPException
 import time
 import asyncio
 
@@ -13,13 +14,16 @@ async def set_online(user_id: str):
     async with presence_lock:
         online_users[user_id] = time.time()
     
+    from backend.utils.objectid_utils import validate_object_id
     try:
-        profile = await Profile.find_one(Profile.user_id == PydanticObjectId(user_id))
+        user_oid = validate_object_id(user_id)
+        profile = await Profile.find_one(Profile.user_id == user_oid)
         if profile:
             profile.is_online = True
             profile.last_seen = datetime.now(timezone.utc)
             await profile.save()
-    except:
+    except HTTPException:
+        # Ignore invalid IDs in background presence updates to prevent noise
         pass
 
 
@@ -28,13 +32,15 @@ async def set_offline(user_id: str):
         if user_id in online_users:
             del online_users[user_id]
     
+    from backend.utils.objectid_utils import validate_object_id
     try:
-        profile = await Profile.find_one(Profile.user_id == PydanticObjectId(user_id))
+        user_oid = validate_object_id(user_id)
+        profile = await Profile.find_one(Profile.user_id == user_oid)
         if profile:
             profile.is_online = False
             profile.last_seen = datetime.now(timezone.utc)
             await profile.save()
-    except:
+    except HTTPException:
         pass
 
 

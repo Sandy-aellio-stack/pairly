@@ -1,9 +1,8 @@
-from beanie import Document
+from beanie import Document, PydanticObjectId
 from pydantic import Field
 from typing import Optional
 from datetime import datetime, timezone
 from enum import Enum
-import uuid
 
 
 class ReportType(str, Enum):
@@ -21,11 +20,9 @@ class ReportStatus(str, Enum):
 
 class TBReport(Document):
     """Content moderation report"""
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    
     report_type: ReportType
-    reported_user_id: str
-    reported_by_user_id: str
+    reported_user_id: PydanticObjectId
+    reported_by_user_id: PydanticObjectId
     reason: str
     content: Optional[str] = None  # URL for photo, text for message/profile
     

@@ -1,21 +1,27 @@
-import bcrypt
 from jose import jwt
 import random
 import string
+import os
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Tuple
 from fastapi import HTTPException, status
 from pydantic import BaseModel, EmailStr, Field
 
 from backend.models.tb_user import TBUser, Address, Preferences, Gender, Intent, GeoLocation
+from backend.models.user import User as LegacyUser
 from backend.models.tb_otp import TBOTP
+from backend.models.tb_pending_session import PendingSession
 from backend.models.tb_credit import TBCreditTransaction, TransactionReason
 from backend.services.tb_otp_service import OTPService
-import os
+from passlib.context import CryptContext
+from bson.errors import InvalidId
+from bson import ObjectId
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 JWT_SECRET = os.getenv("JWT_SECRET", "truebond-secret-key")
 JWT_ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_HOURS = 24
+ACCESS_TOKEN_EXPIRE_HOURS = 168 # 7 days
 REFRESH_TOKEN_EXPIRE_DAYS = 30
 
 
@@ -42,17 +48,21 @@ class SignupRequest(BaseModel):
     state: str = Field(default="NA")
     country: str = Field(default="India")
     pincode: str = Field(default="000000")
+    device_id: str = Field(..., min_length=1)
 
 
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+    device_id: str = Field(..., min_length=1)
 
 
 class LoginWithOTPRequest(BaseModel):
     """Request schema for login with OTP"""
-    mobile_number: str = Field(..., min_length=10, max_length=15)
+    mobile_number: Optional[str] = Field(None, min_length=10, max_length=15)
+    email: Optional[EmailStr] = None
     otp_code: str = Field(..., min_length=6, max_length=6)
+    device_id: str = Field(..., min_length=1)
 
 
 class SignupWithOTPRequest(BaseModel):
@@ -69,6 +79,7 @@ class SignupWithOTPRequest(BaseModel):
     max_age: int = Field(le=100, default=50)
     max_distance_km: int = Field(ge=1, le=500, default=50)
     otp_code: str = Field(..., min_length=6, max_length=6)
+    device_id: str = Field(..., min_length=1)
 
 
 class VerifyMobileRequest(BaseModel):
@@ -87,11 +98,29 @@ class TokenResponse(BaseModel):
 class AuthService:
     @staticmethod
     def hash_password(password: str) -> str:
-        return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+        """Hash password using bcrypt."""
+        return pwd_context.hash(password)
 
     @staticmethod
     def verify_password(password: str, hashed: str) -> bool:
-        return bcrypt.checkpw(password.encode(), hashed.encode())
+        """
+        Verify password against hash using passlib CryptContext.
+        Handles both $2b$ and $2a$ prefixes automatically.
+        """
+        if not hashed:
+            return False
+        
+        # Strip potential whitespace from hash
+        clean_hash = hashed.strip()
+        
+        try:
+            # passlib verify handles both string and bytes, 
+            # and automatically detects the hash algorithm (bcrypt)
+            return pwd_context.verify(password, clean_hash)
+        except Exception as e:
+            import logging
+            logging.error(f"Password verification error: {e}")
+            return False
 
     @staticmethod
     def create_access_token(user_id: str) -> str:
@@ -129,13 +158,16 @@ class AuthService:
 
     @staticmethod
     async def signup(data: SignupRequest) -> Tuple[TBUser, TokenResponse]:
+        # Normalize email
+        email_normalized = data.email.lower().strip()
+        
         # Check age
         if data.age < 18:
             raise HTTPException(status_code=400, detail="Must be 18 or older to register")
 
         try:
             # Check existing email
-            existing_email = await TBUser.find_one({"email": data.email})
+            existing_email = await TBUser.find_one({"email": email_normalized})
             if existing_email:
                 raise HTTPException(status_code=400, detail="Email already registered")
 
@@ -151,7 +183,7 @@ class AuthService:
         # Create user
         user = TBUser(
             name=data.name,
-            email=data.email,
+            email=email_normalized,
             mobile_number=data.mobile_number,
             password_hash=AuthService.hash_password(data.password),
             age=data.age,
@@ -171,7 +203,8 @@ class AuthService:
                 pincode=data.pincode
             ),
             credits_balance=10,  # Signup bonus
-            is_verified=False
+            is_verified=False,
+            current_device_id=data.device_id
         )
         await user.insert()
 
@@ -196,24 +229,106 @@ class AuthService:
 
     @staticmethod
     async def login(data: LoginRequest) -> Tuple[TBUser, TokenResponse]:
+        # Normalize email to lowercase for case-insensitive login
+        email_normalized = data.email.lower().strip()
+        
         try:
-            user = await TBUser.find_one({"email": data.email})
+            # Case-insensitive search for email
+            import re
+            email_regex = re.compile(f"^{re.escape(email_normalized)}$", re.IGNORECASE)
+            user = await TBUser.find_one({"email": email_regex})
         except Exception as e:
             raise HTTPException(status_code=503, detail="Database not available. Please try again later.")
         
+        # If user not found in tb_users, check legacy users collection
         if not user:
-            raise HTTPException(status_code=401, detail="Invalid email or password")
+            try:
+                # Case-insensitive search for legacy email too
+                email_regex = re.compile(f"^{re.escape(email_normalized)}$", re.IGNORECASE)
+                legacy_user = await LegacyUser.find_one({"email": email_regex})
+                if legacy_user:
+                    # Legacy user found - verify password and migrate to new collection
+                    if pwd_context.verify(data.password, legacy_user.password_hash):
+                        # Create new TBUser from legacy data
+                        from backend.models.tb_user import Preferences, Gender, Intent
+                        new_user = TBUser(
+                            name=legacy_user.name,
+                            email=legacy_user.email.lower(),
+                            mobile_number="",
+                            password_hash=AuthService.hash_password(data.password),  # Rehash with new method
+                            age=25,
+                            gender=Gender.OTHER,
+                            intent=Intent.DATING,
+                            preferences=Preferences(),
+                            address=Address(),
+                            credits_balance=legacy_user.credits_balance or 10,
+                            is_active=not legacy_user.is_suspended
+                        )
+                        import logging
+                        logging.info(f"Migrating legacy user {legacy_user.email} to TBUser")
+                        await new_user.insert()
+                        user = new_user
+            except Exception as e:
+                import logging
+                logging.error(f"Error during legacy user migration: {e}")
+                pass  # Continue with original error
+        
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
 
         if not AuthService.verify_password(data.password, user.password_hash):
-            raise HTTPException(status_code=401, detail="Invalid email or password")
+            raise HTTPException(status_code=401, detail="Invalid credentials")
 
         if not user.is_active:
             raise HTTPException(status_code=403, detail="Account is deactivated")
 
-        # Update last login
-        user.last_login_at = datetime.now(timezone.utc)
-        user.is_online = True
-        await user.save()
+        # Session tracking logic
+        if user.current_device_id and user.current_device_id != data.device_id:
+            # Check if there's already a pending session for this user and new device
+            pending = await PendingSession.find_one({
+                "user_id": str(user.id),
+                "new_device_id": data.device_id,
+                "status": "pending"
+            })
+            if not pending:
+                pending = PendingSession(
+                    user_id=str(user.id),
+                    new_device_id=data.device_id,
+                    old_device_id=user.current_device_id,
+                    status="pending"
+                )
+                await pending.insert()
+            
+            # Notify the old device via Socket.IO
+            from backend.socket_server import emit_notification_to_user
+            await emit_notification_to_user(
+                str(user.id), 
+                "login_approval_request", 
+                {
+                    "pending_session_id": str(pending.id),
+                    "new_device_id": data.device_id,
+                    "message": "A new device is trying to log in to your account. Do you approve?"
+                }
+            )
+            
+            return {
+                "status": "WAITING_FOR_APPROVAL",
+                "pending_session_id": str(pending.id),
+                "message": "Login pending approval from your other device."
+            }
+
+        # Update last login and session
+        try:
+            user.last_login_at = datetime.now(timezone.utc)
+            user.last_seen = datetime.now(timezone.utc)
+            user.is_online = True
+            user.current_device_id = data.device_id
+            await user.save()
+        except Exception as e:
+            import logging
+            logging.error(f"Error updating user status on login: {e}")
+            # Continue anyway, don't block login for status update
+            pass
 
         tokens = TokenResponse(
             access_token=AuthService.create_access_token(str(user.id)),
@@ -222,6 +337,104 @@ class AuthService:
         )
 
         return user, tokens
+
+    @staticmethod
+    async def firebase_login(data: FirebaseLoginRequest):
+        """
+        Handle login/registration for users verified via Firebase Phone Auth.
+        """
+        phone = data.phone
+        
+        # 1. Check if user exists in MongoDB
+        user = await TBUser.find_one({"mobile_number": phone})
+        
+        # 2. If not, create a new user
+        if not user:
+            from backend.models.tb_user import Preferences, Gender, Intent, Address
+            user = TBUser(
+                name=data.name or "User",
+                email=data.email or f"user_{phone.replace('+', '')}@pairly.io",
+                mobile_number=phone,
+                password_hash="FIREBASE_AUTH",
+                age=25,
+                gender=Gender.OTHER,
+                intent=Intent.DATING,
+                preferences=Preferences(interested_in=Gender.OTHER),
+                address=Address(address_line="NA", city="NA", state="NA", country="India", pincode="000000"),
+                is_verified=True,
+                credits_balance=10,
+                current_device_id=data.device_id
+            )
+            await user.insert()
+            
+            # Log signup bonus
+            from backend.models.tb_credit import TBCreditTransaction, TransactionReason
+            transaction = TBCreditTransaction(
+                user_id=str(user.id),
+                amount=10,
+                reason=TransactionReason.SIGNUP_BONUS,
+                balance_after=10,
+                description="Welcome bonus via Phone Join"
+            )
+            await transaction.insert()
+
+        # 3. Session tracking logic (One device at a time)
+        if user.current_device_id and user.current_device_id != data.device_id:
+            from backend.models.tb_pending_session import PendingSession
+            pending = await PendingSession.find_one({
+                "user_id": str(user.id),
+                "new_device_id": data.device_id,
+                "status": "pending"
+            })
+            if not pending:
+                pending = PendingSession(
+                    user_id=str(user.id),
+                    new_device_id=data.device_id,
+                    old_device_id=user.current_device_id,
+                    status="pending"
+                )
+                await pending.insert()
+            
+            # Notify the old device
+            from backend.socket_server import emit_notification_to_user
+            await emit_notification_to_user(
+                str(user.id), 
+                "login_approval_request", 
+                {
+                    "pending_session_id": str(pending.id),
+                    "new_device_id": data.device_id,
+                    "message": "A new device is trying to log in to your account. Do you approve?"
+                }
+            )
+            
+            return {
+                "status": "WAITING_FOR_APPROVAL",
+                "pending_session_id": str(pending.id),
+                "message": "Login pending approval from your other device."
+            }
+
+        # 4. Generate JWT tokens
+        access_token = AuthService.create_access_token(str(user.id))
+        refresh_token = AuthService.create_refresh_token(str(user.id))
+        
+        # 5. Update last login
+        user.last_login_at = datetime.now(timezone.utc)
+        if data.device_id:
+            user.current_device_id = data.device_id
+        await user.save()
+
+        return {
+            "success": True,
+            "token": access_token,
+            "access_token": access_token, # Keep for compat
+            "refresh_token": refresh_token,
+            "user_id": str(user.id),
+            "user": {
+                "id": str(user.id),
+                "name": user.name,
+                "phone": user.mobile_number
+            }
+        }
 
     @staticmethod
     async def refresh_token(refresh_token: str) -> TokenResponse:
@@ -256,13 +469,18 @@ class AuthService:
                 raise HTTPException(status_code=401, detail="Token has been revoked")
 
         user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid token: missing subject")
 
         # Check if all user tokens are blacklisted
         is_user_blacklisted = await token_blacklist.is_user_blacklisted(user_id)
         if is_user_blacklisted:
             raise HTTPException(status_code=401, detail="Token has been revoked")
 
-        user = await TBUser.get(user_id)
+        from backend.utils.objectid_utils import validate_object_id
+        user_oid = validate_object_id(user_id)
+        user = await TBUser.get(user_oid)
+
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
         if not user.is_active:
@@ -284,6 +502,7 @@ class AuthService:
 
         logger = logging.getLogger("auth_service")
         user.is_online = False
+        user.last_seen = datetime.now(timezone.utc)
         await user.save()
 
         # Blacklist the access token if provided
@@ -315,13 +534,17 @@ class AuthService:
         # Verify OTP first
         await OTPService.verify_otp(data.mobile_number, data.otp_code, purpose="signup")
         
+        # Normalize email to lowercase
+        email_normalized = data.email.lower().strip()
+        
         # Check age
         if data.age < 18:
             raise HTTPException(status_code=400, detail="Must be 18 or older to register")
 
         try:
-            # Check existing email
-            existing_email = await TBUser.find_one({"email": data.email})
+            # Check existing email (case-insensitive)
+            email_regex = re.compile(f"^{re.escape(email_normalized)}$", re.IGNORECASE)
+            existing_email = await TBUser.find_one({"email": email_regex})
             if existing_email:
                 raise HTTPException(status_code=400, detail="Email already registered")
 
@@ -337,7 +560,7 @@ class AuthService:
         # Create user
         user = TBUser(
             name=data.name,
-            email=data.email,
+            email=email_normalized,
             mobile_number=data.mobile_number,
             password_hash=AuthService.hash_password(data.password),
             age=data.age,
@@ -357,7 +580,8 @@ class AuthService:
                 pincode="000000"
             ),
             credits_balance=10,  # Signup bonus
-            is_verified=True  # Verified via OTP
+            is_verified=True,  # Verified via OTP
+            current_device_id=data.device_id
         )
         await user.insert()
 
@@ -384,26 +608,73 @@ class AuthService:
     async def login_with_otp(data: LoginWithOTPRequest) -> Tuple[TBUser, TokenResponse]:
         """
         Login with OTP verification.
-        User provides mobile number and OTP code to authenticate.
+        User provides mobile number or email and OTP code to authenticate.
         """
-        # Verify OTP first
-        await OTPService.verify_otp(data.mobile_number, data.otp_code, purpose="login")
+        identifier = data.email.lower() if data.email else data.mobile_number
+        if not identifier:
+            raise HTTPException(status_code=400, detail="Missing identifier (email or mobile number)")
+
+        # Verify OTP
+        if data.email:
+            await OTPService.verify_email_otp(data.email.lower(), data.otp_code, purpose="login")
+        else:
+            await OTPService.verify_otp(data.mobile_number, data.otp_code, purpose="login")
         
-        # Find user by mobile number
+        # Find user
         try:
-            user = await TBUser.find_one({"mobile_number": data.mobile_number})
+            if data.email:
+                import re
+                email_regex = re.compile(f"^{re.escape(data.email.lower())}$", re.IGNORECASE)
+                user = await TBUser.find_one({"email": email_regex})
+            else:
+                user = await TBUser.find_one({"mobile_number": data.mobile_number})
         except Exception as e:
             raise HTTPException(status_code=503, detail="Database not available. Please try again later.")
         
         if not user:
-            raise HTTPException(status_code=401, detail="User not found with this mobile number")
+            id_type = "email" if data.email else "mobile number"
+            raise HTTPException(status_code=401, detail=f"User not found with this {id_type}")
 
         if not user.is_active:
             raise HTTPException(status_code=403, detail="Account is deactivated")
 
-        # Update last login
+        # Session tracking logic (same as password login)
+        if user.current_device_id and user.current_device_id != data.device_id:
+            pending = await PendingSession.find_one({
+                "user_id": str(user.id),
+                "new_device_id": data.device_id,
+                "status": "pending"
+            })
+            if not pending:
+                pending = PendingSession(
+                    user_id=str(user.id),
+                    new_device_id=data.device_id,
+                    old_device_id=user.current_device_id,
+                    status="pending"
+                )
+                await pending.insert()
+            
+            from backend.socket_server import emit_notification_to_user
+            await emit_notification_to_user(
+                str(user.id), 
+                "login_approval_request", 
+                {
+                    "pending_session_id": str(pending.id),
+                    "new_device_id": data.device_id,
+                    "message": "A new device is trying to log in to your account. Do you approve?"
+                }
+            )
+            
+            return {
+                "status": "WAITING_FOR_APPROVAL",
+                "pending_session_id": str(pending.id),
+                "message": "Login pending approval from your other device."
+            }
+
+        # Update last login and session
         user.last_login_at = datetime.now(timezone.utc)
         user.is_online = True
+        user.current_device_id = data.device_id
         await user.save()
 
         tokens = TokenResponse(
@@ -413,6 +684,70 @@ class AuthService:
         )
 
         return user, tokens
+
+    @staticmethod
+    async def approve_login(pending_session_id: str, user_id: str):
+        """Approve a pending login request from another device"""
+        from bson import ObjectId
+        pending = await PendingSession.get(ObjectId(pending_session_id))
+        if not pending or pending.user_id != user_id or pending.status != "pending":
+            raise HTTPException(status_code=404, detail="Pending session not found or already processed")
+        
+        pending.status = "approved"
+        await pending.save()
+        
+        # Logout the old device (current session user)
+        # Note: We'll update the user model when the new login is actually completed via polling
+        return {"message": "Login approved"}
+
+    @staticmethod
+    async def deny_login(pending_session_id: str, user_id: str):
+        """Deny a pending login request from another device"""
+        from bson import ObjectId
+        pending = await PendingSession.get(ObjectId(pending_session_id))
+        if not pending or pending.user_id != user_id or pending.status != "pending":
+            raise HTTPException(status_code=404, detail="Pending session not found or already processed")
+        
+        pending.status = "denied"
+        await pending.save()
+        return {"message": "Login denied"}
+
+    @staticmethod
+    async def check_login_status(pending_session_id: str):
+        """Check status of pending login and return tokens if approved"""
+        from bson import ObjectId
+        pending = await PendingSession.get(ObjectId(pending_session_id))
+        if not pending:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        if pending.status == "approved":
+            user = await TBUser.get(ObjectId(pending.user_id))
+            if not user:
+                raise HTTPException(status_code=404, detail="User not found")
+            
+            # Force logout old device by updating user's current_device_id
+            user.current_device_id = pending.new_device_id
+            user.last_login_at = datetime.now(timezone.utc)
+            await user.save()
+            
+            # Notify old device to logout
+            from backend.socket_server import emit_notification_to_user
+            await emit_notification_to_user(str(user.id), "force_logout", {"message": "Logged out because of login on another device"})
+
+            tokens = TokenResponse(
+                access_token=AuthService.create_access_token(str(user.id)),
+                refresh_token=AuthService.create_refresh_token(str(user.id)),
+                user_id=str(user.id)
+            )
+            return {"status": "approved", "tokens": tokens.model_dump(), "user": {
+                "id": str(user.id),
+                "name": user.name,
+                "email": user.email,
+                "role": user.role,
+                "credits": user.credits_balance
+            }}
+        
+        return {"status": pending.status}
 
     @staticmethod
     async def verify_mobile_number(mobile_number: str, otp_code: str) -> TBUser:

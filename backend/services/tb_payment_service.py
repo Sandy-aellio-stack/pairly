@@ -33,6 +33,16 @@ class PaymentService:
         return CREDIT_PACKAGES
 
     @staticmethod
+    async def detect_provider() -> dict:
+        """Detect available payment provider"""
+        # Default to stripe if key is present
+        provider = PaymentProvider.STRIPE if STRIPE_SECRET_KEY else "manual"
+        return {
+            "provider": provider,
+            "available_providers": [PaymentProvider.STRIPE] if STRIPE_SECRET_KEY else []
+        }
+
+    @staticmethod
     async def create_order(user_id: str, data: CreateOrderRequest) -> dict:
         """Create Stripe payment intent for credit purchase"""
         package = next((p for p in CREDIT_PACKAGES if p["id"] == data.package_id), None)

@@ -22,27 +22,41 @@ class CreditService:
         amount: int,
         reason: TransactionReason,
         reference_id: str = None,
-        description: str = None
+        description: str = None,
+        session = None
     ) -> TBCreditTransaction:
-        """Atomically deduct credits from user"""
+        """Atomically deduct credits from user. Supports optional session for transactions."""
         if amount <= 0:
             raise HTTPException(status_code=400, detail="Amount must be positive")
 
-        user = await TBUser.get(user_id)
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+        from backend.utils.objectid_utils import to_object_id
+        user_oid = to_object_id(user_id)
 
-        if user.credits_balance < amount:
-            raise HTTPException(
-                status_code=402,
-                detail=f"Insufficient credits. Balance: {user.credits_balance}, Required: {amount}"
-            )
+        # Atomic find-and-update
+        result = await TBUser.find_one_and_update(
+            {
+                "_id": user_oid,
+                "credits_balance": {"$gte": amount}
+            },
+            {
+                "$inc": {"credits_balance": -amount},
+                "$set": {"updated_at": datetime.now(timezone.utc)}
+            },
+            session=session,
+            return_document=True
+        )
 
-        # Atomic update
-        new_balance = user.credits_balance - amount
-        user.credits_balance = new_balance
-        user.updated_at = datetime.now(timezone.utc)
-        await user.save()
+        if not result:
+            user = await TBUser.get(user_id, session=session)
+            if not user:
+                raise HTTPException(status_code=404, detail="User not found")
+            else:
+                raise HTTPException(
+                    status_code=402,
+                    detail=f"Insufficient credits. Balance: {user.credits_balance}, Required: {amount}"
+                )
+
+        new_balance = result.credits_balance
 
         # Log transaction
         transaction = TBCreditTransaction(
@@ -53,7 +67,7 @@ class CreditService:
             reference_id=reference_id,
             description=description
         )
-        await transaction.insert()
+        await transaction.insert(session=session)
 
         return transaction
 
@@ -63,32 +77,40 @@ class CreditService:
         amount: int,
         reason: TransactionReason,
         reference_id: str = None,
-        description: str = None
+        description: str = None,
+        session = None
     ) -> TBCreditTransaction:
-        """Add credits to user"""
+        """Add credits to user. Supports optional session for transactions."""
         if amount <= 0:
             raise HTTPException(status_code=400, detail="Amount must be positive")
 
-        user = await TBUser.get(user_id)
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+        from backend.utils.objectid_utils import to_object_id
+        user_oid = to_object_id(user_id)
 
         # Atomic update
-        new_balance = user.credits_balance + amount
-        user.credits_balance = new_balance
-        user.updated_at = datetime.now(timezone.utc)
-        await user.save()
+        result = await TBUser.find_one_and_update(
+            {"_id": user_oid},
+            {
+                "$inc": {"credits_balance": amount},
+                "$set": {"updated_at": datetime.now(timezone.utc)}
+            },
+            session=session,
+            return_document=True
+        )
+
+        if not result:
+            raise HTTPException(status_code=404, detail="User not found")
 
         # Log transaction
         transaction = TBCreditTransaction(
             user_id=user_id,
             amount=amount,
             reason=reason,
-            balance_after=new_balance,
+            balance_after=result.credits_balance,
             reference_id=reference_id,
             description=description
         )
-        await transaction.insert()
+        await transaction.insert(session=session)
 
         return transaction
 

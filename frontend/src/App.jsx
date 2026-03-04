@@ -26,6 +26,7 @@ import CareersPage from '@/pages/CareersPage';
 import LandingPage from '@/pages/LandingPage';
 import LandingWrapper from './LandingWrapper';
 import CursorController from '@/components/CursorController';
+import LoginApprovalModal from '@/components/auth/LoginApprovalModal';
 
 // Dashboard Pages
 import DashboardLayout from '@/pages/dashboard/DashboardLayout';
@@ -62,7 +63,16 @@ function ScrollToTop() {
 
 // Protected Route wrapper
 function ProtectedRoute({ children }) {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, isLoading } = useAuthStore();
+
+  // Show nothing while checking auth state - prevents redirect loop
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
+        <div className="w-12 h-12 border-4 border-[#E9D5FF] border-t-[#0F172A] rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -73,7 +83,16 @@ function ProtectedRoute({ children }) {
 
 // Public Route wrapper (redirect to dashboard if logged in)
 function PublicRoute({ children }) {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, isLoading } = useAuthStore();
+
+  // Show nothing while checking auth state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
+        <div className="w-12 h-12 border-4 border-[#E9D5FF] border-t-[#0F172A] rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
@@ -116,14 +135,23 @@ function App() {
       <CursorController />
       <ScrollToTop />
       <Toaster position="top-center" richColors />
+      <LoginApprovalModal />
 
       <Routes>
         {/* Root Landing Page - load static landing inside React iframe */}
         <Route path="/" element={<LandingWrapper />} />
 
-        {/* Public Routes */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
+        {/* Public Routes - wrapped in PublicRoute to redirect authenticated users */}
+        <Route path="/login" element={
+          <PublicRoute>
+            <LoginPage />
+          </PublicRoute>
+        } />
+        <Route path="/signup" element={
+          <PublicRoute>
+            <SignupPage />
+          </PublicRoute>
+        } />
         <Route path="/verify-otp" element={<VerifyOTPPage />} />
         <Route path="/forgot-password" element={
           <PublicRoute>
@@ -154,6 +182,7 @@ function App() {
         }>
           <Route index element={<HomePage />} />
           <Route path="chat" element={<ChatPage />} />
+          <Route path="chat/:userId" element={<ChatPage />} />
           <Route path="nearby" element={<NearbyPage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="profile/:userId" element={<ProfileViewerPage />} />

@@ -84,12 +84,15 @@ async def get_current_user(creds: HTTPAuthorizationCredentials = Depends(securit
 
 @router.post("/signup", response_model=TokenResponse)
 async def signup(req: SignupRequest, request: Request):
-    existing = await User.find_one(User.email == req.email)
+    # Normalize email to lowercase
+    email_normalized = req.email.lower().strip()
+    
+    existing = await User.find_one(User.email == email_normalized)
     if existing:
         raise HTTPException(400, "Email already exists")
 
     user = User(
-        email=req.email,
+        email=email_normalized,
         password_hash=pwd_context.hash(req.password),
         name=req.name,
         role=req.role,
@@ -156,9 +159,12 @@ async def signup(req: SignupRequest, request: Request):
 async def login(req: LoginRequest, request: Request):
     client_ip = request.client.host if request.client else "unknown"
     
-    await check_login_lock(client_ip, req.email)
+    # Normalize email to lowercase for case-insensitive login
+    email_normalized = req.email.lower().strip()
     
-    user = await User.find_one(User.email == req.email)
+    await check_login_lock(client_ip, email_normalized)
+    
+    user = await User.find_one(User.email == email_normalized)
     
     if not user or not pwd_context.verify(req.password, user.password_hash):
         await register_failed_attempt(client_ip, user.id if user else None)
@@ -166,7 +172,7 @@ async def login(req: LoginRequest, request: Request):
             actor_user_id=user.id if user else None,
             actor_ip=client_ip,
             action="login_failed",
-            details={"email": req.email},
+            details={"email": email_normalized},
             severity="warning"
         )
         raise HTTPException(401, "Invalid credentials")

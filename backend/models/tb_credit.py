@@ -11,6 +11,8 @@ class TransactionReason(str, Enum):
     CREDIT_PURCHASE = "credit_purchase"
     REFUND = "refund"
     ADMIN_ADJUSTMENT = "admin_adjustment"
+    VOICE_CALL = "voice_call"
+    VIDEO_CALL = "video_call"
 
 
 class TBCreditTransaction(Document):

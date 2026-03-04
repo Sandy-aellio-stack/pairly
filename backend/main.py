@@ -2,6 +2,13 @@
 Luveloop - Dating App Backend
 Production-ready FastAPI backend with MongoDB
 """
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load .env file from backend directory
+env_path = Path(__file__).parent / ".env"
+load_dotenv(dotenv_path=env_path)
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -20,6 +27,7 @@ from backend.middleware.security import (
 )
 
 from backend.routes.tb_auth import router as auth_router
+# Removed legacy_auth_router
 from backend.routes.tb_users import router as users_router
 from backend.routes.tb_location import router as location_router
 from backend.routes.tb_messages import router as messages_router
@@ -28,6 +36,7 @@ from backend.routes.tb_payments import router as payments_router
 
 from backend.routes.tb_notifications import router as notifications_router
 from backend.routes.tb_search import router as search_router
+from backend.routes.calling_v2 import router as calling_v2_router
 
 from backend.routes.tb_admin_auth import router as admin_auth_router
 from backend.routes.tb_admin_users import router as admin_users_router
@@ -127,8 +136,10 @@ app.include_router(credits_router)
 app.include_router(payments_router)
 app.include_router(notifications_router)
 app.include_router(search_router)
+app.include_router(calling_v2_router)
 app.include_router(webhooks_router)
 
+# Standardize Admin Routers
 app.include_router(admin_auth_router)
 app.include_router(admin_users_router)
 app.include_router(admin_analytics_router)

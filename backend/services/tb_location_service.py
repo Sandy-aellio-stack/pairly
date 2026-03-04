@@ -24,13 +24,12 @@ import hashlib
 
 from backend.models.tb_user import TBUser, GeoLocation
 from backend.core.redis_client import redis_client
-from motor.motor_asyncio import AsyncIOMotorClient
-import certifi
-import os
+from backend.models.tb_user import TBUser, GeoLocation
+from backend.core.redis_client import redis_client
 
 logger = logging.getLogger("location")
 
-MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017/truebond")
+# Privacy configuration
 
 # Privacy configuration
 LOCATION_PRECISION_DECIMALS = 3  # ~111m accuracy (0.001 degrees)
@@ -205,6 +204,12 @@ class LocationService:
         2. Rate limit updates to prevent tracking
         3. Mark location with timestamp for TTL
         """
+        print("=" * 60)
+        print("DEBUG: update_location called")
+        print(f"  user_id: {user_id}")
+        print(f"  lat: {lat}, lng: {lng}")
+        print("=" * 60)
+        
         user = await TBUser.get(user_id)
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
@@ -221,12 +226,15 @@ class LocationService:
         
         # Reduce precision for privacy (stores ~100m accuracy)
         safe_lat, safe_lng = PrivacyLocation.reduce_precision(lat, lng)
+        print(f"DEBUG: Reduced precision - safe_lat: {safe_lat}, safe_lng: {safe_lng}")
         
         # Update user location
         user.location = GeoLocation(coordinates=[safe_lng, safe_lat])
         user.location_updated_at = datetime.now(timezone.utc)
         user.is_online = True
         await user.save()
+        
+        print(f"DEBUG: Location saved - location={user.location}, updated_at={user.location_updated_at}")
         
         # Set update throttle
         await LocationService.set_update_throttle(user_id)
@@ -283,18 +291,7 @@ class LocationService:
     ) -> List[dict]:
         """
         Get nearby users with privacy-safe distance display.
-        
-        Privacy measures:
-        1. Query uses reduced-precision coordinates
-        2. Distances are bucketed (not exact)
-        3. No raw coordinates returned
-        4. Only public profile fields included
-        5. Stale locations excluded
-        
-        Geo Query:
-        - Uses MongoDB $geoNear with 2dsphere index
-        - Filters by user preferences (gender, age, distance)
-        - Sorts by distance, then activity
+        Uses the global Beanie/MongoDB connection.
         """
         current_user = await TBUser.get(user_id)
         if not current_user:
@@ -305,91 +302,32 @@ class LocationService:
         
         # Reduce precision for query
         query_lat, query_lng = PrivacyLocation.reduce_precision(lat, lng)
+        max_distance_meters = radius_km * 1000
         
-        # Respect user's max distance preference
-        max_distance = min(radius_km, current_user.preferences.max_distance_km)
-        max_distance_meters = max_distance * 1000
-        
-        # Calculate location freshness cutoff
-        freshness_cutoff = datetime.now(timezone.utc) - timedelta(seconds=LOCATION_TTL_SECONDS)
-        
-        # Connect to MongoDB for aggregation
-        client_kwargs = {}
-        if "mongodb+srv" in MONGO_URL or "ssl=true" in MONGO_URL.lower():
-            client_kwargs["tlsCAFile"] = certifi.where()
-        
-        client = AsyncIOMotorClient(MONGO_URL, **client_kwargs)
-        db_name = get_db_name(MONGO_URL)
-        db = client[db_name]
-        collection = db.tb_users
+        # Build geo query
+        geo_query = {
+            "is_active": True,
+            "location": {"$exists": True, "$ne": None},
+            "settings.safety.hide_from_search": {"$ne": True}
+        }
         
         pipeline = [
-            # Stage 1: Geo query with distance calculation
             {
                 "$geoNear": {
                     "near": {"type": "Point", "coordinates": [query_lng, query_lat]},
                     "distanceField": "distance_meters",
                     "maxDistance": max_distance_meters,
                     "spherical": True,
-                    "query": {
-                        "is_active": True,
-                        "location": {"$exists": True, "$ne": None},
-                        # Only include users with fresh locations
-                        "location_updated_at": {"$gte": freshness_cutoff},
-                        # Respect privacy: exclude users who hide from search
-                        "settings.safety.hide_from_search": {"$ne": True}
-                    }
+                    "query": geo_query
                 }
             },
-            # Stage 2: Exclude self
             {"$match": {"_id": {"$ne": current_user.id}}},
-            # Stage 3: Filter by preferences
-            {
-                "$match": {
-                    "gender": current_user.preferences.interested_in,
-                    "age": {
-                        "$gte": current_user.preferences.min_age,
-                        "$lte": current_user.preferences.max_age
-                    }
-                }
-            },
-            # Stage 4: Check mutual visibility preferences
-            # Only show users who want to be visible
-            {
-                "$match": {
-                    "$or": [
-                        {"settings.privacy.show_distance": True},
-                        {"settings.privacy.show_distance": {"$exists": False}}
-                    ]
-                }
-            },
-            # Stage 5: Sort by distance, then activity
-            {"$sort": {"distance_meters": 1, "location_updated_at": -1}},
-            # Stage 6: Limit results
-            {"$limit": limit},
-            # Stage 7: Project ONLY public fields
-            # NEVER include: address, email, mobile, exact location
-            {
-                "$project": {
-                    "_id": 1,
-                    "name": 1,
-                    "age": 1,
-                    "gender": 1,
-                    "bio": 1,
-                    "profile_pictures": 1,
-                    "preferences": 1,
-                    "intent": 1,
-                    "is_online": 1,
-                    "distance_meters": 1,
-                    "location_updated_at": 1,
-                    "settings.privacy": 1
-                }
-            }
+            {"$limit": limit}
         ]
         
         try:
-            cursor = collection.aggregate(pipeline)
-            users = await cursor.to_list(length=limit)
+            # Use Beanie's aggregate
+            users = await TBUser.aggregate(pipeline).to_list()
             
             result = []
             for u in users:
@@ -398,19 +336,19 @@ class LocationService:
                 distance_km_bucketed = PrivacyLocation.bucket_distance(distance_km_raw)
                 distance_display = PrivacyLocation.format_distance_display(distance_km_raw)
                 
-                # Check if user allows showing distance
+                # Get privacy settings
                 privacy = u.get("settings", {}).get("privacy", {})
                 show_distance = privacy.get("show_distance", True)
-                
-                # Determine online status display
                 show_online = privacy.get("show_online", True)
                 is_online = u.get("is_online", False) if show_online else None
                 
-                # Calculate last active (respecting privacy)
                 location_updated = u.get("location_updated_at")
                 last_active = None
                 if privacy.get("show_last_seen", True) and location_updated:
                     last_active = LocationService._format_last_active(location_updated)
+                
+                # DEBUG: Log individual user IDs being returned
+                print(f"DEBUG: Nearby returning user ID: {str(u['_id'])} for name: {u.get('name')}")
                 
                 result.append({
                     "id": str(u["_id"]),
@@ -418,86 +356,142 @@ class LocationService:
                     "age": u.get("age"),
                     "gender": u.get("gender"),
                     "bio": u.get("bio"),
+                    "profile_picture": u.get("profile_pictures", [None])[0] if u.get("profile_pictures") else None,
                     "profile_pictures": u.get("profile_pictures", []),
                     "intent": u.get("intent"),
-                    # Privacy-safe distance (bucketed, not exact)
                     "distance_km": distance_km_bucketed if show_distance else None,
                     "distance_display": distance_display if show_distance else "Nearby",
-                    # Privacy-respecting presence
                     "is_online": is_online,
+                    "status": "suspended" if u.get("is_suspended") else "active",
                     "last_active": last_active,
-                    # Location freshness indicator (not exact time)
                     "location_fresh": PrivacyLocation.is_location_fresh(location_updated)
                 })
             
-            logger.debug(f"Found {len(result)} nearby users for user {user_id}")
             return result
             
         except Exception as e:
-            logger.error(f"Nearby users query error: {e}")
+            logger.error(f"Nearby users query error: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Error fetching nearby users")
-        finally:
-            client.close()
-    
+
     @staticmethod
-    def _format_last_active(dt: datetime) -> str:
-        """Format last active time with privacy (no exact times)"""
-        if not dt:
-            return None
+    async def get_nearby_users_with_location(
+        user_id: str,
+        lat: float,
+        lng: float,
+        radius_km: int = 50,
+        limit: int = 50
+    ) -> List[dict]:
+        """
+        Get nearby users WITH jittered location for map display.
+        Uses the global Beanie/MongoDB connection.
+        """
+        import random
         
-        now = datetime.now(timezone.utc)
-        diff = now - dt
+        current_user = await TBUser.get(user_id)
+        if not current_user:
+            raise HTTPException(status_code=404, detail="User not found")
         
-        if diff.total_seconds() < 300:  # 5 minutes
-            return "Active now"
-        elif diff.total_seconds() < 3600:  # 1 hour
-            return "Active recently"
-        elif diff.total_seconds() < 86400:  # 24 hours
-            hours = int(diff.total_seconds() / 3600)
-            return f"Active {hours}h ago"
-        else:
-            days = int(diff.total_seconds() / 86400)
-            if days == 1:
-                return "Active yesterday"
-            return f"Active {days}d ago"
-    
-    @staticmethod
-    def calculate_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
-        """Calculate distance between two points in km using Haversine formula"""
-        R = 6371  # Earth's radius in km
+        # Reduce precision for query
+        query_lat, query_lng = PrivacyLocation.reduce_precision(lat, lng)
+        max_distance_meters = radius_km * 1000
         
-        lat1_rad = math.radians(lat1)
-        lat2_rad = math.radians(lat2)
-        delta_lat = math.radians(lat2 - lat1)
-        delta_lng = math.radians(lng2 - lng1)
+        geo_query = {
+            "is_active": True,
+            "location": {"$exists": True, "$ne": None},
+            "settings.safety.hide_from_search": {"$ne": True}
+        }
         
-        a = math.sin(delta_lat/2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(delta_lng/2)**2
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+        pipeline = [
+            {
+                "$geoNear": {
+                    "near": {"type": "Point", "coordinates": [query_lng, query_lat]},
+                    "distanceField": "distance_meters",
+                    "maxDistance": max_distance_meters,
+                    "spherical": True,
+                    "query": geo_query
+                }
+            },
+            {"$match": {"_id": {"$ne": current_user.id}}},
+            {"$sort": {"distance_meters": 1}},
+            {"$limit": limit}
+        ]
         
-        return R * c
+        try:
+            users = await TBUser.aggregate(pipeline).to_list()
+            
+            result = []
+            for u in users:
+                distance_km_raw = u.get("distance_meters", 0) / 1000
+                distance_km_bucketed = PrivacyLocation.bucket_distance(distance_km_raw)
+                distance_display = PrivacyLocation.format_distance_display(distance_km_raw)
+                
+                privacy = u.get("settings", {}).get("privacy", {})
+                show_distance = privacy.get("show_distance", True)
+                show_online = privacy.get("show_online", True)
+                is_online = u.get("is_online", False) if show_online else None
+                
+                # Jitter location for privacy
+                loc = u.get("location", {})
+                coords = loc.get("coordinates", [lng, lat])
+                u_lng, u_lat = coords
+                
+                # Add random jitter (~50-100m)
+                jitter_lat = u_lat + (random.random() - 0.5) * 0.001
+                jitter_lng = u_lng + (random.random() - 0.5) * 0.001
+                
+                # DEBUG: Log individual user IDs being returned for map
+                print(f"DEBUG: Map Nearby returning user ID: {str(u['_id'])} for name: {u.get('name')}")
+                
+                result.append({
+                    "id": str(u["_id"]),
+                    "name": u.get("name"),
+                    "age": u.get("age"),
+                    "gender": u.get("gender"),
+                    "bio": u.get("bio"),
+                    "profile_picture": u.get("profile_pictures", [None])[0] if u.get("profile_pictures") else None,
+                    "profile_pictures": u.get("profile_pictures", []),
+                    "intent": u.get("intent"),
+                    "lat": jitter_lat,
+                    "lng": jitter_lng,
+                    "distance_km": distance_km_bucketed if show_distance else None,
+                    "distance_display": distance_display if show_distance else "Nearby",
+                    "is_online": is_online,
+                    "status": "suspended" if u.get("is_suspended") else "active",
+                    "last_seen": u.get("last_seen").isoformat() if u.get("last_seen") else None
+                })
+            
+            return result
+        except Exception as e:
+            logger.error(f"Nearby map query error: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Error fetching map users")
     
     @staticmethod
     async def mark_location_stale(user_id: str):
         """
-        Mark user's location as stale.
-        Called when user goes offline or logs out.
+        Mark user location as stale (e.g., on logout or disconnect).
+        Clears location_updated_at and removes Redis freshness marker.
         """
-        if redis_client.is_connected():
-            freshness_key = f"location:fresh:{user_id}"
-            try:
-                await redis_client.redis.delete(freshness_key)
-            except Exception as e:
-                logger.warning(f"Failed to mark location stale: {e}")
-        
-        # Also update is_online in database
         try:
-            user = await TBUser.get(user_id)
-            if user:
-                user.is_online = False
-                await user.save()
+            from bson import ObjectId
+            user_oid = ObjectId(user_id)
+            
+            # 1. Update DB
+            await TBUser.find_one(TBUser.id == user_oid).update({
+                "$set": {
+                    "location_updated_at": None,
+                    "is_online": False
+                }
+            })
+            
+            # 2. Clear Redis
+            if redis_client.is_connected():
+                freshness_key = f"location:fresh:{user_id}"
+                await redis_client.redis.delete(freshness_key)
+                
+            logger.info(f"Location marked stale for user {user_id}")
         except Exception as e:
-            logger.warning(f"Failed to update online status: {e}")
-    
+            logger.error(f"Failed to mark location stale for user {user_id}: {e}")
+
     @staticmethod
     async def get_location_stats() -> dict:
         """Get location system stats (for admin/monitoring)"""

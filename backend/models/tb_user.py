@@ -90,15 +90,22 @@ class TBUser(Document):
     
     # System fields
     credits_balance: int = Field(default=10)  # 10 free credits on signup
+    role: str = Field(default="user")  # user | admin
     is_active: bool = True
+    is_suspended: bool = Field(default=False)
     is_verified: bool = False
     is_online: bool = False
+    last_seen: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    last_seen_at: Optional[datetime] = None  # Aligned with presence logic
     
     # User settings (notifications, privacy, safety)
     settings: UserSettings = Field(default_factory=UserSettings)
     
     # FCM Push Notification tokens (multiple devices per user)
     fcm_tokens: List[str] = Field(default_factory=list)
+    
+    # Session tracking
+    current_device_id: Optional[str] = None
     
     # Timestamps
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -122,26 +129,32 @@ class TBUser(Document):
             [("location", "2dsphere")],
             # Status and filtering indexes
             [("is_active", 1)],
+            [("is_suspended", 1)],
+            [("role", 1)],
             [("created_at", -1)],
             # Search/discovery indexes
             [("gender", 1), ("age", 1)],
             [("is_online", 1), ("location_updated_at", -1)],
+            [("last_seen", -1)],
         ]
 
 
 # Response models - exclude sensitive data
 class UserPublicProfile(BaseModel):
     """Public profile - NO address, email, mobile"""
-    id: str
+    id: str  # Always string
     name: str
     age: int
     gender: Gender
     bio: Optional[str]
-    profile_pictures: List[str]
+    profile_picture: Optional[str] = None  # Flattened
+    profile_pictures: List[str] = [] # Keeping for backward compat if any, but profile_picture is preferred
     preferences: Preferences
     intent: Intent
     is_online: bool
+    last_seen: Optional[datetime] = None
     distance_km: Optional[float] = None
+    location: Optional[dict] = None
 
     class Config:
         from_attributes = True
@@ -154,15 +167,20 @@ class UserOwnProfile(BaseModel):
     age: int
     gender: Gender
     bio: Optional[str]
+    profile_picture: Optional[str] = None # Flattened
     profile_pictures: List[str]
     preferences: Preferences
     intent: Intent
     email: str
     mobile_number: str
-    credits_balance: int
+    credits: int = Field(alias="credits_balance")  # Standardized naming
+    role: str
     is_verified: bool
     is_online: bool
+    is_suspended: bool
     created_at: datetime
+    last_seen: datetime
 
     class Config:
         from_attributes = True
+        populate_by_name = True

@@ -18,7 +18,7 @@ Fallback Behavior:
 - Client polls /api/messages/{user_id} for message history
 - Unread counts available via /api/messages/conversations
 """
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException, Body
 from backend.models.tb_user import TBUser
 from backend.routes.tb_auth import get_current_user
 from backend.services.tb_message_service import MessageService, SendMessageRequest
@@ -26,8 +26,21 @@ from backend.socket_server import sio, emit_message_to_user, emit_notification_t
 from backend.core.redis_pubsub import redis_pubsub
 import logging
 
-router = APIRouter(prefix="/api/messages", tags=["Luveloop Messages"])
+router = APIRouter(prefix="/api/messages", tags=["Messages"])
 logger = logging.getLogger("messages")
+
+
+
+@router.post("/start-conversation")
+async def start_conversation(
+    body: dict = Body(...), 
+    user: TBUser = Depends(get_current_user)
+):
+    """Initialize a conversation with another user"""
+    receiver_id = body.get("receiver_id")
+    if not receiver_id:
+        raise HTTPException(status_code=400, detail="receiver_id is required")
+    return await MessageService.start_conversation(str(user.id), receiver_id)
 
 
 @router.post("/send")
@@ -186,8 +199,10 @@ async def get_unread_count(user: TBUser = Depends(get_current_user)):
     from backend.models.tb_message import TBConversation
     
     total_unread = 0
+    # FIX: Query with PydanticObjectId, not string
+    from beanie import PydanticObjectId
     conversations = await TBConversation.find(
-        {"participants": str(user.id)}
+        {"participants": PydanticObjectId(user.id)}
     ).to_list()
     
     for conv in conversations:

@@ -2,12 +2,16 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from typing import Optional
 from datetime import datetime, timezone
 from beanie import PydanticObjectId
+import logging
 
-from backend.models.tb_report import TBReport, ReportStatus
+from backend.models.tb_report import TBReport, ReportStatus, ReportType
 from backend.models.tb_user import TBUser
-from backend.routes.tb_admin_auth import get_current_admin
+from backend.models.tb_message import TBMessage
+from backend.routes.tb_admin_auth import get_current_admin, check_super_admin
+from backend.utils.objectid_utils import validate_object_id
 
 router = APIRouter(prefix="/api/admin/moderation", tags=["Luveloop Admin Moderation"])
+logger = logging.getLogger("moderation")
 
 
 @router.get("/reports")
@@ -35,19 +39,19 @@ async def list_reports(
     # Enrich with user names
     result = []
     for report in reports:
-        reported_user = await TBUser.find_one({"_id": PydanticObjectId(report.reported_user_id)}) if report.reported_user_id else None
-        reporter = await TBUser.find_one({"_id": PydanticObjectId(report.reported_by_user_id)}) if report.reported_by_user_id else None
+        reported_user = await TBUser.find_one({"_id": report.reported_user_id})
+        reporter = await TBUser.find_one({"_id": report.reported_by_user_id})
         
         result.append({
-            "id": report.id,
+            "id": str(report.id),
             "type": report.report_type,
             "reportedUser": reported_user.name if reported_user else "Unknown",
-            "reportedUserId": report.reported_user_id,
+            "reportedUserId": str(report.reported_user_id),
             "reportedBy": reporter.name if reporter else "Unknown",
             "reason": report.reason,
             "content": report.content,
             "status": report.status,
-            "timestamp": report.created_at.strftime("%Y-%m-%d %H:%M")
+            "timestamp": report.created_at.isoformat()
         })
     
     return {
@@ -66,15 +70,15 @@ async def get_moderation_stats(
     pending = await TBReport.find(TBReport.status == ReportStatus.PENDING).count()
     photo_reports = await TBReport.find(
         TBReport.status == ReportStatus.PENDING,
-        TBReport.report_type == "photo"
+        TBReport.report_type == ReportType.PHOTO
     ).count()
     profile_reports = await TBReport.find(
         TBReport.status == ReportStatus.PENDING,
-        TBReport.report_type == "profile"
+        TBReport.report_type == ReportType.PROFILE
     ).count()
     message_reports = await TBReport.find(
         TBReport.status == ReportStatus.PENDING,
-        TBReport.report_type == "message"
+        TBReport.report_type == ReportType.MESSAGE
     ).count()
     
     return {
@@ -91,7 +95,8 @@ async def approve_content(
     admin: dict = Depends(get_current_admin)
 ):
     """Approve content - no action needed"""
-    report = await TBReport.find_one(TBReport.id == report_id)
+    report_oid = validate_object_id(report_id, "Report")
+    report = await TBReport.get(report_oid)
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
     
@@ -109,39 +114,66 @@ async def remove_content(
     admin: dict = Depends(get_current_admin)
 ):
     """Remove reported content"""
-    report = await TBReport.find_one(TBReport.id == report_id)
+    report_oid = validate_object_id(report_id, "Report")
+    report = await TBReport.get(report_oid)
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
+
+    # Actually remove the content based on type
+    if report.report_type == ReportType.PHOTO:
+        # Remove the specific photo from user's profile
+        user = await TBUser.get(report.reported_user_id)
+        if user and report.content in user.profile_pictures:
+            user.profile_pictures.remove(report.content)
+            user.updated_at = datetime.now(timezone.utc)
+            await user.save()
+            logger.info(f"Admin {admin['email']} removed photo from user {user.id}")
+            
+    elif report.report_type == ReportType.PROFILE:
+        # Suspend the user for profile violations
+        user = await TBUser.get(report.reported_user_id)
+        if user:
+            user.is_active = False
+            user.updated_at = datetime.now(timezone.utc)
+            await user.save()
+            logger.info(f"Admin {admin['email']} suspended user {user.id} due to profile report")
+            
+    elif report.report_type == ReportType.MESSAGE:
+        # Delete the specific reported message
+        # Since we only have content, we find messages with this content between these users
+        await TBMessage.find({
+            "sender_id": report.reported_user_id,
+            "receiver_id": report.reported_by_user_id,
+            "content": report.content
+        }).delete()
+        logger.info(f"Admin {admin['email']} removed reported message from {report.reported_user_id}")
     
     report.status = ReportStatus.REMOVED
     report.reviewed_by = admin["email"]
     report.reviewed_at = datetime.now(timezone.utc)
     await report.save()
     
-    # TODO: Actually remove the content (photo/message)
-    
-    return {"success": True, "message": "Content removed and user warned"}
+    return {"success": True, "message": "Content removed and violation recorded"}
 
 
 @router.post("/reports/{report_id}/ban")
 async def ban_user_from_report(
     report_id: str,
-    admin: dict = Depends(get_current_admin)
+    admin: dict = Depends(check_super_admin)
 ):
     """Ban user based on report"""
-    report = await TBReport.find_one(TBReport.id == report_id)
+    report_oid = validate_object_id(report_id, "Report")
+    report = await TBReport.get(report_oid)
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
-    
-    # Ban the user
-    try:
-        user = await TBUser.get(PydanticObjectId(report.reported_user_id))
-        if user:
-            user.is_active = False
-            await user.save()
-    except:
-        pass
-    
+        
+    user = await TBUser.get(report.reported_user_id)
+    if user:
+        user.is_active = False
+        user.updated_at = datetime.now(timezone.utc)
+        await user.save()
+        logger.info(f"Admin {admin['email']} BANNED user {user.id} from report {report.id}")
+        
     report.status = ReportStatus.BANNED
     report.reviewed_by = admin["email"]
     report.reviewed_at = datetime.now(timezone.utc)

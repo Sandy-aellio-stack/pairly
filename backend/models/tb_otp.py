@@ -42,7 +42,13 @@ class TBOTP(Document):
 
     def is_expired(self) -> bool:
         """Check if OTP has expired"""
-        return datetime.now(timezone.utc) > self.expires_at
+        # Ensure both datetimes are timezone-aware
+        now = datetime.now(timezone.utc)
+        expires = self.expires_at
+        if expires.tzinfo is None:
+            # If expires_at is naive, assume UTC
+            expires = expires.replace(tzinfo=timezone.utc)
+        return now > expires
 
     def mark_used(self):
         """Mark OTP as used (one-time use only)"""

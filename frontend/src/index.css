@@ -8,6 +8,7 @@
   /* Pairly Premium Palette */
   --bg-main: #0A0A0B;
   --bg-surface: #121214;
+  --bg-secondary: #1E1E24;  /* Added for inputs */
   --bg-card: rgba(255, 255, 255, 0.03);
 
   --primary: #7C3AED;
@@ -16,15 +17,22 @@
   --secondary-glow: rgba(236, 72, 153, 0.4);
 
   --text-main: #F4F4F5;
+  --text-primary: #F4F4F5;  /* Added - was missing */
   --text-muted: #A1A1AA;
   --text-dim: #71717A;
 
   --border-glass: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.15);
+  --border: rgba(255, 255, 255, 0.1);  /* Added for inputs */
 
   /* Legacy/Utility colors */
   --success: #10B981;
   --error: #EF4444;
+  
+  /* Additional colors */
+  --text-navy: #0F172A;
+  --accent-lavender: #E9D5FF;
+  --purple-primary: #7C3AED;
 }
 
 .glass {
@@ -182,12 +190,17 @@ body {
 }
 
 /* Input styles */
+input, textarea, select {
+  color: var(--text-navy) !important; /* Ensure visibility in light containers */
+}
+
+/* For dark mode inputs that use the .input class */
 .input {
-  background: var(--bg-secondary);
+  background: var(--bg-secondary) !important;
   border: 2px solid var(--border);
   border-radius: 14px;
   padding: 16px 20px;
-  color: var(--text-primary);
+  color: white !important; /* Fixed text color for dark background */
   width: 100%;
   transition: all 0.3s ease;
   font-size: 16px;

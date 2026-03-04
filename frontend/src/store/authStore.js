@@ -3,22 +3,36 @@ import { authAPI, creditsAPI } from '../services/api';
 import { connectSocket, disconnectSocket } from '../services/socket';
 import { initializeFCM, cleanupFCM } from '../services/fcm';
 
+const getDeviceId = () => {
+  let deviceId = localStorage.getItem('tb_device_id');
+  if (!deviceId) {
+    // Generate a simple unique ID if crypto.randomUUID is not available
+    deviceId = typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : Math.random().toString(36).substring(2) + Date.now().toString(36);
+    localStorage.setItem('tb_device_id', deviceId);
+  }
+  return deviceId;
+};
+
 const useAuthStore = create((set, get) => ({
   user: null,
   isAuthenticated: false,
   isLoading: true,
   credits: 0,
+  pendingSessionId: null,
 
   initialize: async () => {
     const token = localStorage.getItem('tb_access_token');
     if (token) {
       try {
         const response = await authAPI.getMe();
-        set({ 
-          user: response.data, 
-          isAuthenticated: true, 
-          credits: response.data.credits_balance,
-          isLoading: false 
+        // getMe returns "credits" not "credits_balance"
+        set({
+          user: response.data,
+          isAuthenticated: true,
+          credits: response.data.credits,
+          isLoading: false
         });
         connectSocket(token);
         // Initialize FCM for push notifications (non-blocking)
@@ -34,18 +48,27 @@ const useAuthStore = create((set, get) => ({
   },
 
   login: async (email, password) => {
-    const response = await authAPI.login({ email, password });
-    const { tokens, user_id } = response.data;
-    localStorage.setItem('tb_access_token', tokens.access_token);
-    localStorage.setItem('tb_refresh_token', tokens.refresh_token);
-    
-    const userResponse = await authAPI.getMe();
-    set({ 
-      user: userResponse.data, 
+    const device_id = getDeviceId();
+    const response = await authAPI.login({ email, password, device_id });
+
+    // If backend returns a pending status, don't set user yet
+    if (response.data.status === 'WAITING_FOR_APPROVAL') {
+      set({ pendingSessionId: response.data.pending_session_id });
+      return response.data;
+    }
+
+    // Backend returns: { access_token, refresh_token, user, ... } at root level
+    const { access_token, refresh_token, user } = response.data;
+    localStorage.setItem('tb_access_token', access_token);
+    localStorage.setItem('tb_refresh_token', refresh_token);
+
+    // User data is already in the login response, use it directly
+    set({
+      user: user,
       isAuthenticated: true,
-      credits: userResponse.data.credits_balance 
+      credits: user.credits
     });
-    connectSocket(tokens.access_token);
+    connectSocket(access_token);
     // Initialize FCM for push notifications (non-blocking)
     initializeFCM().catch(err => console.warn('[Auth] FCM init failed:', err));
     return response.data;
@@ -53,25 +76,51 @@ const useAuthStore = create((set, get) => ({
 
   signup: async (data) => {
     const response = await authAPI.signup(data);
-    const { tokens, user_id, credits_balance } = response.data;
-    localStorage.setItem('tb_access_token', tokens.access_token);
-    localStorage.setItem('tb_refresh_token', tokens.refresh_token);
-    
-    const userResponse = await authAPI.getMe();
-    set({ 
-      user: userResponse.data, 
+    // Backend returns: { access_token, refresh_token, user, ... } at root level
+    const { access_token, refresh_token, user } = response.data;
+    localStorage.setItem('tb_access_token', access_token);
+    localStorage.setItem('tb_refresh_token', refresh_token);
+
+    // User data is already in the signup response, use it directly
+    set({
+      user: user,
       isAuthenticated: true,
-      credits: credits_balance 
+      credits: user.credits
     });
     // Initialize FCM for push notifications (non-blocking)
     initializeFCM().catch(err => console.warn('[Auth] FCM init failed:', err));
     return response.data;
   },
 
+  // Polling for login approval
+  checkLoginStatus: async (pendingSessionId) => {
+    try {
+      const response = await authAPI.checkLoginStatus(pendingSessionId);
+      if (response.data.status === 'approved') {
+        const { tokens, user: userData } = response.data;
+        localStorage.setItem('tb_access_token', tokens.access_token);
+        localStorage.setItem('tb_refresh_token', tokens.refresh_token);
+        set({
+          user: userData,
+          isAuthenticated: true,
+          credits: userData.credits,
+          pendingSessionId: null
+        });
+        connectSocket(tokens.access_token);
+        initializeFCM().catch(err => console.warn('[Auth] FCM init failed:', err));
+        return { status: 'approved' };
+      }
+      return { status: response.data.status };
+    } catch (error) {
+      set({ pendingSessionId: null });
+      throw error;
+    }
+  },
+
   logout: async () => {
     try {
       await authAPI.logout();
-    } catch (e) {}
+    } catch (e) { }
     // Cleanup FCM token (non-blocking)
     cleanupFCM().catch(err => console.warn('[Auth] FCM cleanup failed:', err));
     disconnectSocket();
@@ -84,11 +133,11 @@ const useAuthStore = create((set, get) => ({
     try {
       const response = await creditsAPI.getBalance();
       const newBalance = response.data.credits_balance;
-      set((state) => ({ 
+      set((state) => ({
         credits: newBalance,
         user: state.user ? { ...state.user, credits_balance: newBalance } : null
       }));
-    } catch (e) {}
+    } catch (e) { }
   },
 
   updateCredits: (amount) => {

@@ -1,11 +1,46 @@
+import { useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { Home, MessageCircle, MapPin, User, Coins, LogOut, Heart, Bell, Search, Settings } from 'lucide-react';
+import { locationAPI } from '@/services/api';
 import useAuthStore from '@/store/authStore';
 import IncomingCallModal from '@/components/IncomingCallModal';
 
 const DashboardLayout = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
+
+  // Auto-update location every 30 seconds
+  useEffect(() => {
+    if (!user) return;
+
+    const updateLocation = async () => {
+      if (!navigator.geolocation) return;
+      
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const { latitude, longitude } = position.coords;
+            await locationAPI.update(latitude, longitude);
+            console.log('Location auto-updated');
+          } catch (error) {
+            console.error('Failed to auto-update location:', error);
+          }
+        },
+        (error) => {
+          console.error('Geolocation error during auto-update:', error);
+        },
+        { enableHighAccuracy: false, timeout: 5000 }
+      );
+    };
+
+    // Update immediately on mount
+    updateLocation();
+
+    // Set interval for every 30 seconds
+    const interval = setInterval(updateLocation, 30000);
+
+    return () => clearInterval(interval);
+  }, [user]);
 
   const handleLogout = () => {
     logout();

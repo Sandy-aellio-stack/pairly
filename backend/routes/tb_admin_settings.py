@@ -4,7 +4,7 @@ from typing import Optional, List
 from datetime import datetime, timezone
 
 from backend.models.app_settings import AppSettings
-from backend.routes.tb_admin_auth import get_current_admin
+from backend.routes.tb_admin_auth import get_current_admin, check_super_admin
 
 router = APIRouter(prefix="/api/admin/settings", tags=["TrueBond Admin Settings"])
 
@@ -81,12 +81,9 @@ async def get_settings(
 @router.put("")
 async def update_settings(
     updates: SettingsUpdate,
-    admin: dict = Depends(get_current_admin)
+    admin: dict = Depends(check_super_admin)
 ):
     """Update app settings"""
-    # Only super_admin can update settings
-    if admin["role"] != "super_admin":
-        raise HTTPException(status_code=403, detail="Only super admins can update settings")
     
     settings = await AppSettings.get_or_create()
     
@@ -124,14 +121,12 @@ async def get_pricing():
 
 @router.get("/security-audit")
 async def get_security_audit(
-    admin: dict = Depends(get_current_admin)
+    admin: dict = Depends(check_super_admin)
 ):
     """
     Get security configuration audit report.
     Only super_admin can access this endpoint.
     """
-    if admin["role"] != "super_admin":
-        raise HTTPException(status_code=403, detail="Only super admins can view security audit")
     
     import os
     from backend.core.security_config import (

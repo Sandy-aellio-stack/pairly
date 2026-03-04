@@ -4,13 +4,14 @@ from typing import Optional, List
 import base64
 import uuid
 from datetime import datetime, timezone
+from bson import ObjectId
 
 from backend.models.tb_user import TBUser, Gender, Intent, Preferences, UserSettings, NotificationSettings, PrivacySettings, SafetySettings
 from backend.models.tb_report import TBReport, ReportStatus
 from backend.routes.tb_auth import get_current_user
 from backend.services.tb_location_service import PrivacyLocation
 
-router = APIRouter(prefix="/api/users", tags=["Luveloop Users"])
+router = APIRouter(prefix="/api/users", tags=["Users"])
 
 
 class UpdateProfileRequest(BaseModel):
@@ -36,93 +37,65 @@ class ReportUserRequest(BaseModel):
     report_type: str = "profile"
 
 
+# NOTE: More specific routes must come BEFORE generic /{user_id} route
+# FastAPI matches routes in order of definition
+
 @router.get("/profile/{user_id}")
-async def get_user_profile(user_id: str, current_user: TBUser = Depends(get_current_user)):
+async def get_user_profile(user_id: str):
     """
     Get a user's public profile.
-    
-    Privacy & Safety:
-    - Only returns public fields (NO email, phone, address, exact location)
-    - Blocked users cannot view each other
-    - Users hidden from search cannot be viewed
-    - Distance shown with privacy bucketing
-    - Respects user's privacy settings
+    This route MUST come before /{user_id} to avoid conflicts.
     """
-    # Cannot view own profile via this endpoint
-    if str(current_user.id) == user_id:
-        raise HTTPException(status_code=400, detail="Use /api/users/me for own profile")
-    
-    # Find target user
-    user = await TBUser.get(user_id)
+    from backend.utils.objectid_utils import validate_object_id
+    user_oid = validate_object_id(user_id)
+    user = await TBUser.get(user_oid)
+            
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    # Check if user is active
-    if not user.is_active:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    # Check if target user is hidden from search/discovery
-    if hasattr(user, 'settings') and user.settings:
-        if user.settings.safety.hide_from_search:
-            raise HTTPException(status_code=404, detail="User not found")
-    
-    # Check if either user has blocked the other
-    is_blocked = await _check_blocked(str(current_user.id), user_id)
-    if is_blocked:
-        raise HTTPException(status_code=403, detail="Cannot view this profile")
-    
-    # Get privacy settings
-    privacy = user.settings.privacy if hasattr(user, 'settings') and user.settings else PrivacySettings()
-    
-    # Build response with privacy controls
-    response = {
-        "id": str(user.id),
-        "name": user.name,
+    # Format location if exists
+    location_data = None
+    if user.location and user.location.coordinates:
+        location_data = {
+            "lat": user.location.coordinates[1],
+            "lng": user.location.coordinates[0]
+        }
+
+    # Return public profile data
+    return { 
+        "id": str(user.id), 
+        "name": user.name, 
         "age": user.age,
         "gender": user.gender,
         "bio": user.bio,
+        "profile_picture": user.profile_pictures[0] if user.profile_pictures else None,
         "profile_pictures": user.profile_pictures or [],
         "intent": user.intent,
-        "is_verified": user.is_verified,
+        "is_verified": getattr(user, "is_verified", False),
+        "is_online": user.is_online,
+        "status": "suspended" if user.is_suspended else "active",
+        "credits": user.credits_balance,
+        "location": location_data
     }
+
+
+@router.get("/{user_id}")
+async def get_user_by_id(user_id: str):
+    """
+    Get a user's basic profile by ID.
+    """
+    from backend.utils.objectid_utils import validate_object_id
+    user_oid = validate_object_id(user_id)
+    user = await TBUser.get(user_oid)
+            
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
     
-    # Online status (respect privacy)
-    if privacy.show_online:
-        response["is_online"] = user.is_online
-    else:
-        response["is_online"] = None
-    
-    # Last seen (respect privacy)
-    if privacy.show_last_seen and hasattr(user, 'location_updated_at') and user.location_updated_at:
-        response["last_active"] = _format_last_active(user.location_updated_at)
-    else:
-        response["last_active"] = None
-    
-    # Distance (respect privacy + calculate if possible)
-    if privacy.show_distance and current_user.location and user.location:
-        current_coords = current_user.location.coordinates
-        target_coords = user.location.coordinates
-        
-        distance_km = PrivacyLocation.calculate_distance(
-            current_coords[1], current_coords[0],  # [lng, lat] -> lat, lng
-            target_coords[1], target_coords[0]
-        ) if hasattr(PrivacyLocation, 'calculate_distance') else None
-        
-        if distance_km is not None:
-            from backend.services.tb_location_service import LocationService
-            response["distance_km"] = PrivacyLocation.bucket_distance(distance_km)
-            response["distance_display"] = PrivacyLocation.format_distance_display(distance_km)
-    else:
-        response["distance_km"] = None
-        response["distance_display"] = "Distance hidden"
-    
-    # Location freshness (without revealing when)
-    if hasattr(user, 'location_updated_at') and user.location_updated_at:
-        response["location_fresh"] = PrivacyLocation.is_location_fresh(user.location_updated_at)
-    else:
-        response["location_fresh"] = False
-    
-    return response
+    return { 
+        "id": str(user.id), 
+        "name": user.name, 
+        "credits": user.credits_balance 
+    }
 
 
 @router.get("/me")
@@ -136,15 +109,17 @@ async def get_own_profile(current_user: TBUser = Depends(get_current_user)):
         "age": current_user.age,
         "gender": current_user.gender,
         "bio": current_user.bio,
+        "profile_picture": current_user.profile_pictures[0] if current_user.profile_pictures else None,
         "profile_pictures": current_user.profile_pictures or [],
         "intent": current_user.intent,
         "email": current_user.email,
         "mobile_number": current_user.mobile_number,
         "preferences": current_user.preferences.model_dump(),
         "settings": current_user.settings.model_dump() if current_user.settings else {},
-        "credits_balance": current_user.credits_balance,
+        "credits": current_user.credits_balance,
         "is_verified": current_user.is_verified,
         "is_online": current_user.is_online,
+        "status": "suspended" if current_user.is_suspended else "active",
         "created_at": current_user.created_at.isoformat(),
     }
 
@@ -152,15 +127,21 @@ async def get_own_profile(current_user: TBUser = Depends(get_current_user)):
 @router.post("/block/{user_id}")
 async def block_user(user_id: str, data: BlockUserRequest = None, current_user: TBUser = Depends(get_current_user)):
     """
-    Block a user. Blocked users:
-    - Cannot view each other's profiles
-    - Cannot send messages to each other
-    - Won't appear in each other's nearby/discovery
+    Block a user with strict ID consistency.
     """
-    if str(current_user.id) == user_id:
+    from beanie import PydanticObjectId
+    from bson.errors import InvalidId
+    
+    try:
+        user_oid = PydanticObjectId(user_id)
+    except (InvalidId, Exception) as e:
+        print(f"ERROR: Invalid block user ID '{user_id}': {e}")
+        raise HTTPException(status_code=400, detail="Invalid user ID format")
+
+    if current_user.id == user_oid:
         raise HTTPException(status_code=400, detail="Cannot block yourself")
     
-    target = await TBUser.get(user_id)
+    target = await TBUser.get(user_oid)
     if not target:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -169,8 +150,8 @@ async def block_user(user_id: str, data: BlockUserRequest = None, current_user: 
     
     # Check if already blocked
     existing = await UserBlock.find_one({
-        "blocker_id": str(current_user.id),
-        "blocked_id": user_id
+        "blocker_id": current_user.id,
+        "blocked_id": user_oid
     })
     
     if existing:
@@ -178,8 +159,8 @@ async def block_user(user_id: str, data: BlockUserRequest = None, current_user: 
     
     # Create block record
     block = UserBlock(
-        blocker_id=str(current_user.id),
-        blocked_id=user_id,
+        blocker_id=current_user.id,
+        blocked_id=user_oid,
         reason=data.reason if data else None
     )
     await block.insert()
@@ -189,12 +170,20 @@ async def block_user(user_id: str, data: BlockUserRequest = None, current_user: 
 
 @router.delete("/block/{user_id}")
 async def unblock_user(user_id: str, current_user: TBUser = Depends(get_current_user)):
-    """Unblock a user"""
+    """Unblock a user with strict ID consistency"""
+    from beanie import PydanticObjectId
+    from bson.errors import InvalidId
+    
+    try:
+        user_oid = PydanticObjectId(user_id)
+    except (InvalidId, Exception):
+        raise HTTPException(status_code=400, detail="Invalid user ID format")
+
     from backend.models.user_block import UserBlock
     
     result = await UserBlock.find_one({
-        "blocker_id": str(current_user.id),
-        "blocked_id": user_id
+        "blocker_id": current_user.id,
+        "blocked_id": user_oid
     })
     
     if result:
@@ -209,7 +198,7 @@ async def get_blocked_users(current_user: TBUser = Depends(get_current_user)):
     """Get list of users blocked by current user"""
     from backend.models.user_block import UserBlock
     
-    blocks = await UserBlock.find({"blocker_id": str(current_user.id)}).to_list()
+    blocks = await UserBlock.find({"blocker_id": current_user.id}).to_list()
     
     blocked_users = []
     for block in blocks:
@@ -228,13 +217,20 @@ async def get_blocked_users(current_user: TBUser = Depends(get_current_user)):
 @router.post("/report/{user_id}")
 async def report_user(user_id: str, data: ReportUserRequest, current_user: TBUser = Depends(get_current_user)):
     """
-    Report a user for inappropriate content/behavior.
-    Reports are reviewed by moderators.
+    Report a user with strict ID consistency.
     """
-    if str(current_user.id) == user_id:
+    from beanie import PydanticObjectId
+    from bson.errors import InvalidId
+    
+    try:
+        user_oid = PydanticObjectId(user_id)
+    except (InvalidId, Exception):
+        raise HTTPException(status_code=400, detail="Invalid user ID format")
+
+    if current_user.id == user_oid:
         raise HTTPException(status_code=400, detail="Cannot report yourself")
     
-    target = await TBUser.get(user_id)
+    target = await TBUser.get(user_oid)
     if not target:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -242,8 +238,8 @@ async def report_user(user_id: str, data: ReportUserRequest, current_user: TBUse
     
     report = TBReport(
         report_type=ReportType.PROFILE,
-        reported_user_id=user_id,
-        reported_by_user_id=str(current_user.id),
+        reported_user_id=user_oid,
+        reported_by_user_id=current_user.id,
         reason=data.reason
     )
     await report.insert()
@@ -253,20 +249,26 @@ async def report_user(user_id: str, data: ReportUserRequest, current_user: TBUse
 
 async def _check_blocked(user_id1: str, user_id2: str) -> bool:
     """Check if either user has blocked the other"""
+    from beanie import PydanticObjectId
+    from bson.errors import InvalidId
+    
     try:
+        u1_oid = PydanticObjectId(user_id1)
+        u2_oid = PydanticObjectId(user_id2)
+        
         from backend.models.user_block import UserBlock
         
-        # Check if user1 blocked user2 OR user2 blocked user1
+        # Check if user1 blocked user2 OR user2 blocked user1 using ObjectIds
         block = await UserBlock.find_one({
             "$or": [
-                {"blocker_id": user_id1, "blocked_id": user_id2},
-                {"blocker_id": user_id2, "blocked_id": user_id1}
+                {"blocker_id": u1_oid, "blocked_id": u2_oid},
+                {"blocker_id": u2_oid, "blocked_id": u1_oid}
             ]
         })
         
         return block is not None
-    except Exception:
-        # If UserBlock model doesn't exist yet, no blocks
+    except (InvalidId, Exception) as e:
+        print(f"DEBUG: Block check error (safe fallback to False): {e}")
         return False
 
 
@@ -295,53 +297,45 @@ def _format_last_active(dt: datetime) -> str:
 @router.put("/profile")
 async def update_profile(data: UpdateProfileRequest, user: TBUser = Depends(get_current_user)):
     """Update current user's profile"""
-    if data.name is not None:
+    if data.name:
         user.name = data.name
     if data.bio is not None:
         user.bio = data.bio
-    if data.intent is not None:
+    if data.intent:
         user.intent = data.intent
     if data.profile_pictures is not None:
         user.profile_pictures = data.profile_pictures
     
+    user.updated_at = datetime.now(timezone.utc)
     await user.save()
-    
-    return {
-        "message": "Profile updated",
-        "profile": {
-            "name": user.name,
-            "bio": user.bio,
-            "intent": user.intent,
-            "profile_pictures": user.profile_pictures
-        }
-    }
+    return {"message": "Profile updated", "user": {"id": str(user.id), "name": user.name}}
 
 
 @router.put("/preferences")
 async def update_preferences(data: UpdatePreferencesRequest, user: TBUser = Depends(get_current_user)):
     """Update user's matching preferences"""
-    if data.interested_in is not None:
+    if not user.preferences:
+        user.preferences = Preferences()
+        
+    if data.interested_in:
         user.preferences.interested_in = data.interested_in
-    if data.min_age is not None:
+    if data.min_age:
         user.preferences.min_age = data.min_age
-    if data.max_age is not None:
+    if data.max_age:
         user.preferences.max_age = data.max_age
-    if data.max_distance_km is not None:
+    if data.max_distance_km:
         user.preferences.max_distance_km = data.max_distance_km
-    
+        
+    user.updated_at = datetime.now(timezone.utc)
     await user.save()
-    
-    return {
-        "message": "Preferences updated",
-        "preferences": user.preferences.model_dump()
-    }
+    return {"message": "Preferences updated"}
 
 
 @router.get("/credits")
 async def get_credits(user: TBUser = Depends(get_current_user)):
     """Get current user's credit balance"""
     return {
-        "credits_balance": user.credits_balance
+        "credits": user.credits_balance
     }
 
 
@@ -620,10 +614,12 @@ async def search_users(
             "age": user.age,
             "gender": user.gender,
             "bio": user.bio,
-            "profile_pictures": user.profile_pictures[:1] if user.profile_pictures else [],
+            "profile_picture": user.profile_pictures[0] if user.profile_pictures else None,
+            "profile_pictures": user.profile_pictures or [],
             "intent": user.intent,
             "is_verified": user.is_verified if hasattr(user, 'is_verified') else False,
             "is_online": user.is_online if hasattr(user, 'is_online') else False,
+            "status": "suspended" if user.is_suspended else "active"
         })
     
     return {
@@ -708,10 +704,12 @@ async def get_user_feed(
             "age": user.age,
             "gender": user.gender,
             "bio": user.bio,
+            "profile_picture": user.profile_pictures[0] if user.profile_pictures else None,
             "profile_pictures": user.profile_pictures or [],
             "intent": user.intent,
             "is_verified": user.is_verified if hasattr(user, 'is_verified') else False,
             "is_online": user.is_online if hasattr(user, 'is_online') else False,
+            "status": "suspended" if user.is_suspended else "active",
             "last_active": None,
             "distance_km": None,
             "distance_display": None,

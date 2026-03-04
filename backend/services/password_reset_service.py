@@ -9,6 +9,7 @@ Security Features:
 - Single-use tokens (invalidated after use)
 - Rate limiting on token generation
 - No email enumeration (always return success)
+- Fallback to MongoDB when Redis is unavailable
 """
 import secrets
 import hashlib
@@ -25,6 +26,19 @@ import bcrypt
 logger = logging.getLogger("password_reset")
 
 
+class PasswordResetToken:
+    """MongoDB model for password reset tokens"""
+    def __init__(self, token_hash: str, user_id: str, email: str, created_at: datetime):
+        self.token_hash = token_hash
+        self.user_id = user_id
+        self.email = email
+        self.created_at = created_at
+        self.expires_at = created_at + timedelta(minutes=15)
+    
+    def is_expired(self) -> bool:
+        return datetime.now(timezone.utc) > self.expires_at
+
+
 class PasswordResetService:
     """Service for handling password reset operations"""
 
@@ -35,6 +49,9 @@ class PasswordResetService:
     # Redis key prefixes
     REDIS_TOKEN_PREFIX = "pwd_reset:token:"
     REDIS_RATE_LIMIT_PREFIX = "pwd_reset:rate:"
+    
+    # MongoDB collection name
+    MONGO_COLLECTION = "password_reset_tokens"
     
     # Rate limiting
     MAX_REQUESTS_PER_HOUR = 5  # Max reset requests per email per hour
@@ -79,7 +96,7 @@ class PasswordResetService:
             return False, "Password must contain at least one uppercase letter"
         
         if not re.search(r'\d', password):
-            return False, "Password must contain at least one number"
+            return False, "Password must contain a number"
         
         return True, "Password meets requirements"
 
@@ -109,6 +126,61 @@ class PasswordResetService:
         except Exception as e:
             logger.error(f"Rate limit check error: {e}")
             return True  # Allow on error
+
+    async def _get_mongo_db(self):
+        """Get MongoDB database instance"""
+        from backend.tb_database import get_database
+        return await get_database()
+
+    async def _store_token_mongo(
+        self,
+        token_hash: str,
+        user_id: str,
+        user_email: str
+    ) -> None:
+        """Store token in MongoDB as fallback"""
+        db = await self._get_mongo_db()
+        collection = db[self.MONGO_COLLECTION]
+        
+        # Delete any existing tokens for this user
+        await collection.delete_many({"user_id": user_id})
+        
+        # Insert new token
+        await collection.insert_one({
+            "token_hash": token_hash,
+            "user_id": user_id,
+            "email": user_email.lower(),
+            "created_at": datetime.now(timezone.utc),
+            "expires_at": datetime.now(timezone.utc) + timedelta(minutes=self.TOKEN_EXPIRY_MINUTES)
+        })
+        
+        logger.debug(f"Stored reset token in MongoDB for user {user_id}")
+
+    async def _get_token_mongo(self, token_hash: str) -> Optional[dict]:
+        """Get token from MongoDB"""
+        db = await self._get_mongo_db()
+        collection = db[self.MONGO_COLLECTION]
+        
+        token_doc = await collection.find_one({
+            "token_hash": token_hash,
+            "expires_at": {"$gt": datetime.now(timezone.utc)}
+        })
+        
+        return token_doc
+
+    async def _invalidate_token_mongo(self, token_hash: str) -> None:
+        """Invalidate token in MongoDB"""
+        db = await self._get_mongo_db()
+        collection = db[self.MONGO_COLLECTION]
+        
+        await collection.delete_one({"token_hash": token_hash})
+
+    async def _invalidate_user_tokens_mongo(self, user_id: str) -> None:
+        """Invalidate all tokens for a user in MongoDB"""
+        db = await self._get_mongo_db()
+        collection = db[self.MONGO_COLLECTION]
+        
+        await collection.delete_many({"user_id": user_id})
 
     async def create_reset_token(
         self,
@@ -153,28 +225,34 @@ class PasswordResetService:
                 logger.info(f"Password reset requested for non-existent email: {email_lower}")
                 return True, "If email exists, reset link has been sent"
             
-            # Check if Redis is available for token storage
-            if not redis_client.is_connected():
-                logger.error("Redis not available for token storage")
-                # Still return success to prevent information leakage
-                return True, "If email exists, reset link has been sent"
-            
             # Invalidate any existing tokens for this user
-            await self._invalidate_existing_tokens(str(user.id))
+            if redis_client.is_connected():
+                await self._invalidate_existing_tokens(str(user.id))
+            else:
+                await self._invalidate_user_tokens_mongo(str(user.id))
             
             # Generate secure token
             token = self._generate_token()
             token_hash = self._hash_token(token)
             
-            # Store hashed token with user ID and expiry metadata
-            await self._store_token(
-                token_hash=token_hash,
-                user_id=str(user.id),
-                user_email=email_lower
-            )
+            # Try to store in Redis first, fallback to MongoDB
+            if redis_client.is_connected():
+                try:
+                    await self._store_token_redis(token_hash, str(user.id), email_lower)
+                except Exception as e:
+                    logger.warning(f"Redis token storage failed, falling back to MongoDB: {e}")
+                    await self._store_token_mongo(token_hash, str(user.id), email_lower)
+            else:
+                # Use MongoDB directly
+                await self._store_token_mongo(token_hash, str(user.id), email_lower)
             
             # Generate reset link with unhashed token
             reset_link = f"{frontend_url}/reset-password?token={token}"
+            
+            # Log the token for development when email is disabled
+            if not email_service.enabled:
+                logger.info(f"🔐 [DEV MODE] Password reset token for {email_lower}: {token}")
+                logger.info(f"🔐 [DEV MODE] Reset link: {reset_link}")
             
             # Send email
             email_sent = await email_service.send_password_reset_email(
@@ -186,7 +264,7 @@ class PasswordResetService:
             if email_sent:
                 logger.info(f"Password reset email sent to {email_lower}")
             else:
-                logger.error(f"Failed to send reset email to {email_lower}")
+                logger.warning(f"Failed to send reset email to {email_lower}, but token was created")
             
             return True, "If email exists, reset link has been sent"
             
@@ -195,7 +273,7 @@ class PasswordResetService:
             # Still return success to prevent information leakage
             return True, "If email exists, reset link has been sent"
 
-    async def _store_token(
+    async def _store_token_redis(
         self,
         token_hash: str,
         user_id: str,
@@ -212,24 +290,36 @@ class PasswordResetService:
             "created_at": datetime.now(timezone.utc).isoformat()
         })
         
-        if redis_client.is_connected():
-            await redis_client.redis.setex(
-                token_key,
-                self.token_expiry_seconds,
-                token_data
-            )
-            
-            # Also store reverse lookup (user_id -> token_hash) for invalidation
-            user_token_key = f"pwd_reset:user:{user_id}"
-            await redis_client.redis.setex(
-                user_token_key,
-                self.token_expiry_seconds,
-                token_hash
-            )
-            
-            logger.debug(f"Stored reset token for user {user_id}, expires in {self.TOKEN_EXPIRY_MINUTES} minutes")
-        else:
-            logger.warning("Redis not available - password reset tokens cannot be stored")
+        await redis_client.redis.setex(
+            token_key,
+            self.token_expiry_seconds,
+            token_data
+        )
+        
+        # Also store reverse lookup (user_id -> token_hash) for invalidation
+        user_token_key = f"pwd_reset:user:{user_id}"
+        await redis_client.redis.setex(
+            user_token_key,
+            self.token_expiry_seconds,
+            token_hash
+        )
+        
+        logger.debug(f"Stored reset token for user {user_id}, expires in {self.TOKEN_EXPIRY_MINUTES} minutes")
+
+    async def _store_token(
+        self,
+        token_hash: str,
+        user_id: str,
+        user_email: str
+    ) -> None:
+        """Store hashed token - tries Redis first, falls back to MongoDB"""
+        try:
+            if redis_client.is_connected():
+                await self._store_token_redis(token_hash, user_id, user_email)
+            else:
+                await self._store_token_mongo(token_hash, user_id, user_email)
+        except Exception as e:
+            logger.error(f"Failed to store token: {e}")
             raise Exception("Token storage unavailable")
 
     async def _invalidate_existing_tokens(self, user_id: str) -> None:
@@ -265,23 +355,28 @@ class PasswordResetService:
         
         try:
             token_hash = self._hash_token(token)
-            token_key = f"{self.REDIS_TOKEN_PREFIX}{token_hash}"
             
-            if not redis_client.is_connected():
-                logger.error("Redis not available for token validation")
-                return None
+            # Try Redis first
+            if redis_client.is_connected():
+                token_key = f"{self.REDIS_TOKEN_PREFIX}{token_hash}"
+                token_data = await redis_client.redis.get(token_key)
+                
+                if token_data:
+                    import json
+                    data = json.loads(token_data)
+                    logger.debug(f"Token validated from Redis for user {data.get('user_id')}")
+                    return data
             
-            token_data = await redis_client.redis.get(token_key)
+            # Fall back to MongoDB
+            token_doc = await self._get_token_mongo(token_hash)
+            if token_doc:
+                return {
+                    "user_id": token_doc["user_id"],
+                    "email": token_doc["email"]
+                }
             
-            if not token_data:
-                logger.info("Reset token not found or expired")
-                return None
-            
-            import json
-            data = json.loads(token_data)
-            
-            logger.debug(f"Token validated for user {data.get('user_id')}")
-            return data
+            logger.info("Reset token not found or expired")
+            return None
             
         except Exception as e:
             logger.error(f"Error validating reset token: {e}")
@@ -360,28 +455,32 @@ class PasswordResetService:
 
     async def _invalidate_token(self, token: str) -> None:
         """Invalidate a token after successful use"""
-        if not redis_client.is_connected():
-            return
+        token_hash = self._hash_token(token)
         
+        # Try Redis first
+        if redis_client.is_connected():
+            try:
+                token_key = f"{self.REDIS_TOKEN_PREFIX}{token_hash}"
+                token_data = await redis_client.redis.get(token_key)
+                if token_data:
+                    import json
+                    data = json.loads(token_data)
+                    user_id = data.get("user_id")
+                    
+                    # Delete token and user lookup
+                    await redis_client.redis.delete(token_key)
+                    if user_id:
+                        await redis_client.redis.delete(f"pwd_reset:user:{user_id}")
+                    
+                    logger.debug(f"Invalidated reset token in Redis after use")
+            except Exception as e:
+                logger.error(f"Error invalidating Redis token: {e}")
+        
+        # Also invalidate in MongoDB
         try:
-            token_hash = self._hash_token(token)
-            token_key = f"{self.REDIS_TOKEN_PREFIX}{token_hash}"
-            
-            # Get user_id before deleting
-            token_data = await redis_client.redis.get(token_key)
-            if token_data:
-                import json
-                data = json.loads(token_data)
-                user_id = data.get("user_id")
-                
-                # Delete token and user lookup
-                await redis_client.redis.delete(token_key)
-                if user_id:
-                    await redis_client.redis.delete(f"pwd_reset:user:{user_id}")
-                
-                logger.debug(f"Invalidated reset token after use")
+            await self._invalidate_token_mongo(token_hash)
         except Exception as e:
-            logger.error(f"Error invalidating token: {e}")
+            logger.error(f"Error invalidating MongoDB token: {e}")
 
     def get_token_info(self) -> dict:
         """Get token configuration info (for debugging/admin)"""
@@ -391,7 +490,7 @@ class PasswordResetService:
             "expiry_minutes": self.TOKEN_EXPIRY_MINUTES,
             "rate_limit_per_hour": self.MAX_REQUESTS_PER_HOUR,
             "password_min_length": self.MIN_PASSWORD_LENGTH,
-            "storage": "redis",
+            "storage": "redis_or_mongodb",
             "hashing": "sha256"
         }
 

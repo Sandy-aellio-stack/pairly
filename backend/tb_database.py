@@ -15,11 +15,26 @@ from backend.models.tb_report import TBReport
 from backend.models.user_block import UserBlock
 from backend.routes.tb_notifications import TBNotification
 from backend.models.webhook_event import WebhookEvent, WebhookDLQ
+from backend.models.user import User as LegacyUser
+from backend.models.tb_pending_session import PendingSession
 
 MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017/truebond")
 
+# Parse MongoDB URL to add authSource if missing
+def _prepare_mongo_url(url: str) -> str:
+    """Add authSource to MongoDB URL if not present"""
+    if "authSource" not in url:
+        # Add authSource=admin for Atlas connections
+        if "mongodb.net" in url:
+            separator = "&" if "?" in url else "?"
+            url = f"{url}{separator}authSource=admin"
+    return url
+
 async def init_db():
     """Initialize MongoDB connection with Beanie ODM"""
+    global MONGO_URL
+    MONGO_URL = _prepare_mongo_url(MONGO_URL)
+    
     try:
         client = AsyncIOMotorClient(
             MONGO_URL,
@@ -54,22 +69,36 @@ async def init_db():
                 UserBlock,
                 TBNotification,
                 WebhookEvent,
-                WebhookDLQ
+                WebhookDLQ,
+                LegacyUser,
+                PendingSession
             ]
         )
         
-        print(f"✅ Connected to MongoDB: {db_name}")
+        print(f"MongoDB connected successfully: {db_name}")
         return client
     except Exception as e:
         import traceback
-        print(f"⚠️ MongoDB connection failed: {e}")
-        print(f"⚠️ Connection URL (masked): {MONGO_URL[:30]}...")
+        print(f"WARNING: MongoDB connection failed: {e}")
+        print(f"WARNING: Connection URL (masked): {MONGO_URL[:30]}...")
         traceback.print_exc()
-        print("⚠️ Starting without database - set MONGO_URL environment variable")
+        print("WARNING: Starting without database - set MONGO_URL environment variable")
         return None
 
 async def close_db(client):
     """Close MongoDB connection"""
     if client:
         client.close()
-        print("❌ MongoDB connection closed")
+        print("MongoDB connection closed")
+
+
+# Global client reference for direct database access
+_mongo_client = None
+
+
+async def get_database():
+    """Get MongoDB database instance for direct access"""
+    global _mongo_client
+    if _mongo_client is None:
+        _mongo_client = await init_db()
+    return _mongo_client["truebond"]

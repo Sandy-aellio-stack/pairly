@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, Send, MoreVertical, Phone, Video, ArrowLeft, Image, Smile, Coins, Loader2 } from 'lucide-react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { messagesAPI, userAPI } from '@/services/api';
 import useAuthStore from '@/store/authStore';
 import { toast } from 'sonner';
@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 const ChatPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { userId: urlUserId } = useParams();
   const { user, refreshCredits } = useAuthStore();
   const [conversations, setConversations] = useState([]);
   const [selectedChat, setSelectedChat] = useState(null);
@@ -19,26 +20,33 @@ const ChatPage = () => {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const messagesEndRef = useRef(null);
 
-  // Handle ?user=userId query param to start new conversation
+  // Handle ?user=userId or /chat/:userId to start new conversation
   useEffect(() => {
-    const targetUserId = searchParams.get('user');
+    const targetUserId = urlUserId || searchParams.get('user');
     if (targetUserId) {
+      // If we already have this user selected, don't re-fetch
+      if (selectedChat?.id === targetUserId) return;
+
+      // Check if user is already in our conversation list
+      const existingConv = conversations.find(c => (c.id || c.user_id) === targetUserId);
+      if (existingConv) {
+        setSelectedChat(existingConv);
+        return;
+      }
+
       // Fetch the user profile and start a conversation
       const startNewChat = async () => {
         try {
-          const response = await userAPI.getProfile(targetUserId);
-          const targetUser = response.data;
+          const response = await messagesAPI.startConversation(targetUserId);
+          const targetUser = response.data.user;
           // Create a chat object from the user profile
           const newChat = {
             id: targetUserId,
             name: targetUser.name,
-            avatar: targetUser.profile_pictures?.[0],
-            profile_pictures: targetUser.profile_pictures,
+            avatar: targetUser.profile_picture,
             online: targetUser.is_online,
           };
           setSelectedChat(newChat);
-          // Clear the query param from URL
-          navigate('/dashboard/chat', { replace: true });
         } catch (error) {
           console.error('Failed to load user for chat:', error);
           toast.error('Could not start conversation with this user');
@@ -46,7 +54,7 @@ const ChatPage = () => {
       };
       startNewChat();
     }
-  }, [searchParams, navigate]);
+  }, [urlUserId, searchParams, conversations, selectedChat]);
 
   // Fetch conversations on mount
   useEffect(() => {
@@ -70,7 +78,18 @@ const ChatPage = () => {
     try {
       const response = await messagesAPI.getConversations();
       if (response.data.conversations && response.data.conversations.length > 0) {
-        setConversations(response.data.conversations);
+        // Standardize conversation data
+        const formattedConvs = response.data.conversations.map(conv => ({
+          ...conv,
+          id: conv.user?.id || conv.user_id, // Ensure we have a top-level ID for the chat
+          name: conv.user?.name || conv.name,
+          avatar: conv.user?.profile_picture || conv.avatar,
+          online: conv.user?.is_online || conv.online,
+        }));
+        setConversations(formattedConvs);
+        
+        // If we have a urlUserId, we might already have set selectedChat in the useEffect above.
+        // If not, we don't automatically select the first one to allow the "start new chat" logic to work.
       } else {
         setConversations([]);
       }
@@ -82,6 +101,7 @@ const ChatPage = () => {
   };
 
   const fetchMessages = async (userId) => {
+    if (!userId) return;
     setLoadingMessages(true);
     try {
       const response = await messagesAPI.getMessages(userId);
@@ -97,7 +117,7 @@ const ChatPage = () => {
     }
   };
 
-  const selectedConversation = conversations.find(c => c.id === selectedChat?.id) || selectedChat;
+  const selectedConversation = conversations.find(c => (c.id || c.user?.id) === selectedChat?.id) || selectedChat;
 
   const handleSend = async () => {
     if (!message.trim() || !selectedChat) return;
@@ -105,6 +125,7 @@ const ChatPage = () => {
     // Check credits
     if ((user?.credits_balance || 0) < 1) {
       toast.error('You need coins to send messages! Buy more coins.');
+      navigate('/dashboard/credits');
       return;
     }
 
@@ -128,6 +149,7 @@ const ChatPage = () => {
     } catch (error) {
       if (error.response?.status === 402) {
         toast.error('Insufficient coins! Buy more to continue chatting.');
+        navigate('/dashboard/credits');
         // Remove optimistic message
         setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
       } else {
@@ -178,10 +200,13 @@ const ChatPage = () => {
             ) : (
               filteredConversations.map((conv) => (
                 <button
-                  key={conv.id}
-                  onClick={() => setSelectedChat(conv)}
+                  key={conv.id || conv.user_id}
+                  onClick={() => {
+                    setSelectedChat(conv);
+                    navigate(`/dashboard/chat/${conv.id || conv.user_id}`, { replace: true });
+                  }}
                   className={`w-full flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors ${
-                    selectedChat?.id === conv.id ? 'bg-[#E9D5FF]/20' : ''
+                    (selectedChat?.id === conv.id || selectedChat?.id === conv.user_id) ? 'bg-[#E9D5FF]/20' : ''
                   }`}
                 >
                   <div className="relative">

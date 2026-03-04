@@ -87,6 +87,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         "/api/auth/otp/verify": (5, 300),
         "/api/payments/order": (10, 60),
         "/api/messages/send": (30, 60),
+        "/api/search": (20, 60),
+        "/api/users/profile": (60, 60),
     }
     
     async def dispatch(self, request: Request, call_next: Callable):

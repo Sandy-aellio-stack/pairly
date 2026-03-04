@@ -1,0 +1,23 @@
+\u26a0\ufe0f Email service is DISABLED. Using mock mode.
+\u26a0\ufe0f Set EMAIL_ENABLED=true to enable real emails.
+C:\Git\pairly\backend\models\failed_login.py:7: UserWarning: Field name "count" in "FailedLogin" shadows an attribute in parent "Document"
+  class FailedLogin(Document):
+C:\Git\pairly\backend\routes\tb_admin_users.py:17: FastAPIDeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+  status: Optional[str] = Query(None, regex="^(active|suspended|banned)$"),
+C:\Git\pairly\backend\routes\tb_admin_analytics.py:60: FastAPIDeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+  period: str = Query("year", regex="^(week|month|year)$"),
+C:\Git\pairly\backend\routes\tb_admin_analytics.py:143: FastAPIDeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+  period: str = Query("month", regex="^(week|month|year)$"),
+C:\Git\pairly\backend\routes\tb_admin_moderation.py:15: FastAPIDeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+  status: Optional[str] = Query("pending", regex="^(pending|approved|removed|banned|all)$"),
+C:\Git\pairly\backend\routes\tb_admin_moderation.py:16: FastAPIDeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+  report_type: Optional[str] = Query(None, regex="^(photo|profile|message)$"),
+2026-02-21 22:23:55,070 - env_validator - WARNING - Environment validation warnings:
+2026-02-21 22:23:55,070 - env_validator - WARNING -   - STRIPE_SECRET_KEY not set - Stripe payment integration will not work
+2026-02-21 22:23:55,071 - env_validator - WARNING -   - STRIPE_WEBHOOK_SECRET not set - Stripe webhook verification will not work
+2026-02-21 22:23:55,071 - env_validator - WARNING -   - RAZORPAY_KEY_ID not set - Razorpay payment integration (India) will not work
+2026-02-21 22:23:55,071 - env_validator - WARNING -   - RAZORPAY_KEY_SECRET not set - Razorpay secret key will not work
+2026-02-21 22:23:55,071 - env_validator - INFO - Environment validation passed with warnings
+2026-02-21 22:23:55,072 - luveloop - INFO - Security configuration validated successfully
+2026-02-21 22:23:55,073 - luveloop - INFO - CORS configuration: origins=['http://localhost:5000'], env=production
+2026-02-21 22:23:55,073 - exception_handler - INFO - Exception handlers registered

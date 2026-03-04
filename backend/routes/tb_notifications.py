@@ -46,8 +46,8 @@ async def get_notifications(
                 "title": n.title,
                 "body": n.body,
                 "type": n.notification_type,
-                "isRead": n.is_read,
-                "createdAt": n.created_at.isoformat()
+                "is_read": n.is_read,
+                "created_at": n.created_at.isoformat()
             }
             for n in notifications
         ]

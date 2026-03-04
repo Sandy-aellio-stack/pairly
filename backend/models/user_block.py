@@ -2,7 +2,7 @@
 User Block Model
 Tracks blocked users for privacy and safety.
 """
-from beanie import Document, Indexed
+from beanie import Document, Indexed, PydanticObjectId
 from pydantic import Field
 from datetime import datetime, timezone
 from typing import Optional
@@ -12,16 +12,9 @@ import uuid
 class UserBlock(Document):
     """
     Tracks when a user blocks another user.
-    
-    When blocked:
-    - Users cannot view each other's profiles
-    - Users cannot send messages to each other
-    - Users won't appear in each other's nearby/discovery
     """
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    
-    blocker_id: Indexed(str)  # User who initiated the block
-    blocked_id: Indexed(str)  # User who was blocked
+    blocker_id: Indexed(PydanticObjectId)  # User who initiated the block
+    blocked_id: Indexed(PydanticObjectId)  # User who was blocked
     
     reason: Optional[str] = None
     

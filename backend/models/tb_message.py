@@ -1,4 +1,4 @@
-from beanie import Document, Indexed
+from beanie import Document, Indexed, PydanticObjectId
 from pydantic import Field
 from datetime import datetime, timezone
 from typing import Optional
@@ -6,8 +6,8 @@ from typing import Optional
 
 class TBMessage(Document):
     """One-to-one private message"""
-    sender_id: Indexed(str)
-    receiver_id: Indexed(str)
+    sender_id: Indexed(PydanticObjectId)
+    receiver_id: Indexed(PydanticObjectId)
     content: str = Field(min_length=1, max_length=2000)
     is_read: bool = False
     read_at: Optional[datetime] = None
@@ -27,10 +27,10 @@ class TBMessage(Document):
 
 class TBConversation(Document):
     """Conversation summary between two users"""
-    participants: list[str]  # [user_id_1, user_id_2] sorted
+    participants: list[PydanticObjectId]  # [user_id_1, user_id_2] sorted
     last_message: Optional[str] = None
     last_message_at: Optional[datetime] = None
-    last_sender_id: Optional[str] = None
+    last_sender_id: Optional[PydanticObjectId] = None
     unread_count: dict = Field(default_factory=dict)  # {user_id: count}
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

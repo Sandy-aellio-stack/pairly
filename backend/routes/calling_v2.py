@@ -5,16 +5,16 @@ import logging
 import json
 import asyncio
 from datetime import datetime, timezone
-from backend.models.user import User
+from backend.models.tb_user import TBUser
 from backend.models.call_session_v2 import CallSessionV2, CallStatus
 from backend.services.calling_service_v2 import get_calling_service_v2, CallingServiceV2
 from backend.services.token_utils import verify_token
-from backend.routes.auth import get_current_user
+from backend.routes.tb_auth import get_current_user
 from backend.services.fcm_service import fcm_service
 
 logger = logging.getLogger('routes.calling_v2')
 
-router = APIRouter(prefix="/api/v2/calls", tags=["Calling V2"])
+router = APIRouter(prefix="/api/calls", tags=["Calling"])
 
 # Mock WebSocket connection manager for call signaling
 class CallSignalingManager:
@@ -44,6 +44,7 @@ signaling_manager = CallSignalingManager()
 # Pydantic models
 class InitiateCallRequest(BaseModel):
     receiver_id: str
+    call_type: str = "voice"  # voice or video
     sdp_offer: Optional[str] = None
 
 class AcceptCallRequest(BaseModel):
@@ -71,7 +72,7 @@ class CallResponse(BaseModel):
 @router.post("/initiate", response_model=CallResponse)
 async def initiate_call(
     request: InitiateCallRequest,
-    user: User = Depends(get_current_user),
+    user: TBUser = Depends(get_current_user),
     service: CallingServiceV2 = Depends(get_calling_service_v2)
 ):
     """Initiate a new call"""
@@ -79,6 +80,7 @@ async def initiate_call(
         call_session = await service.initiate_call(
             caller_id=str(user.id),
             receiver_id=request.receiver_id,
+            call_type=request.call_type,
             sdp_offer=request.sdp_offer
         )
         
@@ -87,6 +89,7 @@ async def initiate_call(
             "type": "call_incoming",
             "call_id": call_session.id,
             "caller_id": str(user.id),
+            "call_type": request.call_type,
             "sdp_offer": request.sdp_offer
         })
         
@@ -97,7 +100,7 @@ async def initiate_call(
                 caller_name=user.name if hasattr(user, 'name') else "Someone",
                 call_id=call_session.id,
                 caller_id=str(user.id),
-                call_type="audio"
+                call_type=request.call_type
             )
         )
         
@@ -120,7 +123,7 @@ async def initiate_call(
 async def accept_call(
     call_id: str,
     request: AcceptCallRequest,
-    user: User = Depends(get_current_user),
+    user: TBUser = Depends(get_current_user),
     service: CallingServiceV2 = Depends(get_calling_service_v2)
 ):
     """Accept an incoming call"""
@@ -158,7 +161,7 @@ async def accept_call(
 async def reject_call(
     call_id: str,
     request: RejectCallRequest,
-    user: User = Depends(get_current_user),
+    user: TBUser = Depends(get_current_user),
     service: CallingServiceV2 = Depends(get_calling_service_v2)
 ):
     """Reject an incoming call"""
@@ -188,7 +191,7 @@ async def reject_call(
 async def end_call(
     call_id: str,
     request: EndCallRequest,
-    user: User = Depends(get_current_user),
+    user: TBUser = Depends(get_current_user),
     service: CallingServiceV2 = Depends(get_calling_service_v2)
 ):
     """End an active call"""
@@ -226,7 +229,7 @@ async def end_call(
 async def add_ice_candidate(
     call_id: str,
     request: ICECandidateRequest,
-    user: User = Depends(get_current_user),
+    user: TBUser = Depends(get_current_user),
     service: CallingServiceV2 = Depends(get_calling_service_v2)
 ):
     """Add ICE candidate for WebRTC signaling (mock)"""
@@ -257,7 +260,7 @@ async def add_ice_candidate(
 async def get_call_history(
     limit: int = Query(50, le=100),
     skip: int = Query(0, ge=0),
-    user: User = Depends(get_current_user),
+    user: TBUser = Depends(get_current_user),
     service: CallingServiceV2 = Depends(get_calling_service_v2)
 ):
     """Get call history for current user"""
@@ -286,7 +289,7 @@ async def get_call_history(
 
 @router.get("/stats")
 async def get_call_stats(
-    user: User = Depends(get_current_user),
+    user: TBUser = Depends(get_current_user),
     service: CallingServiceV2 = Depends(get_calling_service_v2)
 ):
     """Get calling statistics for current user"""
@@ -296,7 +299,7 @@ async def get_call_stats(
 @router.get("/{call_id}")
 async def get_call_details(
     call_id: str,
-    user: User = Depends(get_current_user)
+    user: TBUser = Depends(get_current_user)
 ):
     """Get details of a specific call"""
     call = await CallSessionV2.find_one(CallSessionV2.id == call_id)

@@ -44,7 +44,7 @@ const ProfileViewerPage = () => {
     setError(null);
     
     try {
-      const response = await api.get(`/api/users/profile/${userId}`);
+      const response = await api.get(`/users/profile/${userId}`);
       setProfile(response.data);
     } catch (err) {
       if (err.response?.status === 403) {
@@ -65,7 +65,7 @@ const ProfileViewerPage = () => {
 
   const handleMessage = () => {
     if (currentUser?.credits_balance > 0) {
-      navigate(`/dashboard/chat?user=${userId}`);
+      navigate(`/dashboard/chat/${userId}`);
     } else {
       toast.error('You need coins to send messages!');
       navigate('/dashboard/credits');
@@ -79,7 +79,7 @@ const ProfileViewerPage = () => {
   const handleBlock = async () => {
     setIsBlocking(true);
     try {
-      await api.post(`/api/users/block/${userId}`);
+      await api.post(`/users/block/${userId}`);
       toast.success('User blocked');
       setShowBlockModal(false);
       navigate(-1);
@@ -98,7 +98,7 @@ const ProfileViewerPage = () => {
     
     setIsReporting(true);
     try {
-      await api.post(`/api/users/report/${userId}`, {
+      await api.post(`/users/report/${userId}`, {
         reason: reportReason,
         report_type: 'profile'
       });

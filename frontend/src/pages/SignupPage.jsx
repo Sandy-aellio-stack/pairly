@@ -35,6 +35,8 @@ const SignupPage = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isOtpSent, setIsOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
   const [imagePreview, setImagePreview] = useState(null);
 
   const handleChange = (e) => {
@@ -86,6 +88,14 @@ const SignupPage = () => {
           toast.error('Passwords do not match');
           return false;
         }
+        if (!isOtpSent) {
+          toast.error('Please verify your mobile number with OTP');
+          return false;
+        }
+        if (!otpCode || otpCode.length < 6) {
+          toast.error('Please enter the 6-digit OTP code');
+          return false;
+        }
         return true;
       case 4:
         if (!formData.agreeTerms) {
@@ -119,35 +129,48 @@ const SignupPage = () => {
         mobile_number: formData.mobile_number.trim(),
         password: formData.password,
         age: parseInt(formData.age, 10),
-        gender: formData.gender,  // Must be: "male" | "female" | "other"
-        interested_in: formData.interested_in,  // Must be: "male" | "female" | "other"
-        
+        gender: formData.gender,
+        interested_in: formData.interested_in,
+        otp_code: otpCode,
+
         // Optional fields with safe defaults
         intent: formData.intent || 'dating',
         min_age: parseInt(formData.min_age, 10) || 18,
         max_age: parseInt(formData.max_age, 10) || 50,
         max_distance_km: 50,
-        
-        // Address fields - always send with defaults
+
+        // Address fields
         address_line: formData.address_line?.trim() || 'NA',
         city: formData.city?.trim() || 'NA',
         state: formData.state?.trim() || 'NA',
         country: formData.country?.trim() || 'India',
         pincode: formData.pincode?.trim() || '000000',
+        device_id: localStorage.getItem('tb_device_id') || Math.random().toString(36).substring(7),
       };
 
-      await signup(signupData);
-      
-      toast.success('Welcome to Luveloop! 🎉 You received 10 free coins!');
-      navigate('/dashboard');
+      // We need to use a dedicated signup-with-otp API
+      const response = await authAPI.signupWithOTP ? authAPI.signupWithOTP(signupData) : api.post('/api/auth/signup-with-otp', signupData);
+      const data = response.data;
+
+      const tokens = data.tokens || data;
+      const user = data.user || data;
+
+      if (tokens.access_token) {
+        localStorage.setItem('tb_access_token', tokens.access_token);
+        localStorage.setItem('tb_refresh_token', tokens.refresh_token);
+        toast.success('Welcome to Luveloop! 🎉 Account created successfully!');
+        navigate('/dashboard');
+        window.location.reload();
+      } else {
+        throw new Error('Tokens not received');
+      }
     } catch (error) {
       // Handle field-specific validation errors
       const errorDetail = error.response?.data?.detail;
-      
+
       if (typeof errorDetail === 'string') {
         toast.error(errorDetail);
       } else if (Array.isArray(errorDetail)) {
-        // Pydantic validation errors come as array
         const fieldErrors = errorDetail.map(err => {
           const field = err.loc?.slice(-1)[0] || 'field';
           return `${field}: ${err.msg}`;
@@ -187,22 +210,22 @@ const SignupPage = () => {
       <div className="hidden lg:flex w-2/5 relative overflow-hidden sticky top-0 h-screen">
         {/* Gradient Background */}
         <div className="absolute inset-0 bg-gradient-to-br from-[#E8D5E7] via-[#F5E6E8] to-[#FDE8D7]" />
-        
+
         {/* Decorative blobs */}
         <div className="absolute top-10 left-10 w-64 h-64 bg-pink-300/30 rounded-full blur-3xl" />
         <div className="absolute bottom-20 right-10 w-80 h-80 bg-orange-200/30 rounded-full blur-3xl" />
-        
+
         <div className="relative z-10 flex flex-col items-center justify-center w-full p-8">
           {/* Hero Image */}
-          <img 
-            src="https://customer-assets.emergentagent.com/job_truebond-notify/artifacts/8q937866_Gemini_Generated_Image_c05duoc05duoc05d.png" 
-            alt="Find your perfect match" 
+          <img
+            src="https://customer-assets.emergentagent.com/job_truebond-notify/artifacts/8q937866_Gemini_Generated_Image_c05duoc05duoc05d.png"
+            alt="Find your perfect match"
             className="w-full max-w-sm object-contain drop-shadow-2xl rounded-2xl mb-6"
           />
-          
+
           <h2 className="text-2xl font-bold text-[#0F172A]">Start Your Journey</h2>
           <p className="text-gray-700 mt-2 text-center">Create meaningful connections that last a lifetime ✨</p>
-          
+
           {/* Signup Benefits */}
           <div className="mt-6 text-left bg-white/70 backdrop-blur-sm rounded-xl p-5 w-full max-w-xs shadow-lg">
             <p className="font-semibold text-[#0F172A] mb-3">What you get:</p>
@@ -225,7 +248,7 @@ const SignupPage = () => {
               </li>
             </ul>
           </div>
-          
+
           {/* Floating hearts */}
           <div className="absolute top-1/4 left-1/6 animate-pulse">
             <Heart size={20} className="text-pink-400" fill="currentColor" />
@@ -252,9 +275,8 @@ const SignupPage = () => {
             {steps.map((s, i) => (
               <div key={s.num} className="flex items-center">
                 <div className="flex flex-col items-center">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center font-semibold transition-all ${
-                    step >= s.num ? 'bg-gradient-to-br from-pink-500 to-rose-500 text-white' : 'bg-gray-200 text-gray-500'
-                  }`}>
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center font-semibold transition-all ${step >= s.num ? 'bg-gradient-to-br from-pink-500 to-rose-500 text-white' : 'bg-gray-200 text-gray-500'
+                    }`}>
                     {step > s.num ? <Check size={20} /> : <s.icon size={20} />}
                   </div>
                   <span className={`text-xs mt-1 ${step >= s.num ? 'text-pink-600' : 'text-gray-400'}`}>
@@ -262,9 +284,8 @@ const SignupPage = () => {
                   </span>
                 </div>
                 {i < steps.length - 1 && (
-                  <div className={`w-12 h-1 mx-2 rounded transition-all ${
-                    step > s.num ? 'bg-gradient-to-r from-pink-500 to-rose-500' : 'bg-gray-200'
-                  }`} />
+                  <div className={`w-12 h-1 mx-2 rounded transition-all ${step > s.num ? 'bg-gradient-to-r from-pink-500 to-rose-500' : 'bg-gray-200'
+                    }`} />
                 )}
               </div>
             ))}
@@ -276,7 +297,7 @@ const SignupPage = () => {
               <>
                 <h1 className="text-2xl font-bold text-[#0F172A] mb-2">Tell us about yourself</h1>
                 <p className="text-gray-600 mb-6">Let's start with the basics</p>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-[#0F172A] mb-2">Full Name</label>
                   <div className="relative">
@@ -317,11 +338,10 @@ const SignupPage = () => {
                         key={option.value}
                         type="button"
                         onClick={() => setFormData({ ...formData, gender: option.value })}
-                        className={`p-4 rounded-xl border-2 transition-all text-center ${
-                          formData.gender === option.value
-                            ? 'border-[#0F172A] bg-[#E9D5FF]/30'
-                            : 'border-gray-200 hover:border-[#E9D5FF]'
-                        }`}
+                        className={`p-4 rounded-xl border-2 transition-all text-center ${formData.gender === option.value
+                          ? 'border-[#0F172A] bg-[#E9D5FF]/30'
+                          : 'border-gray-200 hover:border-[#E9D5FF]'
+                          }`}
                       >
                         <span className="text-2xl block mb-1">{option.emoji}</span>
                         <span className="text-sm font-medium text-[#0F172A]">{option.label}</span>
@@ -337,7 +357,7 @@ const SignupPage = () => {
               <>
                 <h1 className="text-2xl font-bold text-[#0F172A] mb-2">Who do you want to meet?</h1>
                 <p className="text-gray-600 mb-6">Help us find the right people for you</p>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-[#0F172A] mb-2">I'm interested in</label>
                   <div className="grid grid-cols-3 gap-3">
@@ -346,11 +366,10 @@ const SignupPage = () => {
                         key={option.value}
                         type="button"
                         onClick={() => setFormData({ ...formData, interested_in: option.value })}
-                        className={`p-4 rounded-xl border-2 transition-all text-center ${
-                          formData.interested_in === option.value
-                            ? 'border-[#0F172A] bg-[#E9D5FF]/30'
-                            : 'border-gray-200 hover:border-[#E9D5FF]'
-                        }`}
+                        className={`p-4 rounded-xl border-2 transition-all text-center ${formData.interested_in === option.value
+                          ? 'border-[#0F172A] bg-[#E9D5FF]/30'
+                          : 'border-gray-200 hover:border-[#E9D5FF]'
+                          }`}
                       >
                         <span className="text-2xl block mb-1">{option.emoji}</span>
                         <span className="text-sm font-medium text-[#0F172A]">{option.label}</span>
@@ -394,11 +413,10 @@ const SignupPage = () => {
                         key={option.value}
                         type="button"
                         onClick={() => setFormData({ ...formData, intent: option.value })}
-                        className={`p-4 rounded-xl border-2 transition-all text-left ${
-                          formData.intent === option.value
-                            ? 'border-[#0F172A] bg-[#E9D5FF]/30'
-                            : 'border-gray-200 hover:border-[#E9D5FF]'
-                        }`}
+                        className={`p-4 rounded-xl border-2 transition-all text-left ${formData.intent === option.value
+                          ? 'border-[#0F172A] bg-[#E9D5FF]/30'
+                          : 'border-gray-200 hover:border-[#E9D5FF]'
+                          }`}
                       >
                         <span className="font-semibold text-[#0F172A] block">{option.label}</span>
                         <span className="text-xs text-gray-500">{option.desc}</span>
@@ -482,7 +500,65 @@ const SignupPage = () => {
                     />
                   </div>
                 </div>
+
+                <div className="pt-4 border-t border-gray-100">
+                  <p className="text-sm font-semibold text-[#0F172A] mb-4 flex items-center gap-2">
+                    <Shield size={18} className="text-pink-500" />
+                    Mobile Verification
+                  </p>
+
+                  {!isOtpSent ? (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!formData.mobile_number || formData.mobile_number.length < 10) {
+                          toast.error('Please enter a valid mobile number first');
+                          return;
+                        }
+                        setIsLoading(true);
+                        try {
+                          await authAPI.sendOTP(formData.mobile_number);
+                          setIsOtpSent(true);
+                          toast.success('OTP sent to your mobile!');
+                        } catch (e) {
+                          toast.error('Failed to send OTP. Please try again.');
+                        } finally {
+                          setIsLoading(false);
+                        }
+                      }}
+                      disabled={isLoading}
+                      className="w-full py-3 bg-pink-50 text-pink-600 rounded-xl font-medium border border-pink-100 hover:bg-pink-100 transition-all flex items-center justify-center gap-2"
+                    >
+                      {isLoading ? 'Sending...' : 'Send OTP to Verify'}
+                    </button>
+                  ) : (
+                    <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <div className="relative">
+                        <Shield size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                          type="text"
+                          value={otpCode}
+                          onChange={(e) => setOtpCode(e.target.value)}
+                          placeholder="6-digit OTP code"
+                          maxLength={6}
+                          className="w-full pl-12 pr-4 py-4 rounded-xl border border-pink-200 bg-pink-50/30 focus:border-pink-500 focus:ring-2 focus:ring-pink-100 outline-none transition-all text-center tracking-widest font-mono font-bold"
+                        />
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <p className="text-xs text-gray-500">OTP sent to {formData.mobile_number}</p>
+                        <button
+                          type="button"
+                          onClick={() => setIsOtpSent(false)}
+                          className="text-xs text-pink-600 hover:underline"
+                        >
+                          Resend OTP
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </>
+
             )}
 
             {/* Step 4: Complete (Address Optional + Image + Terms) */}
@@ -523,7 +599,7 @@ const SignupPage = () => {
                     <MapPin size={16} />
                     Address (Optional - Never shown to others)
                   </p>
-                  
+
                   <input
                     type="text"
                     name="city"
@@ -532,7 +608,7 @@ const SignupPage = () => {
                     placeholder="City"
                     className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[#0F172A] outline-none transition-all text-sm"
                   />
-                  
+
                   <div className="grid grid-cols-2 gap-3">
                     <input
                       type="text"
@@ -584,7 +660,7 @@ const SignupPage = () => {
                   ← Back
                 </button>
               )}
-              
+
               {step < 4 ? (
                 <button
                   type="button"

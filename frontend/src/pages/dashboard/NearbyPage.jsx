@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, Filter, MapPin, Heart, X, MessageCircle, Users, Loader2, RefreshCw, List, Map as MapIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import mapboxgl from 'mapbox-gl';
@@ -16,52 +16,91 @@ const NearbyPage = () => {
   const mapContainer = useRef(null);
   const map = useRef(null);
   const markersRef = useRef([]);
+  const locationUpdatedRef = useRef(false); // Prevent location update loop
+  const fetchInProgressRef = useRef(false); // Track ongoing fetch
   
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [userLocation, setUserLocation] = useState({ lat: 12.9716, lng: 77.5946 });
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState('map'); // 'map' or 'list'
 
-  // Fetch users
+  // Fetch users - with location update guard to prevent re-render loops
   const fetchUsers = async (lat, lng) => {
+    // Prevent multiple concurrent fetches - but allow if this is initial load (isLoading just started)
+    // We use a ref to track if we have an ongoing fetch
+    if (fetchInProgressRef.current) return;
+    
+    fetchInProgressRef.current = true;
     setIsLoading(true);
     try {
-      // Try to update location
-      try {
-        await locationAPI.update(lat, lng);
-      } catch (e) {
-        console.log('Could not update location');
+      // Try to update location - but don't fail if it doesn't work
+      // Use a ref to track if we've already updated location this session
+      if (!locationUpdatedRef.current) {
+        try {
+          await locationAPI.update(lat, lng);
+          locationUpdatedRef.current = true;
+        } catch (e) {
+          console.log('Could not update location:', e.message);
+        }
       }
       
-      // Get users from feed (more reliable than nearby)
+      // Get nearby users using the location API (proper geo-based search)
       let usersData = [];
       try {
-        const feedResponse = await userAPI.getFeed(1, 50);
-        if (feedResponse.data.users && feedResponse.data.users.length > 0) {
-          usersData = feedResponse.data.users;
+        const nearbyResponse = await locationAPI.getNearby(lat, lng, 500);
+        console.log("Nearby API response:", nearbyResponse.data);
+        if (nearbyResponse.data.users && nearbyResponse.data.users.length > 0) {
+          usersData = nearbyResponse.data.users;
+        } else {
+          console.log("No users found in nearby API response");
         }
       } catch (e) {
-        console.log('Feed API failed:', e);
+        console.log('Nearby API failed, falling back to feed:', e.message);
+        // Fallback to feed if nearby fails
+        try {
+          const feedResponse = await userAPI.getFeed(1, 50);
+          if (feedResponse.data.users && feedResponse.data.users.length > 0) {
+            usersData = feedResponse.data.users;
+          }
+        } catch (feedError) {
+          console.log('Feed API also failed:', feedError.message);
+        }
       }
       
       // Format users with location for map
-      const formattedUsers = usersData.map((u, index) => ({
-        ...u,
-        photo: u.profile_pictures?.[0] || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.name || index}`,
-        location: u.location || {
-          lat: lat + (Math.random() - 0.5) * 0.08,
-          lng: lng + (Math.random() - 0.5) * 0.08
-        }
-      }));
+      const formattedUsers = usersData.map((u, index) => {
+        const photos = u.profile_pictures || [];
+        const avatar = u.avatar || photos[0] || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.name || index}`;
+        const userId = u.id || u.user_id || u._id;
+        
+        return {
+          ...u,
+          id: userId,
+          name: u.name,
+          photo: avatar,
+          // Use actual location from API (with privacy jitter)
+          location: {
+            lat: u.lat || lat + (Math.random() - 0.5) * 0.08,
+            lng: u.lng || lng + (Math.random() - 0.5) * 0.08
+          },
+          distance_display: u.distance_display || (u.distance_km ? `~${u.distance_km} km` : 'Nearby'),
+          bio: u.bio || '',
+          age: u.age || 25,
+          intent: u.intent || 'Dating',
+          is_online: u.is_online || false
+        };
+      });
       
       setUsers(formattedUsers);
     } catch (error) {
       console.error('Error fetching users:', error);
-      setUsers([]);
+      // Don't reset users to empty on error - keep existing users visible
     } finally {
+      fetchInProgressRef.current = false;
       setIsLoading(false);
     }
   };
@@ -144,8 +183,8 @@ const NearbyPage = () => {
     markersRef.current = [];
 
     users.forEach((userItem) => {
-      const lat = userItem.location?.lat || userItem.location?.latitude;
-      const lng = userItem.location?.lng || userItem.location?.longitude;
+      const lat = userItem.lat || userItem.location?.lat || userItem.location?.latitude;
+      const lng = userItem.lng || userItem.location?.lng || userItem.location?.longitude;
       
       if (!lat || !lng) return;
 
@@ -187,7 +226,7 @@ const NearbyPage = () => {
 
   const handleMessage = (userItem) => {
     if ((user?.credits_balance || 0) > 0) {
-      navigate(`/dashboard/chat?user=${userItem.id}`);
+      navigate(`/dashboard/chat/${userItem.id}`);
     } else {
       toast.error('You need coins to send messages!');
       navigate('/dashboard/credits');
@@ -260,6 +299,36 @@ const NearbyPage = () => {
               <p className="text-gray-500">Finding people nearby...</p>
             </div>
           </div>
+        ) : error ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
+            <div className="text-center max-w-md">
+              <Users className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+              <p className="text-gray-600 font-medium mb-2">{error}</p>
+              <button 
+                onClick={() => {
+                  setError(null);
+                  fetchUsers(userLocation.lat, userLocation.lng);
+                }}
+                className="mt-2 px-4 py-2 bg-[#0F172A] text-white rounded-lg hover:bg-gray-800 transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        ) : filteredUsers.length === 0 ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
+            <div className="text-center max-w-md">
+              <Users className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+              <p className="text-gray-600 font-medium">No users found nearby</p>
+              <p className="text-gray-500 text-sm mt-1">Try expanding your search radius or check back later!</p>
+              <button 
+                onClick={() => fetchUsers(userLocation.lat, userLocation.lng)}
+                className="mt-4 px-4 py-2 bg-[#0F172A] text-white rounded-lg hover:bg-gray-800 transition-colors"
+              >
+                Refresh
+              </button>
+            </div>
+          </div>
         ) : viewMode === 'map' ? (
           <div className="relative w-full" style={{ height: '600px' }}>
             {/* Full-width Map */}
@@ -282,8 +351,8 @@ const NearbyPage = () => {
                     key={userItem.id}
                     onClick={() => {
                       setSelectedUser(userItem);
-                      const lat = userItem.location?.lat;
-                      const lng = userItem.location?.lng;
+                      const lat = userItem.lat || userItem.location?.lat;
+                      const lng = userItem.lng || userItem.location?.lng;
                       if (map.current && lat && lng) {
                         map.current.flyTo({ center: [lng, lat], zoom: 14, duration: 500 });
                       }

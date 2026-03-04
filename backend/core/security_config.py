@@ -170,6 +170,8 @@ class SecurityConfig:
             "http://127.0.0.1:3000",
             "http://localhost:5173",  # Vite dev server
             "http://127.0.0.1:5173",
+            "http://localhost:5000",  # React/Vite on port 5000
+            "http://127.0.0.1:5000",
         ]
         
         # Also check CORS_ORIGINS env var for development

@@ -35,8 +35,17 @@ from backend.config import settings
 
 async def init_db():
     client = AsyncIOMotorClient(settings.MONGODB_URI)
-    # Extract database name from URI or use default
-    database = client.get_database("pairly")
+    # Extract database name from URI path (e.g., /truebond in mongodb+srv://.../truebond)
+    # Default to "truebond" if not specified in URI
+    uri = settings.MONGODB_URI
+    db_name = "truebond"
+    if "/" in uri:
+        # Extract database name from path
+        path_part = uri.split("/")
+        if len(path_part) >= 4:  # mongodb+srv://host/database?params
+            db_name = path_part[3].split("?")[0]
+    
+    database = client.get_database(db_name)
 
     await init_beanie(
         database=database,

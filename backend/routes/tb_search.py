@@ -4,10 +4,10 @@ from typing import Optional
 from backend.models.tb_user import TBUser
 from backend.routes.tb_auth import get_current_user
 
-router = APIRouter(prefix="/api/search", tags=["TrueBond Search"])
+router = APIRouter(prefix="/api/users", tags=["TrueBond Search"])
 
 
-@router.get("/users")
+@router.get("/search")
 async def search_users(
     q: str = Query(..., min_length=1, description="Search query"),
     limit: int = Query(20, ge=1, le=50),
@@ -28,8 +28,8 @@ async def search_users(
             "age": u.age,
             "gender": u.gender,
             "bio": u.bio,
-            "profilePicture": u.profile_pictures[0] if u.profile_pictures else None,
-            "isOnline": u.is_online
+            "profile_picture": u.profile_pictures[0] if u.profile_pictures else None,
+            "is_online": u.is_online
         }
         for u in users
         if str(u.id) != str(user.id)

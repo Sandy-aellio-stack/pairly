@@ -42,22 +42,35 @@ class TokenBlacklist:
     @staticmethod
     async def is_blacklisted(token_jti: str) -> bool:
         """
-        Check if a token is blacklisted
-
-        Args:
-            token_jti: JWT ID to check
-
-        Returns:
-            True if blacklisted, False otherwise
+        Check if a token is blacklisted.
+        Robust check to avoid NoneType errors.
         """
+        if not token_jti:
+            return False
+            
         try:
+            # Add defensive check for redis_client.redis
+            if redis_client is None:
+                logger.warning("Redis client is None")
+                return False
+            
+            redis_conn = getattr(redis_client, 'redis', None)
+            if redis_conn is None:
+                logger.warning("Redis connection is None")
+                return False
+                
             key = f"{TokenBlacklist.PREFIX}{token_jti}"
-            result = await redis_client.redis.get(key)
-            return result is not None
+            result = await redis_conn.get(key)
+            
+            # Properly check for None - never call .get() on result
+            if result is None:
+                return False
+            return True
+        except AttributeError as e:
+            logger.error(f"Failed to check blacklist (AttributeError): {e}")
+            return False
         except Exception as e:
             logger.error(f"Failed to check blacklist: {e}")
-            # Fail closed: if Redis is down, treat as not blacklisted
-            # but log the error for investigation
             return False
 
     @staticmethod
@@ -84,18 +97,33 @@ class TokenBlacklist:
     @staticmethod
     async def is_user_blacklisted(user_id: str) -> bool:
         """
-        Check if all tokens for a user are blacklisted
-
-        Args:
-            user_id: User ID to check
-
-        Returns:
-            True if all user tokens are blacklisted
+        Check if all tokens for a user are blacklisted.
+        Robust check to avoid NoneType errors.
         """
+        if not user_id:
+            return False
+            
         try:
+            # Add defensive check for redis_client.redis
+            if redis_client is None:
+                logger.warning("Redis client is None")
+                return False
+            
+            redis_conn = getattr(redis_client, 'redis', None)
+            if redis_conn is None:
+                logger.warning("Redis connection is None")
+                return False
+                
             key = f"{TokenBlacklist.USER_PREFIX}{user_id}"
-            result = await redis_client.redis.get(key)
-            return result is not None
+            result = await redis_conn.get(key)
+            
+            # Properly check for None - never call .get() on result
+            if result is None:
+                return False
+            return True
+        except AttributeError as e:
+            logger.error(f"Failed to check user blacklist (AttributeError): {e}")
+            return False
         except Exception as e:
             logger.error(f"Failed to check user blacklist: {e}")
             return False

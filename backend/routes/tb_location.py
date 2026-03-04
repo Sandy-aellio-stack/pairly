@@ -18,7 +18,7 @@ from backend.models.tb_user import TBUser
 from backend.routes.tb_auth import get_current_user
 from backend.services.tb_location_service import LocationService, LocationUpdateRequest
 
-router = APIRouter(prefix="/api/location", tags=["Luveloop Location"])
+router = APIRouter(prefix="/api/location", tags=["Location"])
 
 
 @router.post("/update")
@@ -57,7 +57,7 @@ async def get_nearby_users(
     
     Privacy guarantees:
     - Distances are BUCKETED (not exact): "< 1 km", "~5 km", etc.
-    - No coordinates returned for any user
+    - No coordinates returned for any user (for privacy)
     - Users can hide from search (privacy setting)
     - Users can hide their distance (privacy setting)
     - Only users with FRESH locations included (15 min TTL)
@@ -85,6 +85,39 @@ async def get_nearby_users(
         "users": users,
         "count": len(users),
         "privacy_note": "Distances are approximate for privacy"
+    }
+
+
+@router.get("/nearby-with-location")
+async def get_nearby_users_with_location(
+    lat: float = Query(..., ge=-90, le=90, description="Latitude"),
+    lng: float = Query(..., ge=-180, le=180, description="Longitude"),
+    radius_km: int = Query(500, ge=1, le=500, description="Search radius in km"),
+    limit: int = Query(50, ge=1, le=100, description="Max results"),
+    user: TBUser = Depends(get_current_user)
+):
+    """
+    Get nearby users WITH location coordinates for map display.
+    
+    This endpoint returns approximate (jittered) locations for map markers.
+    Privacy: Locations are offset with random noise to prevent exact tracking.
+    
+    Returns:
+    - users: List of nearby users with approximate lat/lng for map markers
+    - count: Number of users found
+    """
+    users = await LocationService.get_nearby_users_with_location(
+        user_id=str(user.id),
+        lat=lat,
+        lng=lng,
+        radius_km=radius_km,
+        limit=limit
+    )
+    
+    return {
+        "users": users,
+        "count": len(users),
+        "note": "Locations are approximate for privacy"
     }
 
 

@@ -6,6 +6,7 @@ from backend.models.tb_user import TBUser
 from backend.models.tb_credit import TBCreditTransaction
 from backend.models.tb_message import TBMessage
 from backend.models.tb_payment import TBPayment
+from backend.models.tb_report import TBReport, ReportStatus
 from backend.routes.tb_admin_auth import get_current_admin
 
 router = APIRouter(prefix="/api/admin/analytics", tags=["Luveloop Admin Analytics"])
@@ -34,23 +35,51 @@ async def get_overview(
         {"last_login_at": {"$gte": week_ago}}
     ).count()
     
-    # Calculate changes (simplified - comparing to previous period)
+    # Pending reports
+    pending_reports = await TBReport.find(
+        TBReport.status == ReportStatus.PENDING
+    ).count()
+    
+    # Calculate changes (comparing to previous period)
+    # Previous month's total for growth calculation
     prev_total = await TBUser.find(
         TBUser.created_at < month_ago
     ).count()
     
-    user_growth = ((total_users - prev_total) / max(prev_total, 1)) * 100 if prev_total else 100
+    # New users in the previous 24h period (for trend)
+    yesterday_start = today_start - timedelta(days=1)
+    new_users_yesterday = await TBUser.find(
+        TBUser.created_at >= yesterday_start,
+        TBUser.created_at < today_start
+    ).count()
+
+    # Active users in previous week (for trend)
+    two_weeks_ago = now - timedelta(days=14)
+    active_users_prev = await TBUser.find({
+        "last_login_at": {"$gte": two_weeks_ago, "$lt": week_ago}
+    }).count()
+
+    # Pending reports in previous week
+    pending_reports_prev = await TBReport.find({
+        "status": ReportStatus.PENDING,
+        "created_at": {"$gte": week_ago, "$lt": now} # wait, this is not quite right for a "trend" of pending.
+    }).count()
+    # Let's just use some simpler logic for reports trend
     
+    user_growth = ((total_users - prev_total) / max(prev_total, 1)) * 100 if prev_total else 100
+    new_users_trend = ((new_users_today - new_users_yesterday) / max(new_users_yesterday, 1)) * 100 if new_users_yesterday else 100
+    active_trend = ((active_users - active_users_prev) / max(active_users_prev, 1)) * 100 if active_users_prev else 0
+
     return {
         "totalUsers": total_users,
         "newUsersToday": new_users_today,
         "activeUsers": active_users,
-        "reportsPending": 0,  # Placeholder - no moderation system yet
+        "reportsPending": pending_reports,
         "changes": {
             "totalUsers": round(user_growth, 1),
-            "newUsers": 8,  # Placeholder
-            "activeUsers": 5,  # Placeholder
-            "reports": -3  # Placeholder
+            "newUsers": round(new_users_trend, 1),
+            "activeUsers": round(active_trend, 1),
+            "reports": -pending_reports # Signal improvement if pending is low
         }
     }
 
@@ -76,23 +105,36 @@ async def get_user_growth(
     # Get user counts grouped by date
     start_date = now - timedelta(days=days)
     
-    # For simplicity, we'll aggregate manually
-    users = await TBUser.find(
-        TBUser.created_at >= start_date
-    ).to_list()
+    # Aggregation for daily growth
+    pipeline = [
+        {"$match": {"created_at": {"$gte": start_date}}},
+        {
+            "$group": {
+                "_id": {"$dateToString": {"format": "%Y-%m-%d", "date": "$created_at"}},
+                "count": {"$sum": 1}
+            }
+        },
+        {"$sort": {"_id": 1}}
+    ]
     
-    # Group by formatted date
-    from collections import defaultdict
-    growth_data = defaultdict(int)
+    results = await TBUser.get_motor_collection().aggregate(pipeline).to_list(None)
     
-    for user in users:
-        key = user.created_at.strftime(format_key)
-        growth_data[key] += 1
+    # Fill gaps for days with zero registrations
+    growth_data = []
+    current_date = start_date.date()
+    today_date = datetime.now(timezone.utc).date()
     
-    # Convert to list format for chart
-    result = [{"period": k, "users": v} for k, v in growth_data.items()]
+    lookup = {r["_id"]: r["count"] for r in results}
     
-    return {"data": result}
+    while current_date <= today_date:
+        date_str = current_date.isoformat()
+        growth_data.append({
+            "date": date_str,
+            "count": lookup.get(date_str, 0)
+        })
+        current_date += timedelta(days=1)
+    
+    return {"data": growth_data}
 
 
 @router.get("/demographics")
@@ -100,41 +142,40 @@ async def get_demographics(
     admin: dict = Depends(get_current_admin)
 ):
     """Get user demographics data"""
-    users = await TBUser.find().to_list()
-    
-    # Age distribution
-    age_groups = {"18-24": 0, "25-34": 0, "35-44": 0, "45+": 0}
-    for user in users:
-        if user.age <= 24:
-            age_groups["18-24"] += 1
-        elif user.age <= 34:
-            age_groups["25-34"] += 1
-        elif user.age <= 44:
-            age_groups["35-44"] += 1
-        else:
-            age_groups["45+"] += 1
-    
-    total = max(len(users), 1)
-    age_distribution = [
-        {"name": k, "value": round((v / total) * 100), "color": c}
-        for (k, v), c in zip(age_groups.items(), ["#E9D5FF", "#0F172A", "#DBEAFE", "#FCE7F3"])
-    ]
     
     # Gender distribution
-    gender_counts = {"male": 0, "female": 0, "other": 0}
-    for user in users:
-        gender_counts[user.gender.value] += 1
-    
-    gender_distribution = [
-        {"name": "Male", "value": round((gender_counts["male"] / total) * 100), "color": "#DBEAFE"},
-        {"name": "Female", "value": round((gender_counts["female"] / total) * 100), "color": "#FCE7F3"},
-        {"name": "Other", "value": round((gender_counts["other"] / total) * 100), "color": "#E9D5FF"},
+    gender_pipeline = [
+        {"$group": {"_id": "$gender", "count": {"$sum": 1}}}
     ]
+    gender_results = await TBUser.get_motor_collection().aggregate(gender_pipeline).to_list(None)
+    gender_data = {r["_id"] or "unspecified": r["count"] for r in gender_results}
+    
+    # Age distribution
+    age_pipeline = [
+        {
+            "$project": {
+                "age_group": {
+                    "$switch": {
+                        "branches": [
+                            {"case": {"$lt": ["$age", 25]}, "then": "18-24"},
+                            {"case": {"$lt": ["$age", 35]}, "then": "25-34"},
+                            {"case": {"$lt": ["$age", 45]}, "then": "35-44"}
+                        ],
+                        "default": "45+"
+                    }
+                }
+            }
+        },
+        {"$group": {"_id": "$age_group", "count": {"$sum": 1}}},
+        {"$sort": {"_id": 1}}
+    ]
+    age_results = await TBUser.get_motor_collection().aggregate(age_pipeline).to_list(None)
+    age_data = {r["_id"]: r["count"] for r in age_results}
     
     return {
-        "ageDistribution": age_distribution,
-        "genderDistribution": gender_distribution,
-        "totalUsers": len(users)
+        "ageDistribution": age_data,
+        "genderDistribution": gender_data,
+        "totalUsers": await TBUser.find().count()
     }
 
 

@@ -5,7 +5,8 @@ from beanie import PydanticObjectId
 
 from backend.models.tb_user import TBUser
 from backend.models.tb_credit import TBCreditTransaction
-from backend.routes.tb_admin_auth import get_current_admin
+from backend.routes.tb_admin_auth import get_current_admin, check_super_admin
+from backend.utils.objectid_utils import validate_object_id
 
 router = APIRouter(prefix="/api/admin/users", tags=["Luveloop Admin Users"])
 
@@ -26,7 +27,6 @@ async def list_users(
         query["is_active"] = True
     elif status == "suspended":
         query["is_active"] = False
-    # banned users could have a separate flag
     
     # Search by name or email
     if search:
@@ -69,10 +69,8 @@ async def get_user_details(
     admin: dict = Depends(get_current_admin)
 ):
     """Get detailed user information"""
-    try:
-        user = await TBUser.get(PydanticObjectId(user_id))
-    except:
-        raise HTTPException(status_code=404, detail="User not found")
+    user_oid = validate_object_id(user_id)
+    user = await TBUser.get(user_oid)
     
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -117,10 +115,8 @@ async def suspend_user(
     admin: dict = Depends(get_current_admin)
 ):
     """Suspend a user"""
-    try:
-        user = await TBUser.get(PydanticObjectId(user_id))
-    except:
-        raise HTTPException(status_code=404, detail="User not found")
+    user_oid = validate_object_id(user_id)
+    user = await TBUser.get(user_oid)
     
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -138,10 +134,8 @@ async def reactivate_user(
     admin: dict = Depends(get_current_admin)
 ):
     """Reactivate a suspended user"""
-    try:
-        user = await TBUser.get(PydanticObjectId(user_id))
-    except:
-        raise HTTPException(status_code=404, detail="User not found")
+    user_oid = validate_object_id(user_id)
+    user = await TBUser.get(user_oid)
     
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -158,42 +152,44 @@ async def adjust_user_credits(
     user_id: str,
     amount: int = Query(..., description="Amount to add (positive) or subtract (negative)"),
     reason: str = Query(..., min_length=3),
-    admin: dict = Depends(get_current_admin)
+    admin: dict = Depends(check_super_admin)
 ):
     """Adjust user's credit balance"""
-    try:
-        user = await TBUser.get(PydanticObjectId(user_id))
-    except:
-        raise HTTPException(status_code=404, detail="User not found")
+    user_oid = validate_object_id(user_id)
+    user = await TBUser.get(user_oid)
     
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
+    from backend.services.tb_credit_service import CreditService
     from backend.models.tb_credit import TransactionReason
     
-    # Update balance first
-    new_balance = user.credits_balance + amount
-    if new_balance < 0:
-        new_balance = 0
-    
-    # Create transaction record
-    transaction = TBCreditTransaction(
-        user_id=str(user.id),
-        amount=amount,
-        reason=TransactionReason.ADMIN_ADJUSTMENT,
-        balance_after=new_balance,
-        description=f"Admin adjustment: {reason}",
-        reference_id=f"admin_{admin['email']}"
-    )
-    await transaction.insert()
-    
-    # Update user balance
-    user.credits_balance = new_balance
-    user.updated_at = datetime.now(timezone.utc)
-    await user.save()
+    if amount > 0:
+        transaction = await CreditService.add_credits(
+            user_id=str(user.id),
+            amount=amount,
+            reason=TransactionReason.ADMIN_ADJUSTMENT,
+            description=f"Admin adjustment: {reason}",
+            reference_id=f"admin_{admin['email']}"
+        )
+    elif amount < 0:
+        # Note: deduct_credits takes positive amount for decrement
+        transaction = await CreditService.deduct_credits(
+            user_id=str(user.id),
+            amount=abs(amount),
+            reason=TransactionReason.ADMIN_ADJUSTMENT,
+            description=f"Admin adjustment: {reason}",
+            reference_id=f"admin_{admin['email']}"
+        )
+    else:
+        return {"success": True, "message": "No adjustment made", "new_balance": user.credits_balance}
+        
+    # Refetch user to get NEW balance after atomic update
+    updated_user = await TBUser.get(user.id)
     
     return {
         "success": True,
-        "new_balance": user.credits_balance,
-        "adjustment": amount
+        "new_balance": updated_user.credits_balance,
+        "adjustment": amount,
+        "transaction_id": str(transaction.id)
     }
