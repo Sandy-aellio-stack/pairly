@@ -1,37 +1,37 @@
 #!/usr/bin/env python3
 """
-Simple backend starter script
+TrueBond Backend Starter Script
+Optimized for PM2 and local development.
 """
 import sys
 import os
 
-# Add backend to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'backend'))
+# Ensure the project root is in the Python path
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
 
-# Load environment variables from backend/.env file
+# Load environment variables
 from dotenv import load_dotenv
-# Try loading from backend directory first, then root
-env_path = os.path.join(os.path.dirname(__file__), 'backend', '.env')
+env_path = os.path.join(ROOT_DIR, 'backend', '.env')
 if os.path.exists(env_path):
     load_dotenv(env_path)
 else:
-    # Fallback to root .env
     load_dotenv()
 
 print("Environment variables loaded")
 
 try:
     import uvicorn
-    from backend.main import socket_app
-    
-    # We depend on main.py to log MongoDB and Redis connection status
-    # because they happen during lifespan startup.
+    # Use the import string format for uvicorn to support reload/workers and PM2 better
+    # backend.main:socket_app refers to the socket_app object in backend/main.py
     
     uvicorn.run(
-        socket_app,
+        "backend.main:socket_app",
         host="0.0.0.0",
         port=8000,
-        log_level="info"
+        log_level="info",
+        reload=False
     )
 except ImportError as e:
     print(f"Error: Missing dependencies - {e}")

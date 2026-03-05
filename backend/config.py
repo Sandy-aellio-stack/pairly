@@ -2,14 +2,21 @@ from pydantic_settings import BaseSettings
 from pydantic import ConfigDict
 import os
 import logging
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 class Settings(BaseSettings):
-    model_config = ConfigDict(extra='ignore', env_file='.env')
+    model_config = ConfigDict(extra='ignore')
+    
+    # Required for production
+    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     
     # Database and Secrets
     MONGODB_URI: str = os.getenv("MONGO_URL", "")
     JWT_SECRET: str = os.getenv("JWT_SECRET", "")
-    REDIS_URL: str = os.getenv("REDIS_URL", "")
+    REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379")
     
     FRAUD_BLOCKLIST_FILE: str = os.getenv("FRAUD_BLOCKLIST_FILE", "")
     HIGH_VALUE_PURCHASE_CENTS: int = int(os.getenv("HIGH_VALUE_PURCHASE_CENTS", "50000"))
@@ -20,7 +27,6 @@ class Settings(BaseSettings):
     LOG_FILE_PATH: str = os.getenv("LOG_FILE_PATH", "/var/log/pairly/app.log")
     
     # Security configuration
-    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "*")
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:5173")
     
@@ -30,36 +36,23 @@ class Settings(BaseSettings):
     RATE_LIMIT_BAN_THRESHOLD: int = int(os.getenv("RATE_LIMIT_BAN_THRESHOLD", "150"))
     RATE_LIMIT_BAN_DURATION: int = int(os.getenv("RATE_LIMIT_BAN_DURATION", "3600"))
     
-    # Payment system (Stripe + Razorpay)
+    # Payment system
     PAYMENTS_ENABLED: bool = os.getenv("PAYMENTS_ENABLED", "true").lower() == "true"
     PAYMENTS_MOCK_MODE: bool = os.getenv("PAYMENTS_MOCK_MODE", "true").lower() == "true"
 
-    # Stripe configuration
-    STRIPE_SECRET_KEY: str = os.getenv("STRIPE_SECRET_KEY", "")
-    STRIPE_WEBHOOK_SECRET: str = os.getenv("STRIPE_WEBHOOK_SECRET", "")
-
-    # Razorpay configuration (India)
-    RAZORPAY_KEY_ID: str = os.getenv("RAZORPAY_KEY_ID", "")
-    RAZORPAY_KEY_SECRET: str = os.getenv("RAZORPAY_KEY_SECRET", "")
-    RAZORPAY_WEBHOOK_SECRET: str = os.getenv("RAZORPAY_WEBHOOK_SECRET", "")
-    
     # Firebase configuration
     FIREBASE_API_KEY: str = os.getenv("FIREBASE_API_KEY", "")
 
 settings = Settings()
 
-# Validate critical settings
+# CRITICAL VALIDATION
 if not settings.JWT_SECRET:
-    logging.error("CRITICAL: JWT_SECRET is not set in environment!")
-    # In production, we should probably raise an error here
-    if settings.ENVIRONMENT == "production":
-        raise RuntimeError("JWT_SECRET must be set in production")
+    logging.error("CRITICAL: JWT_SECRET is missing!")
+    raise RuntimeError("JWT_SECRET must be set in environment")
 
 if not settings.MONGODB_URI:
-    logging.error("CRITICAL: MONGO_URL is not set in environment!")
-    if settings.ENVIRONMENT == "production":
-        raise RuntimeError("MONGO_URL must be set in production")
+    logging.error("CRITICAL: MONGO_URL is missing!")
+    raise RuntimeError("MONGO_URL must be set in environment")
 
 if not settings.REDIS_URL:
-    logging.warning("REDIS_URL is not set, defaulting to localhost for development")
-    settings.REDIS_URL = "redis://localhost:6379"
+    logging.warning("REDIS_URL is not set, using default")
