@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+import { API_BASE_URL } from '../config/api';
+
+const API_URL = API_BASE_URL;
 
 // Base URL - backend routes already include /api prefix
 // Do NOT add /api here to avoid duplication (/api/api/...)

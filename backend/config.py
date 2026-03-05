@@ -1,15 +1,18 @@
 from pydantic_settings import BaseSettings
 from pydantic import ConfigDict
 import os
+import logging
 
 class Settings(BaseSettings):
     model_config = ConfigDict(extra='ignore', env_file='.env')
     
-    MONGODB_URI: str = os.getenv("MONGO_URL", "mongodb://localhost:27017")
+    # Database and Secrets
+    MONGODB_URI: str = os.getenv("MONGO_URL", "")
     JWT_SECRET: str = os.getenv("JWT_SECRET", "")
-    REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379")
-    FRAUD_BLOCKLIST_FILE: str = ""
-    HIGH_VALUE_PURCHASE_CENTS: int = 50000
+    REDIS_URL: str = os.getenv("REDIS_URL", "")
+    
+    FRAUD_BLOCKLIST_FILE: str = os.getenv("FRAUD_BLOCKLIST_FILE", "")
+    HIGH_VALUE_PURCHASE_CENTS: int = int(os.getenv("HIGH_VALUE_PURCHASE_CENTS", "50000"))
     
     # Logging configuration
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
@@ -18,8 +21,8 @@ class Settings(BaseSettings):
     
     # Security configuration
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
-    CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "")
-    FRONTEND_URL: str = os.getenv("REACT_APP_BACKEND_URL", "http://localhost:3000")
+    CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "*")
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:5173")
     
     # Rate limiting
     RATE_LIMIT_ENABLED: bool = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
@@ -39,6 +42,24 @@ class Settings(BaseSettings):
     RAZORPAY_KEY_ID: str = os.getenv("RAZORPAY_KEY_ID", "")
     RAZORPAY_KEY_SECRET: str = os.getenv("RAZORPAY_KEY_SECRET", "")
     RAZORPAY_WEBHOOK_SECRET: str = os.getenv("RAZORPAY_WEBHOOK_SECRET", "")
-
+    
+    # Firebase configuration
+    FIREBASE_API_KEY: str = os.getenv("FIREBASE_API_KEY", "")
 
 settings = Settings()
+
+# Validate critical settings
+if not settings.JWT_SECRET:
+    logging.error("CRITICAL: JWT_SECRET is not set in environment!")
+    # In production, we should probably raise an error here
+    if settings.ENVIRONMENT == "production":
+        raise RuntimeError("JWT_SECRET must be set in production")
+
+if not settings.MONGODB_URI:
+    logging.error("CRITICAL: MONGO_URL is not set in environment!")
+    if settings.ENVIRONMENT == "production":
+        raise RuntimeError("MONGO_URL must be set in production")
+
+if not settings.REDIS_URL:
+    logging.warning("REDIS_URL is not set, defaulting to localhost for development")
+    settings.REDIS_URL = "redis://localhost:6379"

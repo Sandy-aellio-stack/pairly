@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8000');
+import { API_BASE_URL } from '../config/api';
+
+const API_URL = API_BASE_URL;
 
 const adminApi = axios.create({
   baseURL: `${API_URL}/api/admin`,
@@ -46,7 +48,7 @@ export const adminUsersAPI = {
   get: (userId) => adminApi.get(`/users/${userId}`),
   suspend: (userId) => adminApi.post(`/users/${userId}/suspend`),
   reactivate: (userId) => adminApi.post(`/users/${userId}/reactivate`),
-  adjustCredits: (userId, amount, reason) => 
+  adjustCredits: (userId, amount, reason) =>
     adminApi.post(`/users/${userId}/adjust-credits?amount=${amount}&reason=${encodeURIComponent(reason)}`),
 };
 

@@ -18,7 +18,9 @@ from backend.models.webhook_event import WebhookEvent, WebhookDLQ
 from backend.models.user import User as LegacyUser
 from backend.models.tb_pending_session import PendingSession
 
-MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017/truebond")
+from backend.config import settings
+
+MONGO_URL = settings.MONGODB_URI
 
 # Parse MongoDB URL to add authSource if missing
 def _prepare_mongo_url(url: str) -> str:
@@ -75,15 +77,16 @@ async def init_db():
             ]
         )
         
-        print(f"MongoDB connected successfully: {db_name}")
+        import logging
+        logging.info("MongoDB connected successfully")
         return client
     except Exception as e:
+        import logging
         import traceback
-        print(f"WARNING: MongoDB connection failed: {e}")
-        print(f"WARNING: Connection URL (masked): {MONGO_URL[:30]}...")
+        logging.error(f"CRITICAL: MongoDB connection failed: {e}")
+        logging.error(f"Connection URL (masked): {MONGO_URL[:30]}...")
         traceback.print_exc()
-        print("WARNING: Starting without database - set MONGO_URL environment variable")
-        return None
+        raise RuntimeError(f"Could not connect to MongoDB: {e}")
 
 async def close_db(client):
     """Close MongoDB connection"""

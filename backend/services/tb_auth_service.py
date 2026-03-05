@@ -2,6 +2,8 @@ from jose import jwt
 import random
 import string
 import os
+import re
+import logging
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Tuple
 from fastapi import HTTPException, status
@@ -12,6 +14,7 @@ from backend.models.user import User as LegacyUser
 from backend.models.tb_otp import TBOTP
 from backend.models.tb_pending_session import PendingSession
 from backend.models.tb_credit import TBCreditTransaction, TransactionReason
+from backend.models.auth_models import FirebaseLoginRequest
 from backend.services.tb_otp_service import OTPService
 from passlib.context import CryptContext
 from bson.errors import InvalidId
@@ -19,8 +22,11 @@ from bson import ObjectId
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-JWT_SECRET = os.getenv("JWT_SECRET", "truebond-secret-key")
-JWT_ALGORITHM = "HS256"
+JWT_SECRET = os.getenv("JWT_SECRET")
+if not JWT_SECRET:
+    raise RuntimeError("JWT_SECRET environment variable not set")
+
+JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_HOURS = 168 # 7 days
 REFRESH_TOKEN_EXPIRE_DAYS = 30
 
@@ -118,7 +124,6 @@ class AuthService:
             # and automatically detects the hash algorithm (bcrypt)
             return pwd_context.verify(password, clean_hash)
         except Exception as e:
-            import logging
             logging.error(f"Password verification error: {e}")
             return False
 
@@ -234,7 +239,6 @@ class AuthService:
         
         try:
             # Case-insensitive search for email
-            import re
             email_regex = re.compile(f"^{re.escape(email_normalized)}$", re.IGNORECASE)
             user = await TBUser.find_one({"email": email_regex})
         except Exception as e:
@@ -325,7 +329,6 @@ class AuthService:
             user.current_device_id = data.device_id
             await user.save()
         except Exception as e:
-            import logging
             logging.error(f"Error updating user status on login: {e}")
             # Continue anyway, don't block login for status update
             pass
@@ -623,7 +626,6 @@ class AuthService:
         # Find user
         try:
             if data.email:
-                import re
                 email_regex = re.compile(f"^{re.escape(data.email.lower())}$", re.IGNORECASE)
                 user = await TBUser.find_one({"email": email_regex})
             else:

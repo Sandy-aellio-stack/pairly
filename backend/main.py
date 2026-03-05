@@ -87,7 +87,7 @@ async def lifespan(app: FastAPI):
     from backend.socket_server import init_websocket_pubsub
     await init_websocket_pubsub()
     
-    logger.info("Luveloop Backend Started")
+    logger.info("Application startup complete")
     yield
     await close_db(mongo_client)
     
@@ -153,13 +153,8 @@ if ENVIRONMENT == "development":
 
 
 @app.get("/api/health")
-async def health_check():
-    return {
-        "status": "healthy",
-        "service": "luveloop",
-        "version": "1.0.0",
-        "environment": ENVIRONMENT
-    }
+async def health():
+    return {"status": "ok"}
 
 
 @app.get("/api/health/redis")

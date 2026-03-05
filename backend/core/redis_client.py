@@ -22,6 +22,8 @@ class RedisClient:
         """Initialize Redis connection"""
         if not self.redis:
             try:
+                # Use environment variable REDIS_URL
+                self.redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
                 self.redis = aioredis.from_url(
                     self.redis_url,
                     encoding="utf-8",
@@ -31,11 +33,12 @@ class RedisClient:
                 )
                 await self.redis.ping()
                 self._connected = True
-                logger.info(f"Redis connected: {self._mask_url(self.redis_url)}")
+                logger.info("Redis connected")
             except Exception as e:
                 logger.warning(f"Redis connection failed: {e}")
                 self.redis = None
                 self._connected = False
+
 
     async def disconnect(self):
         """Close Redis connection"""
@@ -225,14 +228,16 @@ class RedisClient:
     def _mask_url(self, url: str) -> str:
         if not url: return "None"
         try:
+            # Handle redis://:password@host:port/db
             if "@" in url:
                 parts = url.split("@")
                 proto_part = parts[0]
                 host_part = parts[1]
                 if ":" in proto_part:
                     subparts = proto_part.split(":")
+                    # If format is redis://:password, subparts will be ['redis', '', 'password']
                     if len(subparts) >= 3:
-                        return f"{subparts[0]}:{subparts[1]}:***@{host_part}"
+                         return f"{subparts[0]}:***:***@{host_part}"
                 return f"redis://***:***@{host_part}"
             return url
         except Exception:

@@ -18,22 +18,15 @@ else:
     # Fallback to root .env
     load_dotenv()
 
-print("="*50)
-print("Environment variables loaded:")
-print(f"  ENVIRONMENT: {os.getenv('ENVIRONMENT', 'not set')}")
-print(f"  MONGO_URL: {os.getenv('MONGO_URL', 'not set')[:50]}...")
-print(f"  REDIS_URL: {os.getenv('REDIS_URL', 'not set')[:50]}...")
-print("="*50)
+print("Environment variables loaded")
 
 try:
     import uvicorn
     from backend.main import socket_app
-
-    print("Starting TrueBond Backend...")
-    print("Backend will be available at: http://localhost:8000")
-    print("Health check: http://localhost:8000/api/health")
-    print("\nPress Ctrl+C to stop")
-
+    
+    # We depend on main.py to log MongoDB and Redis connection status
+    # because they happen during lifespan startup.
+    
     uvicorn.run(
         socket_app,
         host="0.0.0.0",
