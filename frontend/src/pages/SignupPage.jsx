@@ -122,6 +122,20 @@ const SignupPage = () => {
         age: parseInt(formData.age, 10),
         gender: formData.gender,
         interested_in: formData.interested_in,
+
+        // Optional fields with safe defaults
+        intent: formData.intent || 'dating',
+        min_age: parseInt(formData.min_age, 10) || 18,
+        max_age: parseInt(formData.max_age, 10) || 50,
+        max_distance_km: 50,
+
+        // Address fields
+        address_line: formData.address_line?.trim() || 'NA',
+        city: formData.city?.trim() || 'NA',
+        state: formData.state?.trim() || 'NA',
+        country: formData.country?.trim() || 'India',
+        pincode: formData.pincode?.trim() || '000000',
+        device_id: localStorage.getItem('tb_device_id') || Math.random().toString(36).substring(7),
       };
 
       // Use standard signup API
