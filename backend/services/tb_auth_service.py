@@ -286,40 +286,40 @@ class AuthService:
         if not user.is_active:
             raise HTTPException(status_code=403, detail="Account is deactivated")
 
-        # Session tracking logic
-        if user.current_device_id and user.current_device_id != data.device_id:
-            # Check if there's already a pending session for this user and new device
-            pending = await PendingSession.find_one({
-                "user_id": str(user.id),
-                "new_device_id": data.device_id,
-                "status": "pending"
-            })
-            if not pending:
-                pending = PendingSession(
-                    user_id=str(user.id),
-                    new_device_id=data.device_id,
-                    old_device_id=user.current_device_id,
-                    status="pending"
-                )
-                await pending.insert()
-            
-            # Notify the old device via Socket.IO
-            from backend.socket_server import emit_notification_to_user
-            await emit_notification_to_user(
-                str(user.id), 
-                "login_approval_request", 
-                {
-                    "pending_session_id": str(pending.id),
-                    "new_device_id": data.device_id,
-                    "message": "A new device is trying to log in to your account. Do you approve?"
-                }
-            )
-            
-            return {
-                "status": "WAITING_FOR_APPROVAL",
-                "pending_session_id": str(pending.id),
-                "message": "Login pending approval from your other device."
-            }
+        # Session tracking logic - DISABLED as per user request
+        # if user.current_device_id and user.current_device_id != data.device_id:
+        #     # Check if there's already a pending session for this user and new device
+        #     pending = await PendingSession.find_one({
+        #         "user_id": str(user.id),
+        #         "new_device_id": data.device_id,
+        #         "status": "pending"
+        #     })
+        #     if not pending:
+        #         pending = PendingSession(
+        #             user_id=str(user.id),
+        #             new_device_id=data.device_id,
+        #             old_device_id=user.current_device_id,
+        #             status="pending"
+        #         )
+        #         await pending.insert()
+        #     
+        #     # Notify the old device via Socket.IO
+        #     from backend.socket_server import emit_notification_to_user
+        #     await emit_notification_to_user(
+        #         str(user.id), 
+        #         "login_approval_request", 
+        #         {
+        #             "pending_session_id": str(pending.id),
+        #             "new_device_id": data.device_id,
+        #             "message": "A new device is trying to log in to your account. Do you approve?"
+        #         }
+        #     )
+        #     
+        #     return {
+        #         "status": "WAITING_FOR_APPROVAL",
+        #         "pending_session_id": str(pending.id),
+        #         "message": "Login pending approval from your other device."
+        #     }
 
         # Update last login and session
         try:
@@ -640,38 +640,38 @@ class AuthService:
         if not user.is_active:
             raise HTTPException(status_code=403, detail="Account is deactivated")
 
-        # Session tracking logic (same as password login)
-        if user.current_device_id and user.current_device_id != data.device_id:
-            pending = await PendingSession.find_one({
-                "user_id": str(user.id),
-                "new_device_id": data.device_id,
-                "status": "pending"
-            })
-            if not pending:
-                pending = PendingSession(
-                    user_id=str(user.id),
-                    new_device_id=data.device_id,
-                    old_device_id=user.current_device_id,
-                    status="pending"
-                )
-                await pending.insert()
-            
-            from backend.socket_server import emit_notification_to_user
-            await emit_notification_to_user(
-                str(user.id), 
-                "login_approval_request", 
-                {
-                    "pending_session_id": str(pending.id),
-                    "new_device_id": data.device_id,
-                    "message": "A new device is trying to log in to your account. Do you approve?"
-                }
-            )
-            
-            return {
-                "status": "WAITING_FOR_APPROVAL",
-                "pending_session_id": str(pending.id),
-                "message": "Login pending approval from your other device."
-            }
+        # Session tracking logic - DISABLED as per user request
+        # if user.current_device_id and user.current_device_id != data.device_id:
+        #     pending = await PendingSession.find_one({
+        #         "user_id": str(user.id),
+        #         "new_device_id": data.device_id,
+        #         "status": "pending"
+        #     })
+        #     if not pending:
+        #         pending = PendingSession(
+        #             user_id=str(user.id),
+        #             new_device_id=data.device_id,
+        #             old_device_id=user.current_device_id,
+        #             status="pending"
+        #         )
+        #         await pending.insert()
+        #     
+        #     from backend.socket_server import emit_notification_to_user
+        #     await emit_notification_to_user(
+        #         str(user.id), 
+        #         "login_approval_request", 
+        #         {
+        #             "pending_session_id": str(pending.id),
+        #             "new_device_id": data.device_id,
+        #             "message": "A new device is trying to log in to your account. Do you approve?"
+        #         }
+        #     )
+        #     
+        #     return {
+        #         "status": "WAITING_FOR_APPROVAL",
+        #         "pending_session_id": str(pending.id),
+        #         "message": "Login pending approval from your other device."
+        #     }
 
         # Update last login and session
         user.last_login_at = datetime.now(timezone.utc)

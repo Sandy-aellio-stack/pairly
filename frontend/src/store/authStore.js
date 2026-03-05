@@ -20,7 +20,6 @@ const useAuthStore = create((set, get) => ({
   isAuthenticated: false,
   isLoading: true,
   credits: 0,
-  pendingSessionId: null,
 
   initialize: async () => {
     const token = localStorage.getItem('tb_access_token');
@@ -50,12 +49,6 @@ const useAuthStore = create((set, get) => ({
   login: async (email, password) => {
     const device_id = getDeviceId();
     const response = await authAPI.login({ email, password, device_id });
-
-    // If backend returns a pending status, don't set user yet
-    if (response.data.status === 'WAITING_FOR_APPROVAL') {
-      set({ pendingSessionId: response.data.pending_session_id });
-      return response.data;
-    }
 
     // Backend returns: { access_token, refresh_token, user, ... } at root level
     const { access_token, refresh_token, user } = response.data;
@@ -92,30 +85,6 @@ const useAuthStore = create((set, get) => ({
     return response.data;
   },
 
-  // Polling for login approval
-  checkLoginStatus: async (pendingSessionId) => {
-    try {
-      const response = await authAPI.checkLoginStatus(pendingSessionId);
-      if (response.data.status === 'approved') {
-        const { tokens, user: userData } = response.data;
-        localStorage.setItem('tb_access_token', tokens.access_token);
-        localStorage.setItem('tb_refresh_token', tokens.refresh_token);
-        set({
-          user: userData,
-          isAuthenticated: true,
-          credits: userData.credits,
-          pendingSessionId: null
-        });
-        connectSocket(tokens.access_token);
-        initializeFCM().catch(err => console.warn('[Auth] FCM init failed:', err));
-        return { status: 'approved' };
-      }
-      return { status: response.data.status };
-    } catch (error) {
-      set({ pendingSessionId: null });
-      throw error;
-    }
-  },
 
   logout: async () => {
     try {

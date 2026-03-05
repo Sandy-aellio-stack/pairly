@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, Mail, Lock, Eye, EyeOff, ArrowRight, User, Check, Calendar, Users, MapPin, Camera, Phone, Sparkles } from 'lucide-react';
+import { Heart, Mail, Lock, Eye, EyeOff, ArrowRight, User, Check, Calendar, Users, MapPin, Camera, Phone, Sparkles, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 import useAuthStore from '@/store/authStore';
+import api, { authAPI } from '@/services/api';
 
 const SignupPage = () => {
   const navigate = useNavigate();
@@ -35,8 +36,6 @@ const SignupPage = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isOtpSent, setIsOtpSent] = useState(false);
-  const [otpCode, setOtpCode] = useState('');
   const [imagePreview, setImagePreview] = useState(null);
 
   const handleChange = (e) => {
@@ -88,14 +87,6 @@ const SignupPage = () => {
           toast.error('Passwords do not match');
           return false;
         }
-        if (!isOtpSent) {
-          toast.error('Please verify your mobile number with OTP');
-          return false;
-        }
-        if (!otpCode || otpCode.length < 6) {
-          toast.error('Please enter the 6-digit OTP code');
-          return false;
-        }
         return true;
       case 4:
         if (!formData.agreeTerms) {
@@ -131,33 +122,16 @@ const SignupPage = () => {
         age: parseInt(formData.age, 10),
         gender: formData.gender,
         interested_in: formData.interested_in,
-        otp_code: otpCode,
-
-        // Optional fields with safe defaults
-        intent: formData.intent || 'dating',
-        min_age: parseInt(formData.min_age, 10) || 18,
-        max_age: parseInt(formData.max_age, 10) || 50,
-        max_distance_km: 50,
-
-        // Address fields
-        address_line: formData.address_line?.trim() || 'NA',
-        city: formData.city?.trim() || 'NA',
-        state: formData.state?.trim() || 'NA',
-        country: formData.country?.trim() || 'India',
-        pincode: formData.pincode?.trim() || '000000',
-        device_id: localStorage.getItem('tb_device_id') || Math.random().toString(36).substring(7),
       };
 
-      // We need to use a dedicated signup-with-otp API
-      const response = await authAPI.signupWithOTP ? authAPI.signupWithOTP(signupData) : api.post('/api/auth/signup-with-otp', signupData);
+      // Use standard signup API
+      const response = await authAPI.signup(signupData);
       const data = response.data;
 
-      const tokens = data.tokens || data;
-      const user = data.user || data;
-
-      if (tokens.access_token) {
-        localStorage.setItem('tb_access_token', tokens.access_token);
-        localStorage.setItem('tb_refresh_token', tokens.refresh_token);
+      // Backend returns: { access_token, refresh_token, user } at root level
+      if (data.access_token) {
+        localStorage.setItem('tb_access_token', data.access_token);
+        localStorage.setItem('tb_refresh_token', data.refresh_token);
         toast.success('Welcome to Luveloop! 🎉 Account created successfully!');
         navigate('/dashboard');
         window.location.reload();
@@ -501,64 +475,7 @@ const SignupPage = () => {
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-gray-100">
-                  <p className="text-sm font-semibold text-[#0F172A] mb-4 flex items-center gap-2">
-                    <Shield size={18} className="text-pink-500" />
-                    Mobile Verification
-                  </p>
-
-                  {!isOtpSent ? (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        if (!formData.mobile_number || formData.mobile_number.length < 10) {
-                          toast.error('Please enter a valid mobile number first');
-                          return;
-                        }
-                        setIsLoading(true);
-                        try {
-                          await authAPI.sendOTP(formData.mobile_number);
-                          setIsOtpSent(true);
-                          toast.success('OTP sent to your mobile!');
-                        } catch (e) {
-                          toast.error('Failed to send OTP. Please try again.');
-                        } finally {
-                          setIsLoading(false);
-                        }
-                      }}
-                      disabled={isLoading}
-                      className="w-full py-3 bg-pink-50 text-pink-600 rounded-xl font-medium border border-pink-100 hover:bg-pink-100 transition-all flex items-center justify-center gap-2"
-                    >
-                      {isLoading ? 'Sending...' : 'Send OTP to Verify'}
-                    </button>
-                  ) : (
-                    <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                      <div className="relative">
-                        <Shield size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                        <input
-                          type="text"
-                          value={otpCode}
-                          onChange={(e) => setOtpCode(e.target.value)}
-                          placeholder="6-digit OTP code"
-                          maxLength={6}
-                          className="w-full pl-12 pr-4 py-4 rounded-xl border border-pink-200 bg-pink-50/30 focus:border-pink-500 focus:ring-2 focus:ring-pink-100 outline-none transition-all text-center tracking-widest font-mono font-bold"
-                        />
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <p className="text-xs text-gray-500">OTP sent to {formData.mobile_number}</p>
-                        <button
-                          type="button"
-                          onClick={() => setIsOtpSent(false)}
-                          className="text-xs text-pink-600 hover:underline"
-                        >
-                          Resend OTP
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
               </>
-
             )}
 
             {/* Step 4: Complete (Address Optional + Image + Terms) */}
@@ -691,7 +608,7 @@ const SignupPage = () => {
           </p>
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 
