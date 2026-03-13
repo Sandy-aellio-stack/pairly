@@ -1,0 +1,297 @@
+You are a senior full-stack engineer.
+
+Fix and stabilize my **Luveloop Dating App** built with:
+
+Frontend:
+React + Vite + Zustand + Tailwind
+
+Backend:
+FastAPI + Beanie + MongoDB
+
+Realtime:
+Socket.IO + WebRTC
+
+The application currently has many issues that must be fixed and rebuilt cleanly.
+
+---
+
+CURRENT PROBLEMS
+
+1. Dashboard page shows:
+   "Failed to load dashboard data"
+
+2. FastAPI documentation endpoint:
+   http://127.0.0.1:8000/docs
+   returns 404
+
+3. Backend sometimes fails to start with errors like:
+   "No module named tb_database"
+
+4. WebSocket connection fails:
+   ws://localhost:5000/socket.io
+
+5. Messages sometimes fail to send or duplicate.
+
+6. React console error:
+   Encountered two children with the same key.
+
+7. Coins display incorrectly or do not update after actions.
+
+8. Voice and video calls do not connect properly.
+
+---
+
+GOAL
+
+Create a **stable architecture and fix all issues** so the system works end-to-end.
+
+---
+
+PROJECT ARCHITECTURE
+
+Use this architecture:
+
+Frontend (React)
+http://localhost:5173
+
+FastAPI Backend
+http://localhost:8000
+
+Socket.IO Server
+http://localhost:8001
+
+---
+
+BACKEND REQUIREMENTS
+
+Fix FastAPI initialization.
+
+In main.py:
+
+app = FastAPI(
+title="Luveloop API",
+docs_url="/docs",
+redoc_url="/redoc",
+openapi_url="/openapi.json"
+)
+
+Enable CORS for frontend.
+
+Register routers:
+
+app.include_router(tb_users.router, prefix="/api/users")
+app.include_router(tb_messages.router, prefix="/api/messages")
+app.include_router(tb_location.router, prefix="/api/location")
+app.include_router(tb_credit.router, prefix="/api/credits")
+
+---
+
+DATABASE
+
+Ensure MongoDB connection file exists:
+
+backend/core/tb_database.py
+
+Example:
+
+from motor.motor_asyncio import AsyncIOMotorClient
+
+client = AsyncIOMotorClient("mongodb://localhost:27017")
+db = client["luveloop"]
+
+def get_database():
+return db
+
+Fix all imports referencing tb_database.
+
+---
+
+DASHBOARD API
+
+Create endpoint:
+
+GET /api/users/dashboard-stats
+
+Return:
+
+{
+"messages_sent": number_of_messages_sent,
+"matches": placeholder,
+"coins": current_user.credits_balance,
+"profile_views": placeholder
+}
+
+---
+
+NEARBY USERS API
+
+Create endpoint:
+
+GET /api/users/nearby
+
+Return list of users excluding current user.
+
+---
+
+MESSAGING SYSTEM
+
+Message flow must be:
+
+1. Validate sender and receiver
+2. Check coin balance
+3. Save message
+4. Deduct 1 coin
+5. Emit realtime socket event
+
+Message cost:
+1 coin per message
+
+Prevent duplicate messages using message ID deduplication.
+
+---
+
+COIN SYSTEM
+
+Coin pricing:
+
+1 coin per message
+5 coins per minute (voice call)
+10 coins per minute (video call)
+
+Return HTTP 402 if user has insufficient balance.
+
+Coins must refresh in frontend after message send or call end.
+
+---
+
+SOCKET SERVER
+
+Create socket server running on port 8001.
+
+Events required:
+
+connect
+disconnect
+join_chat
+leave_chat
+send_message
+new_message
+typing
+stop_typing
+read_receipt
+call_user
+incoming_call
+answer_call
+reject_call
+end_call
+ice_candidate
+
+Use socket rooms for conversations.
+
+---
+
+VOICE / VIDEO CALL SYSTEM
+
+Implement WebRTC signaling through socket events.
+
+Call flow:
+
+Caller → call_user
+Receiver → incoming_call
+Receiver accepts → answer_call
+Peers exchange ICE candidates
+WebRTC connection established
+Timer starts
+Coins deducted when call ends
+
+---
+
+FRONTEND REQUIREMENTS
+
+API base URL:
+
+http://localhost:8000/api
+
+Socket connection:
+
+const socket = io("http://localhost:8001", {
+transports: ["websocket"]
+})
+
+---
+
+CHATPAGE FIX
+
+Ensure message rendering uses stable keys:
+
+key={msg.id}
+
+Deduplicate messages by ID.
+
+Replace optimistic messages with real message IDs from server.
+
+Listen for:
+
+socket.on("new_message")
+
+---
+
+DASHBOARD PAGE
+
+Load APIs:
+
+GET /api/users/me
+GET /api/users/dashboard-stats
+GET /api/users/nearby
+
+If API fails, show retry button instead of infinite loading spinner.
+
+---
+
+ERROR HANDLING
+
+Return proper errors:
+
+401 → unauthorized
+402 → insufficient coins
+404 → not found
+500 → server error
+
+Frontend must show toast messages.
+
+---
+
+START COMMANDS
+
+Backend:
+
+uvicorn backend.main:app --reload --port 8000
+
+Socket server:
+
+python backend/socket_server.py
+
+Frontend:
+
+npm run dev
+
+---
+
+EXPECTED RESULT
+
+After fixes:
+
+• /docs works
+• Dashboard loads successfully
+• Coins update correctly
+• Messages send without errors
+• No duplicate messages
+• WebSocket connects successfully
+• Voice calls work
+• Video calls work
+• No console errors
+• No "Failed to load dashboard data"
+
+Goal:
+
+A fully working realtime dating app with dashboard, coins, messaging, voice calls and video calls.
