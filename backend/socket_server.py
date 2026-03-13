@@ -112,9 +112,17 @@ async def connect(sid, environ, auth):
             await redis_pubsub.publish_presence(user_id, is_online=True)
         
         await update_user_presence(user_id, True)
-        
-        # Notify others
-        await sio.emit('user_online', {'user_id': user_id}, skip_sid=sid)
+
+        # Notify others (only if show_online_status is enabled)
+        try:
+            user_doc = await TBUser.get(user_id)
+            show_online = True
+            if user_doc and user_doc.settings and user_doc.settings.privacy:
+                show_online = user_doc.settings.privacy.show_online
+            if show_online:
+                await sio.emit('user_online', {'user_id': user_id}, skip_sid=sid)
+        except Exception:
+            await sio.emit('user_online', {'user_id': user_id}, skip_sid=sid)
         logger.info(f"User {user_id} connected (sid: {sid})")
         return True
     except Exception as e:

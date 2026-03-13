@@ -96,6 +96,24 @@ async def send_message(data: SendMessageRequest, user: TBUser = Depends(get_curr
         # Message is already persisted in database
         logger.warning(f"Real-time delivery failed (message persisted): {e}")
 
+    # Create DB notification if receiver is offline and has notifications enabled
+    try:
+        receiver = await TBUser.get(data.receiver_id)
+        if receiver and not receiver.is_online:
+            notify_msgs = True
+            if receiver.settings and receiver.settings.notifications:
+                notify_msgs = receiver.settings.notifications.messages
+            if notify_msgs:
+                from backend.routes.tb_notifications import create_notification
+                await create_notification(
+                    user_id=data.receiver_id,
+                    title=f"New message from {user.name}",
+                    body=data.content[:100],
+                    notification_type="message"
+                )
+    except Exception as e:
+        logger.debug(f"Notification creation failed (non-critical): {e}")
+
     return result
 
 

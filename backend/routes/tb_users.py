@@ -105,7 +105,7 @@ async def get_nearby_users_simple(
 ):
     """
     Get nearby/active users for the home page feed.
-    Returns active users excluding current user and blocked users.
+    Excludes users who hide from search, respects their privacy settings.
     """
     from beanie import PydanticObjectId
 
@@ -119,7 +119,7 @@ async def get_nearby_users_simple(
         except Exception:
             pass
 
-    query = {"is_active": True}
+    query = {"is_active": True, "settings.safety.hide_from_search": {"$ne": True}}
     if blocked_oids:
         query["_id"] = {"$nin": blocked_oids}
 
@@ -127,14 +127,19 @@ async def get_nearby_users_simple(
 
     result = []
     for u in users:
+        privacy = u.settings.privacy if u.settings and u.settings.privacy else None
+        show_online = privacy.show_online if privacy else True
+        show_last_seen = privacy.show_last_seen if privacy else True
         result.append({
             "id": str(u.id),
             "name": u.name,
             "age": u.age,
             "bio": u.bio or "",
             "profile_picture": u.profile_pictures[0] if u.profile_pictures else None,
-            "is_online": getattr(u, "is_online", False) or False,
+            "is_online": (getattr(u, "is_online", False) or False) if show_online else False,
+            "last_seen": (u.last_seen.isoformat() if u.last_seen else None) if show_last_seen else None,
             "intent": u.intent,
+            "is_verified": getattr(u, "is_verified", False),
         })
 
     return {"users": result, "total": len(result)}
@@ -147,7 +152,7 @@ async def get_suggestions(
 ):
     """
     Get suggested users / today's matches.
-    Returns a curated small list based on activity.
+    Excludes hidden users and respects privacy settings.
     """
     from beanie import PydanticObjectId
 
@@ -161,22 +166,23 @@ async def get_suggestions(
         except Exception:
             pass
 
-    query = {"is_active": True, "is_online": True}
+    base_query = {"is_active": True, "settings.safety.hide_from_search": {"$ne": True}}
     if blocked_oids:
-        query["_id"] = {"$nin": blocked_oids}
+        base_query["_id"] = {"$nin": blocked_oids}
 
+    query = {**base_query, "is_online": True}
     users = await TBUser.find(query).limit(limit).to_list()
 
     if len(users) < limit:
-        query2 = {"is_active": True}
-        if blocked_oids:
-            query2["_id"] = {"$nin": blocked_oids}
-        extra = await TBUser.find(query2).limit(limit - len(users)).to_list()
+        extra = await TBUser.find(base_query).limit(limit - len(users)).to_list()
         existing_ids = {str(u.id) for u in users}
         users += [u for u in extra if str(u.id) not in existing_ids]
 
     result = []
     for u in users:
+        privacy = u.settings.privacy if u.settings and u.settings.privacy else None
+        show_online = privacy.show_online if privacy else True
+        show_last_seen = privacy.show_last_seen if privacy else True
         result.append({
             "id": str(u.id),
             "name": u.name,
@@ -184,8 +190,10 @@ async def get_suggestions(
             "bio": u.bio or "",
             "profile_picture": u.profile_pictures[0] if u.profile_pictures else None,
             "profile_pictures": u.profile_pictures or [],
-            "is_online": getattr(u, "is_online", False) or False,
+            "is_online": (getattr(u, "is_online", False) or False) if show_online else False,
+            "last_seen": (u.last_seen.isoformat() if u.last_seen else None) if show_last_seen else None,
             "intent": u.intent,
+            "is_verified": getattr(u, "is_verified", False),
         })
 
     return {"users": result}
@@ -483,13 +491,48 @@ async def get_credits(user: TBUser = Depends(get_current_user)):
 
 
 @router.delete("/account")
-async def deactivate_account(user: TBUser = Depends(get_current_user)):
-    """Deactivate current user's account"""
+async def delete_account(user: TBUser = Depends(get_current_user)):
+    """Permanently delete current user's account and all associated data"""
+    from backend.models.tb_message import TBMessage, TBConversation
+    from backend.routes.tb_notifications import TBNotification
+    user_id = str(user.id)
+
+    try:
+        await TBMessage.find({"$or": [{"sender_id": user_id}, {"receiver_id": user_id}]}).delete()
+    except Exception:
+        pass
+
+    try:
+        await TBConversation.find({"participants": user_id}).delete()
+    except Exception:
+        pass
+
+    try:
+        await TBNotification.find({"user_id": user_id}).delete()
+    except Exception:
+        pass
+
+    try:
+        from backend.models.call_session_v2 import CallSessionV2
+        await CallSessionV2.find({"$or": [{"caller_id": user_id}, {"callee_id": user_id}]}).delete()
+    except Exception:
+        pass
+
+    try:
+        from backend.models.user_block import UserBlock
+        from beanie import PydanticObjectId
+        user_oid = PydanticObjectId(user_id)
+        await UserBlock.find({"$or": [{"blocker_id": user_oid}, {"blocked_id": user_oid}]}).delete()
+    except Exception:
+        pass
+
     user.is_active = False
     user.is_online = False
+    user.bio = None
+    user.profile_pictures = []
     await user.save()
-    
-    return {"message": "Account deactivated"}
+
+    return {"message": "Account deleted successfully"}
 
 
 @router.post("/upload-photo")
@@ -726,7 +769,7 @@ async def search_users(
             pass
     
     # Build search query
-    search_query = {"is_active": True}
+    search_query = {"is_active": True, "settings.safety.hide_from_search": {"$ne": True}}
     if blocked_object_ids:
         search_query["_id"] = {"$nin": blocked_object_ids}
     
