@@ -198,9 +198,9 @@ const ChatPage = () => {
                 <p className="text-gray-400 text-xs">Start chatting with people nearby!</p>
               </div>
             ) : (
-              filteredConversations.map((conv) => (
+              filteredConversations.map((conv, idx) => (
                 <button
-                  key={conv.id || conv.user_id}
+                  key={conv.id || conv.user_id || idx}
                   onClick={() => {
                     setSelectedChat(conv);
                     navigate(`/dashboard/chat/${conv.id || conv.user_id}`, { replace: true });

@@ -236,7 +236,23 @@ async def send_message(sid, data):
             'content': content, 'type': msg_type, 'created_at': message.created_at.isoformat()
         }
 
-        # 5. Broadcast
+        # 5. Create notification for offline receiver
+        if receiver_id not in user_sockets:
+            try:
+                from backend.models.notification import Notification
+                sender = await TBUser.get(user_id)
+                sender_name = sender.name if sender else "Someone"
+                notif = Notification(
+                    user_id=receiver_id,
+                    title="New message",
+                    body=f"{sender_name} sent you a message",
+                    meta={"sender_id": user_id, "message_id": str(message.id), "type": "message"}
+                )
+                await notif.insert()
+            except Exception as notif_err:
+                logger.warning(f"Failed to create offline notification: {notif_err}")
+
+        # 6. Broadcast
         await redis_pubsub.publish_new_message(receiver_id, message_data)
         room_id = f"chat_{min(user_id, receiver_id)}_{max(user_id, receiver_id)}"
         await sio.emit('new_message', message_data, room=room_id)

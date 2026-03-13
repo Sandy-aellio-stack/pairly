@@ -29,6 +29,16 @@ export const connectSocket = (token) => {
     console.error('Socket connection error:', error.message);
   });
 
+  socket.on('force_logout', (data) => {
+    console.warn('Force logout received:', data?.reason || 'New device login');
+    localStorage.removeItem('tb_access_token');
+    localStorage.removeItem('tb_refresh_token');
+    localStorage.removeItem('tb_user');
+    socket.disconnect();
+    socket = null;
+    window.location.href = '/';
+  });
+
   return socket;
 };
 
@@ -192,6 +202,10 @@ export const removeChatListeners = () => {
   }
 };
 
+export const onForceLogout = (callback) => {
+  socket?.on('force_logout', callback);
+};
+
 export const removeAllListeners = () => {
   if (socket) {
     socket.off('new_message');
@@ -202,6 +216,7 @@ export const removeAllListeners = () => {
     socket.off('call_rejected');
     socket.off('call_ended');
     socket.off('ice_candidate');
+    socket.off('force_logout');
   }
 };
 
@@ -227,6 +242,7 @@ export default {
   onCallRejected,
   onCallEnded,
   onIceCandidate,
+  onForceLogout,
   removeCallListeners,
   removeChatListeners,
   removeAllListeners,

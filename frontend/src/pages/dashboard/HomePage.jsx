@@ -141,7 +141,7 @@ const HomePage = () => {
   return (
     <div className="max-w-6xl mx-auto px-4">
       {/* Search Bar */}
-      <div className="mb-6">
+      <div className="mb-6 relative">
         <div className="relative">
           <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
           <input

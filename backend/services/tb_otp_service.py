@@ -49,11 +49,17 @@ class OTPService:
         print(f"OTP: {otp_code}")
         print("================================\n")
 
-        return {
+        response = {
             "success": True,
             "message": "OTP generated",
             "expires_in_minutes": 5
         }
+
+        # Return dev_otp in response when in development mode
+        if os.getenv("ENVIRONMENT", "development") != "production":
+            response["dev_otp"] = otp_code
+
+        return response
 
     @staticmethod
     async def send_email_otp(email: str, purpose: str = "email_verification") -> dict:
@@ -88,12 +94,38 @@ class OTPService:
         except Exception as e:
             print(f"Email sending failed (but OTP logged to terminal): {e}")
 
-        return {
+        email_response = {
             "success": True,
             "message": "OTP sent to email",
             "email": email,
             "expires_in_minutes": 5
         }
+
+        if os.getenv("ENVIRONMENT", "development") != "production":
+            email_response["dev_otp"] = otp_code
+
+        return email_response
+
+    @staticmethod
+    async def verify_otp(identifier: str, otp_code: str, purpose: str = "login") -> bool:
+        """
+        Verify OTP for the given identifier (phone or email) using in-memory store.
+        Raises HTTPException(400) on failure.
+        """
+        entry = otp_store.get(identifier)
+        if not entry:
+            raise HTTPException(status_code=400, detail="OTP not found or expired. Please request a new OTP.")
+
+        if time.time() > entry["expires_at"]:
+            del otp_store[identifier]
+            raise HTTPException(status_code=400, detail="OTP has expired. Please request a new OTP.")
+
+        if entry["otp"] != otp_code:
+            raise HTTPException(status_code=400, detail="Invalid OTP. Please try again.")
+
+        # Consume the OTP
+        del otp_store[identifier]
+        return True
 
     @staticmethod
     async def verify_email_otp(email: str, otp_code: str, purpose: str = "email_verification") -> bool:

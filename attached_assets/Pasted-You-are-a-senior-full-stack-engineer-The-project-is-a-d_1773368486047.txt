@@ -1,0 +1,375 @@
+You are a senior full-stack engineer. The project is a dating app (React frontend in `frontend/`, FastAPI backend in `backend/`, MongoDB via Beanie). I need a complete, correct, fully-tested implementation that:
+
+1. Restores Nearby users (map + list) and ensures location fields are saved & returned correctly.
+2. Makes messaging, audio call and video call fully functional (Socket.IO + REST fallback + WebRTC signalling + call billing).
+3. Implements all Settings toggles with backend persistence and correct frontend wiring (Notifications, Privacy, Safety, Account, Danger Zone).
+4. Adds a built-in OTP (passwordless) login + signup flow that does **not rely on third-party SMS providers** for development; explain production constraints and provide recommended production options.
+5. Enforces single-device login (logging into a new device logs out the old device).
+6. Verifies and fixes notifications, home/dashboard layout & CSS issues, and connects any UI fields to backend endpoints.
+7. Adds clear logging, tests and a verification checklist.
+
+Below are **detailed tasks, files, API signatures, behaviours and verification steps**. Implement code changes, tests, and provide a single post-change checklist showing how you validated each item.
+
+---
+
+## PART A — Nearby users (backend + frontend wiring)
+
+Objective: `/api/location/nearby` must return nearby users (map & list) reliably, with response format exactly as frontend expects.
+
+Backend changes (file targets below):
+
+* `backend/services/tb_location_service.py`: Replace current `get_nearby_users()` with a simplified, reliable `$geoNear` aggregation pipeline that only filters:
+
+  * `_id != current_user_id`
+  * `is_active == True`
+  * `hide_from_search != True` (use `{"$ne": True}` so missing field works)
+  * `location exists`
+* `backend/routes/tb_location.py`: Ensure it accepts `GET /api/location/nearby?lat={lat}&lng={lng}&radius={meters?}` and passes them to the service.
+* `backend/models/tb_user.py`: Confirm `location` is GeoJSON `{"type":"Point","coordinates":[lng,lat]}` and index `2dsphere` set — update schema if needed.
+
+Aggregation example to implement:
+
+```python
+pipeline = [
+  {
+    "$geoNear": {
+      "near": {"type":"Point", "coordinates": [lng, lat]},
+      "distanceField": "distance_meters",
+      "spherical": True,
+      "maxDistance": radius_meters  # default 50000 (50km)
+    }
+  },
+  {
+    "$match": {
+      "_id": {"$ne": user_id},
+      "is_active": True,
+      "hide_from_search": {"$ne": True}
+    }
+  },
+  {"$project": {
+    "_id": 1, "name": 1, "age": 1, "profile_pictures": 1,
+    "location": 1, "distance_meters": 1
+  }}
+]
+```
+
+Response format (exact):
+
+```json
+{
+  "users": [
+    {
+      "id": "69a18167...",
+      "name": "Santhosh",
+      "age": 22,
+      "photo": "https://.../avatar.jpg",
+      "distance_display": "1.2 km",
+      "location": { "lat": 13.196, "lng": 80.169 }
+    }
+  ]
+}
+```
+
+Implementation details:
+
+* Convert `_id` to `id` (`str()`).
+* `photo` → use `profile_pictures[0]` or null.
+* `distance_display` → format meters → km (1 decimal) if >999m else meters.
+* Add logging: `logger.info(f"Nearby query lat={lat},lng={lng},radius={radius} -> {len(users)} users")`.
+* Ensure the route returns HTTP 200 with above JSON on success and 400 for missing params.
+
+Frontend checks:
+
+* `frontend/src/pages/dashboard/NearbyPage.jsx` should call `/api/location/nearby?lat=...&lng=...` — ensure it uses numbers (lng/lat order not inverted).
+* Network: ensure the request includes lat/lng values (not 0/undefined).
+* Map/list rendering: adapt to accept `id` field (not `_id`) and `distance_display` as provided.
+
+Verification:
+
+* Run `GET /api/location/nearby?lat=13.1959&lng=80.1685` in browser/Swagger/Postman — expect 1+ users.
+* Reload Nearby page — users appear on list and map.
+
+---
+
+## PART B — Messaging + Voice + Video (real-time)
+
+Objective: Make messaging, voice call and video call work reliably with Socket.IO and REST fallback.
+
+Backend tasks:
+
+1. **Socket.IO server** (`backend/socket_server.py` / `main.py`):
+
+   * Use `python-socketio` `AsyncServer` + `ASGIApp`.
+   * Verify mounting `app.mount("/socket.io", socket_app)`.
+   * On connect: validate JWT from `auth` or query token; reject on invalid JWT. Emit presence events.
+   * Use Redis pub/sub if available, but allow single-server fallback without Redis.
+   * Add logs: connect/disconnect/auth success/failure.
+
+2. **Message sending (atomic, revenue-safe)** (`backend/services/tb_message_service.py` + route `/api/messages/send`):
+
+   * Deduct credits **before** saving message (use `find_one_and_update` atomic check `$gte` on credits).
+   * Use MongoDB transaction/session if available (support single-node fallback).
+   * If user lacks credits, return 402 or 400 with descriptive message.
+   * Then create `TBMessage`, update `TBConversation` metadata, and emit `'new_message'` socket event to the receiver room.
+   * Ensure event naming & room naming match frontend. (If frontend expects room `user:{id}`, make server emit to that room).
+
+3. **WebRTC signalling (calls)**:
+
+   * Socket events: `call_user` -> server creates call session, emits `incoming_call` to receiver; `answer_call` -> server forwards SDP answer; `ice_candidate` relays ICE; `end_call` stops session.
+   * Maintain `CallSession` records in DB with start/end times and participants.
+   * Add `call_billing_worker.py` (backend/workers) to charge per minute: run every 60s or on call end compute duration and deduct credits (use atomic credit deduction).
+   * STUN/TURN: add backend config options `STUN_SERVERS` / `TURN_SERVERS` in env; if not configured, include public STUN fallback but warn: for reliable video across NAT you need TURN.
+
+4. **REST fallback**:
+
+   * If socket is not connected, `POST /api/messages/send` must still work (deduct first and save then deliver).
+   * Ensure HTTP route returns the message object in the same structure as socket event.
+
+Frontend tasks:
+
+* `frontend/src/services/socket.js` / `useChatSocket.js`:
+
+  * Connect to `http://localhost:{backend_port}` with `path:'/socket.io'`, `transports: ['websocket']`.
+  * Attach JWT auth in `auth` option on connect.
+  * Implement fallback: if socket disconnected, if user sends message use REST endpoint and update optimistic UI only if status 200.
+* Chat UI:
+
+  * Ensure message IDs are unique; avoid duplicate keys (fix earlier "duplicate key" warning).
+  * Implement incoming call UI: show incoming modal with accept/reject; on accept create RTCPeerConnection and exchange SDP via socket.
+
+Verification:
+
+* Two browser windows (or 2 devices) logged in as different users:
+
+  * Send message: real-time delivery via socket. If socket down, REST fallback works.
+  * Start audio call: user A calls B → B receives incoming prompt → accept → two-way audio/video established.
+  * Ensure credits are deducted per minute during call and returned in DB logs.
+
+---
+
+## PART C — Settings page (backend + frontend binding)
+
+Objective: All settings toggles persist to DB and the UI reads/writes them correctly.
+
+Backend:
+
+* Extend `TBUser` model with fields (with defaults as appropriate):
+
+  * Notifications:
+
+    * `notify_messages` (bool)
+    * `notify_matches` (bool)
+    * `notify_nearby` (bool)
+  * Privacy:
+
+    * `show_online` (bool)
+    * `show_last_seen` (bool)
+    * `show_distance` (bool)
+  * Safety:
+
+    * `block_screenshots` (bool)
+    * `verified_matches_only` (bool)
+    * `hide_from_search` (bool)
+  * Account: `phone_verified` (bool) — used by OTP signup flow.
+* Create route group `backend/routes/tb_settings.py`:
+
+  * `GET /api/users/settings` → returns current user settings (json)
+  * `PUT /api/users/settings` → accepts partial settings payload and updates the DB (return 200 with new settings)
+* Ensure `tb_users.py` route that serves public profile respects `hide_from_search`.
+
+Frontend:
+
+* Settings page wiring:
+
+  * `GET` on mount to `/api/users/settings` to populate toggles.
+  * `PUT` on toggle change to save (debounce to avoid flood).
+  * Ensure each button or link (Edit profile, Change Password, Verify Phone) navigates to appropriate page/modal and that modals call required APIs.
+* Safety resources (Report user, Safety tips, Emergency help) should route to defined endpoints or show static content if not available.
+
+Verification:
+
+* Toggle values persist on reload and in DB.
+* `hide_from_search` affects Nearby results immediately.
+
+---
+
+## PART D — OTP-based signup/login (no external SMS)
+
+Important constraint: You requested **no external SMS providers**. Clarify tradeoff:
+
+* To deliver OTP to a phone/phone number you normally need an SMS gateway (Twilio, Nexmo, provider). Without any external transport, server cannot reach the user's phone number.
+* For email OTP, you need SMTP or an external email provider (or run your own SMTP server).
+* For development and for local 100% internal testing, implement an **internal OTP service** that **generates and stores OTPs** in DB and returns a masked “delivery hint” to the client. For production, recommend configuring a real SMS/email provider.
+
+Implement the following **secure internal passwordless flow** (works for dev & can be production-ready if you plug a transport later):
+
+Backend:
+
+* `backend/models/tb_otp.py` — store OTP doc:
+
+  ```json
+  {
+    "_id": ObjectId,
+    "destination": "email|phone|user:id if device", 
+    "code": "6-digit",
+    "expires_at": datetime,
+    "used": False,
+    "deliver_method": "mock" | "email" | "sms"
+  }
+  ```
+* Routes:
+
+  * `POST /api/auth/otp/send` with `{ destination: "<email or phone>", type: "login" | "signup" }`
+
+    * server: generate random 6-digit, save TBOTP with expires (5 minutes), deliver:
+
+      * If `EMAIL_ENABLED`/`SMS_ENABLED` env true, attempt to send via provider (if configured).
+      * Else: **return masked OTP in the response** only in DEV mode (e.g., `{ ok:true, dev_otp: "123456", masked: "******@domain.com" }`) — do this only if `ENV=development`.
+    * Rate limit: ensure max 5 attempts per hour per destination.
+  * `POST /api/auth/otp/verify` with `{ destination, code, device_id }`
+
+    * Validate code not expired and not used.
+    * Create user (signup) or log in user (login). Create session with a `device_id` (UUID).
+    * Issue JWT. Store session doc with `user_id`, `device_id`, `jwt_jti`, `created_at`.
+    * If user already has an active session for another device and you enforce single-device, revoke previous session (see below).
+* `backend/services/token_service.py`:
+
+  * On login, implement single-device enforcement: if a user logs in from `device_B`, mark the previous session's JWT `is_revoked` True and send a socket notification to that device to logout (if connected). Blacklist previous token (store jti in `token_blacklist`).
+* Security:
+
+  * OTP codes must be hashed if you want extra security (store HMAC), but storing plaintext OTP in dev is ok. Add attempt count and expiration.
+
+Frontend:
+
+* Login screen: offer Phone/Email OTP flow in addition to password.
+* OTP UI: send request to `/api/auth/otp/send`, then show OTP input UI. For dev, show the dev_otp if present (use env flag).
+* After verify: store JWT in secure storage (consider httpOnly cookies in future), call `authStore.login()`.
+
+Production recommendation (explain clearly in the implementation notes):
+
+* To guarantee 100% reliable OTP delivery in production, **configure an SMS/email provider** and set `SMS_ENABLED` or `EMAIL_ENABLED` in `.env` pointing to provider credentials. Provide step-by-step integration notes for Twilio/Razorpay/SendGrid.
+
+---
+
+## PART E — Single-device login enforcement
+
+Backend:
+
+* `backend/models/session.py` or extend `Session`:
+
+  * Fields: `user_id`, `device_id`, `jwt_jti`, `created_at`, `is_active`, `ip`, `user_agent`.
+* On successful login:
+
+  * Check if `sessions` has an `is_active` session for the user for a different `device_id`.
+  * If so, mark old session `is_active=False` and add `jwt_jti` to token_blacklist.
+  * Optionally send a socket event `force_logout` to old device (if connected).
+* On protected routes: check JWT jti not in blacklist and session is active.
+
+Frontend:
+
+* When a `force_logout` socket event is received, clear local storage and redirect to login with message "Logged out due to login on another device".
+
+Verification:
+
+* Login with user A on device 1. Login again on device 2. Device 1 should receive immediate forced logout.
+
+---
+
+## PART F — Notifications
+
+Objective: Confirm notifications settings and notification delivery (Push/FCM/in-app) are working.
+
+Backend:
+
+* Enable FCM integration if credentials present. Else, support an in-app notification model:
+
+  * `backend/models/notification.py` with fields `user_id, title, body, link, read, data`.
+  * `POST /api/notifications` for admin/test.
+  * `GET /api/notifications` and `POST /api/notifications/{id}/read`.
+* When `new_message` is received and user is offline, create a notification record and (if FCM configured) send push.
+* Respect the `notify_messages` user setting: skip push if disabled.
+
+Frontend:
+
+* Notification icon should poll or use socket `notification` events and render unread count.
+* Settings `notify_messages` toggle must enable/disable notifications accordingly.
+
+Verification:
+
+* Send a message to an offline user → notification record appears in DB and unread count increments. If FCM configured, push is sent.
+
+---
+
+## PART G — Dashboard home CSS and structure
+
+Objective: Make home page visually consistent and responsive.
+
+Frontend tasks:
+
+* Audit `frontend/src/pages/dashboard/Home.jsx` and shared components for spacing, breakpoints and repeated patterns.
+* Use Tailwind / existing CSS: fix inconsistent paddings, card shadows, font sizes. Ensure grid layouts use `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`.
+* Fix the messages list duplicate-key bug: ensure `key={message.id || message._id}` and guarantee uniqueness (prefer server-generated UUIDs).
+* Provide before/after screenshots and a short style guide (typography sizes and color tokens) so future UI changes are consistent.
+
+---
+
+## PART H — Tests & logging
+
+Add:
+
+* Unit tests for `tb_location_service.get_nearby_users()` (mock DB cursor) — ensure expected output.
+* Integration test: start backend dev server and hit `/api/location/nearby` with sample lat/lng.
+* Small test for OTP send/verify flow (dev mode OTP returned).
+* Logging: `logger.info` statements at start/end of each critical operation (nearby query, message send, call start/end, otp send/verify, session revoke).
+
+---
+
+## PART I — Deployment & environment notes
+
+* Add env variables required:
+
+  * `JWT_SECRET`, `MONGO_URL`, `FRONTEND_URL`, `REDIS_URL` (optional), `EMAIL_ENABLED`, `SMS_ENABLED`, `STUN_SERVERS`, `TURN_SERVERS`.
+* Document how to run backend without reload in dev when testing websockets:
+
+  ```bash
+  uvicorn backend.main:app --host 0.0.0.0 --port 8000
+  ```
+* For local testing of OTP (no external): `ENV=development` returns `dev_otp` in response; **this must be disabled in production**.
+
+---
+
+PART J — Acceptance criteria & verification checklist (must be completed and ticked off)
+
+For each item below, run manual test steps and show results (screenshots, curl commands, or Postman responses):
+
+1. [ ] `GET /api/location/nearby?lat=13.196&lng=80.169` returns `users` array with `id`, `name`, `distance_display`, `location`.
+2. [ ] Nearby page (map + list) displays users on load.
+3. [ ] Send message realtime: user A → user B via socket (two live browsers) — message visible instantly.
+4. [ ] REST fallback messaging works when socket disconnected.
+5. [ ] Audio + video calls connect between two browsers (WebRTC flow), and socket signalling messages pass through server.
+6. [ ] Call billing deducts credits at the correct rate (per minute).
+7. [ ] Settings toggles persist (GET and PUT settings) and affect behavior (e.g., `hide_from_search` affects nearby).
+8. [ ] OTP send uses dev flow when no external provider; verify OTP verify returns JWT and creates session.
+9. [ ] Single-device login enforced: login on device B logs out device A.
+10. [ ] Notifications created for offline recipients and settings respected.
+11. [ ] Home/dashboard CSS improvements applied and screenshots attached.
+12. [ ] Unit/integration tests added and passing.
+
+---
+
+Deliverables:
+
+* All changed files in a single branch or PR with clear commit messages (one commit per logical change).
+* A post-PR checklist showing how each acceptance criteria was validated (requests, responses, optional screenshots).
+* If any production-only features are left disabled (SMS/email/TURN), include an exact integration guide to enable them.
+
+---
+
+If you understand, **execute the changes** and return a single reply with:
+
+1. The PR/branch name (or list of files changed).
+2. Short log of manual tests you ran (command + output or screenshot links).
+3. Any decisions you made when trade-offs were required (e.g., dev OTP behavior).
+4. Remaining items that require external setup (like TURN or SMS) and exact steps for enabling them.
+
+Do not ask me for clarifications — implement the plan above and provide results and the verification checklist when done.

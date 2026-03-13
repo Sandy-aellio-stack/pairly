@@ -640,38 +640,17 @@ class AuthService:
         if not user.is_active:
             raise HTTPException(status_code=403, detail="Account is deactivated")
 
-        # Session tracking logic - DISABLED as per user request
-        # if user.current_device_id and user.current_device_id != data.device_id:
-        #     pending = await PendingSession.find_one({
-        #         "user_id": str(user.id),
-        #         "new_device_id": data.device_id,
-        #         "status": "pending"
-        #     })
-        #     if not pending:
-        #         pending = PendingSession(
-        #             user_id=str(user.id),
-        #             new_device_id=data.device_id,
-        #             old_device_id=user.current_device_id,
-        #             status="pending"
-        #         )
-        #         await pending.insert()
-        #     
-        #     from backend.socket_server import emit_notification_to_user
-        #     await emit_notification_to_user(
-        #         str(user.id), 
-        #         "login_approval_request", 
-        #         {
-        #             "pending_session_id": str(pending.id),
-        #             "new_device_id": data.device_id,
-        #             "message": "A new device is trying to log in to your account. Do you approve?"
-        #         }
-        #     )
-        #     
-        #     return {
-        #         "status": "WAITING_FOR_APPROVAL",
-        #         "pending_session_id": str(pending.id),
-        #         "message": "Login pending approval from your other device."
-        #     }
+        # Single-device enforcement: force-logout any previously logged-in device
+        if user.current_device_id and user.current_device_id != data.device_id:
+            try:
+                from backend.socket_server import emit_notification_to_user
+                await emit_notification_to_user(str(user.id), "force_logout", {
+                    "reason": "Logged in from a new device",
+                    "new_device_id": data.device_id
+                })
+                logging.info(f"force_logout (otp) emitted for user {user.id}")
+            except Exception as force_logout_err:
+                logging.warning(f"Could not send force_logout (otp): {force_logout_err}")
 
         # Update last login and session
         user.last_login_at = datetime.now(timezone.utc)

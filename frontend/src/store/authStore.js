@@ -67,6 +67,21 @@ const useAuthStore = create((set, get) => ({
     return response.data;
   },
 
+  loginWithOTP: async (payload) => {
+    const response = await authAPI.loginWithOTP(payload);
+    const { access_token, refresh_token, user } = response.data;
+    localStorage.setItem('tb_access_token', access_token);
+    localStorage.setItem('tb_refresh_token', refresh_token);
+    set({
+      user: user,
+      isAuthenticated: true,
+      credits: user?.credits || 0
+    });
+    connectSocket(access_token);
+    initializeFCM().catch(err => console.warn('[Auth] FCM init failed:', err));
+    return response.data;
+  },
+
   signup: async (data) => {
     const response = await authAPI.signup(data);
     // Backend returns: { access_token, refresh_token, user, ... } at root level

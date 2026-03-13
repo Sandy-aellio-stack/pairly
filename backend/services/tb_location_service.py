@@ -304,11 +304,10 @@ class LocationService:
         query_lat, query_lng = PrivacyLocation.reduce_precision(lat, lng)
         max_distance_meters = radius_km * 1000
         
-        # Build geo query
+        # Build geo query - keep simple for $geoNear stage (nested fields cause issues)
         geo_query = {
             "is_active": True,
             "location": {"$exists": True, "$ne": None},
-            "settings.safety.hide_from_search": {"$ne": True}
         }
         
         pipeline = [
@@ -321,7 +320,12 @@ class LocationService:
                     "query": geo_query
                 }
             },
-            {"$match": {"_id": {"$ne": current_user.id}}},
+            {
+                "$match": {
+                    "_id": {"$ne": current_user.id},
+                    "settings.safety.hide_from_search": {"$ne": True}
+                }
+            },
             {"$limit": limit}
         ]
         
@@ -398,7 +402,6 @@ class LocationService:
         geo_query = {
             "is_active": True,
             "location": {"$exists": True, "$ne": None},
-            "settings.safety.hide_from_search": {"$ne": True}
         }
         
         pipeline = [
@@ -411,7 +414,12 @@ class LocationService:
                     "query": geo_query
                 }
             },
-            {"$match": {"_id": {"$ne": current_user.id}}},
+            {
+                "$match": {
+                    "_id": {"$ne": current_user.id},
+                    "settings.safety.hide_from_search": {"$ne": True}
+                }
+            },
             {"$sort": {"distance_meters": 1}},
             {"$limit": limit}
         ]
