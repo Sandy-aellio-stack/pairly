@@ -116,10 +116,10 @@ const useAuthStore = create((set, get) => ({
   refreshCredits: async () => {
     try {
       const response = await creditsAPI.getBalance();
-      const newBalance = response.data.credits_balance;
+      const newBalance = response.data.credits ?? response.data.credits_balance ?? 0;
       set((state) => ({
         credits: newBalance,
-        user: state.user ? { ...state.user, credits_balance: newBalance } : null
+        user: state.user ? { ...state.user, credits: newBalance, credits_balance: newBalance } : null
       }));
     } catch (e) { }
   },

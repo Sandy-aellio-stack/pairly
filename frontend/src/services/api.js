@@ -110,6 +110,7 @@ export const authAPI = {
 
 // User APIs
 export const userAPI = {
+  getDashboardStats: () => api.get('/api/users/dashboard-stats'),
   getProfile: (userId) => api.get(`/api/users/profile/${userId}`),
   updateProfile: (data) => api.put('/api/users/profile', data),
   updatePreferences: (data) => api.put('/api/users/preferences', data),

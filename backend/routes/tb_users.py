@@ -79,6 +79,25 @@ async def get_user_profile(user_id: str):
     }
 
 
+@router.get("/dashboard-stats")
+async def get_dashboard_stats(current_user: TBUser = Depends(get_current_user)):
+    """
+    Get dashboard statistics for the current user.
+    """
+    try:
+        from backend.models.tb_message import TBMessage
+        messages_sent = await TBMessage.find(TBMessage.sender_id == str(current_user.id)).count()
+    except Exception:
+        messages_sent = 0
+
+    return {
+        "messages_sent": messages_sent,
+        "matches": 0,
+        "coins": current_user.credits_balance,
+        "profile_views": 0,
+    }
+
+
 @router.get("/{user_id}")
 async def get_user_by_id(user_id: str):
     """

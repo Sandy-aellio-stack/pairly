@@ -35,29 +35,49 @@ const ChatPage = () => {
     }
 
     const handleNewMessage = (data) => {
+      const currentUser = useAuthStore.getState().user;
       const current = selectedChatRef.current;
+
       if (
         current &&
         (data.sender_id === current.id || data.receiver_id === current.id)
       ) {
-        setMessages((prev) => {
-          const exists = prev.some((m) => m.id === data.id);
-          if (exists) return prev;
-          return [
-            ...prev,
-            {
-              id: data.id,
-              sender_id: data.sender_id,
-              content: data.content,
-              created_at: data.created_at,
-            },
-          ];
-        });
+        if (data.sender_id === currentUser?.id) {
+          // Own message: resolve any matching temp message to the real ID
+          setMessages((prev) => {
+            const alreadyReal = prev.some((m) => m.id === data.id && !m._temp);
+            if (alreadyReal) return prev;
+            const hasTemp = prev.some((m) => m._temp);
+            if (hasTemp) {
+              return prev.map((m) =>
+                m._temp && m.content === data.content
+                  ? { ...m, id: data.id, _temp: false }
+                  : m
+              );
+            }
+            return prev;
+          });
+        } else {
+          // Incoming message from the other person
+          setMessages((prev) => {
+            const exists = prev.some((m) => m.id === data.id);
+            if (exists) return prev;
+            return [
+              ...prev,
+              {
+                id: data.id,
+                sender_id: data.sender_id,
+                content: data.content,
+                created_at: data.created_at,
+              },
+            ];
+          });
+        }
       }
 
       setConversations((prev) =>
         prev.map((c) => {
-          if (c.id === data.sender_id) {
+          if (c.id === data.sender_id && data.sender_id !== currentUser?.id) {
             return { ...c, lastMessage: data.content, unread: (c.unread || 0) + 1 };
           }
           return c;
