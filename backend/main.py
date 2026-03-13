@@ -5,9 +5,9 @@ Production-ready FastAPI backend with MongoDB
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load .env file from backend directory
+# Load .env file from backend directory (override=True ensures .env values take priority)
 env_path = Path(__file__).parent / ".env"
-load_dotenv(dotenv_path=env_path)
+load_dotenv(dotenv_path=env_path, override=True)
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware

@@ -1,7 +1,7 @@
-# TrueBond - Dating App
+# Luveloop - Dating App
 
 ## Overview
-TrueBond is a full-stack dating application with a React frontend and Python FastAPI backend, featuring real-time chat and WebRTC-based audio/video calling.
+Luveloop is a full-stack dating application with a React frontend and Python FastAPI backend, featuring real-time chat and WebRTC-based audio/video calling.
 
 ## Project Structure
 - **frontend/**: React + Vite application (port 5000)
@@ -17,14 +17,14 @@ TrueBond is a full-stack dating application with a React frontend and Python Fas
 - State: Zustand
 - UI Components: Radix UI + custom components
 - Real-time: socket.io-client
-- Run: `cd frontend && yarn dev`
+- Run: `cd frontend && node_modules/.bin/vite --host 0.0.0.0 --port 5000`
 
 ### Backend
 - Framework: FastAPI with uvicorn
 - Database: MongoDB (via motor/beanie)
 - Real-time: python-socketio (integrated with FastAPI)
-- Additional: Redis (caching/rate limiting), Celery (background tasks)
-- Run: `PYTHONPATH=/home/runner/workspace uvicorn backend.main:socket_app --host localhost --port 8000`
+- Additional: Redis (caching/rate limiting, optional - graceful degradation if unavailable)
+- Run: `PYTHONPATH=/home/runner/workspace uv run uvicorn backend.main:socket_app --host localhost --port 8000 --reload`
 
 ## Key Features
 - JWT-based authentication with secure token handling
@@ -34,14 +34,24 @@ TrueBond is a full-stack dating application with a React frontend and Python Fas
 - Audio/video calling with WebRTC (signaling via Socket.IO)
 - Real-time location/nearby users
 - Admin panel with analytics
-- Payment integration (Stripe only)
+- Payment integration (Stripe, mock mode enabled)
 
-## Environment Variables Required
-- `MONGO_URL`: MongoDB connection string (Atlas or local)
+## Environment Variables
+All configuration is stored in `backend/.env` and `frontend/.env`.
+
+### Backend (`backend/.env`)
+- `MONGO_URL`: MongoDB Atlas connection string
 - `JWT_SECRET`: Secret for JWT tokens
-- `STRIPE_SECRET_KEY`: Stripe secret key for payments
-- `STRIPE_WEBHOOK_SECRET`: Stripe webhook secret for credit fulfillment
-- `REDIS_URL`: Redis connection string (for rate limiting, caching, sessions)
+- `REDIS_URL`: Redis connection string (optional, falls back gracefully)
+- `FRONTEND_URL`: Frontend URL for CORS
+- `CORS_ORIGINS`: Allowed origins for CORS
+- `ADMIN_EMAIL` / `ADMIN_PASSWORD`: Admin panel credentials
+- `PAYMENTS_ENABLED` / `PAYMENTS_MOCK_MODE`: Payment system config
+- `EMAIL_ENABLED`: Email service toggle
+
+### Frontend (`frontend/.env`)
+- `VITE_API_URL`: Backend API URL (points to port 8000 of the Replit domain)
+- `VITE_MAPBOX_PUBLIC_KEY`: Mapbox public key for maps
 
 ## API Endpoints
 - `/api/auth/*`: Authentication (signup, login, OTP)
@@ -54,7 +64,7 @@ TrueBond is a full-stack dating application with a React frontend and Python Fas
 - `/api/health`: Health check
 
 ## Admin Panel
-- Login: `/admin` (Demo credentials shown on login page)
+- Login: `/admin` (credentials in backend/.env: ADMIN_EMAIL / ADMIN_PASSWORD)
 - Dashboard with user stats and activity
 - User management (view, suspend, reactivate)
 - Analytics with charts (user growth, demographics, revenue)
@@ -82,47 +92,11 @@ TrueBond is a full-stack dating application with a React frontend and Python Fas
 - `ice_candidate`: ICE candidate from peer
 
 ## Recent Changes
-- 2025-12-20: Initial Replit setup - configured frontend to run on port 5000
-- 2025-12-20: Added Socket.IO server for real-time features
-- 2025-12-20: Implemented WebRTC signaling for audio/video calls
-- 2025-12-20: Added OTP verification page and flow
-- 2025-12-20: Fixed MongoDB connection with TLS/certifi
-- 2025-12-20: Fixed admin API URL to use same origin (was incorrectly pointing to localhost:8001)
-- 2025-12-20: Fixed cursor visibility issue (removed custom cursor:none CSS)
-- 2025-12-20: Fixed backend LSP errors in admin routes (TBCreditTransaction model, null checks)
-- 2025-12-20: Connected all admin panel pages to real backend APIs
-- 2025-12-20: Added user settings API (notifications, privacy, safety preferences)
-- 2025-12-20: Updated Settings page with Privacy & Safety sections connected to backend
-- 2025-12-20: Updated Credits page to match landing page design style
-- 2025-12-20: Implemented heart-only cursor on desktop (hides system cursor)
-- 2025-12-20: Fixed Privacy & Safety button in Profile page to navigate to Settings
-- 2025-12-20: Fixed missing HeartCursor imports in static pages (Privacy, Terms, About, Contact, Blog, Careers, Help)
-- 2025-12-20: All footer links now working (Privacy Policy, Terms, Contact, About, etc.)
-- 2025-12-20: Synced backend payment packages to match landing page pricing (₹100/100, ₹450/500, ₹800/1000 coins)
-- 2025-12-20: Enabled demo credit purchases (auto-verifies mock payments and adds credits)
-- 2026-01-06: Production Hardening - Removed Razorpay, standardized on Stripe-only payments
-- 2026-01-06: Added webhook-only credit system with idempotency (credits ONLY added via Stripe webhooks)
-- 2026-01-06: Added Redis-based rate limiting middleware for sensitive endpoints
-- 2026-01-06: Added security headers middleware (X-Content-Type-Options, X-Frame-Options, HSTS)
-- 2026-01-06: Added centralized error handling - no stack traces in production
-- 2026-01-06: Enhanced OTP system with rate limiting (3 sends/hour, 5 verify attempts)
-- 2026-01-06: Added database indexes for payments collection
-- 2026-01-06: Socket.IO already has JWT validation on connect
-- 2026-01-06: Server-side call billing worker already in place with credit checks
-- 2026-01-06: Added NotificationsPage with real API integration and fallback to mock data
-- 2026-01-06: Connected bell icon in dashboard to /dashboard/notifications route
-- 2026-01-06: Fixed NearbyPage map to display on all devices (mobile, tablet, desktop)
-- 2026-01-06: Added HeartCursor to CallPage and IncomingCallModal (desktop only)
-- 2026-01-06: Removed all mock/dummy users from frontend (HomePage, ChatPage, NearbyPage, NotificationsPage)
-- 2026-01-06: Pages now show empty states when no real data exists
-- 2026-01-06: Reordered payment packages by discount level (Premium 20% -> Popular 10% -> Starter 0%)
-
-## Production Security Features
-- Stripe webhook signature verification (mandatory)
-- Idempotency keys for payment processing (prevents duplicate credits)
-- Rate limiting on login, signup, OTP, and payment endpoints
-- Security headers (Content-Security-Policy, HSTS in production)
-- JWT validation on all Socket.IO connections
-- RBAC enforcement on admin routes
-- Centralized error handling with production-safe responses
-- Server-authoritative call billing with auto-end on insufficient credits
+- 2026-03-13: Migrated to Replit environment
+  - Installed frontend dependencies via npm --legacy-peer-deps
+  - Updated Frontend workflow to use local vite binary
+  - Created backend/.env and frontend/.env with all required config
+  - Fixed dotenv to use override=True so .env file takes priority over env vars
+  - Set CORS origins and FRONTEND_URL to Replit dev domain
+  - Set ENVIRONMENT=development for compatibility
+  - Redis runs via Upstash (graceful degradation if unavailable)

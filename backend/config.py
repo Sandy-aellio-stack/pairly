@@ -4,8 +4,8 @@ import os
 import logging
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+# Load environment variables (override=True ensures .env values take priority)
+load_dotenv(override=True)
 
 class Settings(BaseSettings):
     model_config = ConfigDict(extra='ignore')
