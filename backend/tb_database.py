@@ -17,6 +17,7 @@ from backend.routes.tb_notifications import TBNotification
 from backend.models.webhook_event import WebhookEvent, WebhookDLQ
 from backend.models.user import User as LegacyUser
 from backend.models.tb_pending_session import PendingSession
+from backend.models.call_session_v2 import CallSessionV2
 
 from backend.config import settings
 
@@ -79,7 +80,8 @@ async def init_db():
                 WebhookEvent,
                 WebhookDLQ,
                 LegacyUser,
-                PendingSession
+                PendingSession,
+                CallSessionV2,
             ]
         )
         

@@ -3,7 +3,9 @@ import { API_BASE_URL } from '../config/api';
 
 let socket = null;
 
-const SOCKET_URL = API_BASE_URL;
+// Use the configured API URL when set, otherwise connect to the same origin
+// (the Vite dev proxy forwards /socket.io to the backend at port 8000).
+const SOCKET_URL = API_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
 
 export const connectSocket = (token) => {
   if (socket?.connected) {
