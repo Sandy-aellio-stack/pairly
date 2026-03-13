@@ -86,9 +86,20 @@ async def lifespan(app: FastAPI):
     # Initialize WebSocket Redis Pub/Sub for real-time messaging
     from backend.socket_server import init_websocket_pubsub
     await init_websocket_pubsub()
-    
+
+    # Start periodic call billing worker
+    import asyncio
+    from backend.workers.call_billing_worker import call_billing_worker
+    billing_task = asyncio.create_task(call_billing_worker())
+
     logger.info("Application startup complete")
     yield
+
+    billing_task.cancel()
+    try:
+        await billing_task
+    except asyncio.CancelledError:
+        pass
     await close_db(mongo_client)
     
     # Disconnect Redis Pub/Sub

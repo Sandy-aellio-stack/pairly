@@ -46,13 +46,21 @@ class Settings(BaseSettings):
 settings = Settings()
 
 # CRITICAL VALIDATION
+_is_production = settings.ENVIRONMENT == "production"
+
 if not settings.JWT_SECRET:
     logging.error("CRITICAL: JWT_SECRET is missing!")
-    raise RuntimeError("JWT_SECRET must be set in environment")
+    if _is_production:
+        raise RuntimeError("JWT_SECRET must be set in environment")
+    else:
+        logging.warning("JWT_SECRET not set — auth endpoints will not work until this is configured")
 
 if not settings.MONGODB_URI:
     logging.error("CRITICAL: MONGO_URL is missing!")
-    raise RuntimeError("MONGO_URL must be set in environment")
+    if _is_production:
+        raise RuntimeError("MONGO_URL must be set in environment")
+    else:
+        logging.warning("MONGO_URL not set — database operations will fail until this is configured")
 
 if not settings.REDIS_URL:
     logging.warning("REDIS_URL is not set, using default")

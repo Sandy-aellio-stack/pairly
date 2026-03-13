@@ -28,13 +28,15 @@ Luveloop is a full-stack dating application with a React frontend and Python Fas
 
 ## Key Features
 - JWT-based authentication with secure token handling
-- OTP verification for phone numbers
-- Credit-based messaging system
-- Real-time chat using Socket.IO
-- Audio/video calling with WebRTC (signaling via Socket.IO)
-- Real-time location/nearby users
+- OTP login (email/phone) with single-device enforcement (force-logout previous device)
+- Credit-based messaging (1 coin/msg, 5 coins/min voice, 10 coins/min video)
+- Real-time chat using Socket.IO (socket URL fixed to connect to backend port 8000)
+- Audio/video calling with WebRTC (signaling via Socket.IO) with per-minute credit billing
+- Periodic call billing worker (60s tick) that force-ends calls if credits run dry
+- Real-time location/nearby users (`photo` field added to both nearby API endpoints)
 - Admin panel with analytics
 - Payment integration (Stripe, mock mode enabled)
+- Unit test coverage: 34 tests across location service and OTP service
 
 ## Environment Variables
 All configuration is stored in `backend/.env` and `frontend/.env`.

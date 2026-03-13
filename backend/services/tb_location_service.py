@@ -351,16 +351,16 @@ class LocationService:
                 if privacy.get("show_last_seen", True) and location_updated:
                     last_active = LocationService._format_last_active(location_updated)
                 
-                # DEBUG: Log individual user IDs being returned
-                print(f"DEBUG: Nearby returning user ID: {str(u['_id'])} for name: {u.get('name')}")
-                
+                first_photo = u.get("profile_pictures", [None])[0] if u.get("profile_pictures") else None
+                logger.debug(f"Nearby: user {str(u['_id'])} ({u.get('name')}) distance_km={distance_km_bucketed}")
                 result.append({
                     "id": str(u["_id"]),
                     "name": u.get("name"),
                     "age": u.get("age"),
                     "gender": u.get("gender"),
                     "bio": u.get("bio"),
-                    "profile_picture": u.get("profile_pictures", [None])[0] if u.get("profile_pictures") else None,
+                    "photo": first_photo,
+                    "profile_picture": first_photo,
                     "profile_pictures": u.get("profile_pictures", []),
                     "intent": u.get("intent"),
                     "distance_km": distance_km_bucketed if show_distance else None,
@@ -447,16 +447,16 @@ class LocationService:
                 jitter_lat = u_lat + (random.random() - 0.5) * 0.001
                 jitter_lng = u_lng + (random.random() - 0.5) * 0.001
                 
-                # DEBUG: Log individual user IDs being returned for map
-                print(f"DEBUG: Map Nearby returning user ID: {str(u['_id'])} for name: {u.get('name')}")
-                
+                map_first_photo = u.get("profile_pictures", [None])[0] if u.get("profile_pictures") else None
+                logger.debug(f"Map nearby: user {str(u['_id'])} ({u.get('name')}) lat={jitter_lat:.4f} lng={jitter_lng:.4f}")
                 result.append({
                     "id": str(u["_id"]),
                     "name": u.get("name"),
                     "age": u.get("age"),
                     "gender": u.get("gender"),
                     "bio": u.get("bio"),
-                    "profile_picture": u.get("profile_pictures", [None])[0] if u.get("profile_pictures") else None,
+                    "photo": map_first_photo,
+                    "profile_picture": map_first_photo,
                     "profile_pictures": u.get("profile_pictures", []),
                     "intent": u.get("intent"),
                     "lat": jitter_lat,

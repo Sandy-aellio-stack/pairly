@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
-import { Search, Send, MoreVertical, Phone, Video, ArrowLeft, Image, Smile, Coins, Loader2 } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Search, Send, MoreVertical, Phone, Video, ArrowLeft, Image, Smile, Coins, Loader2, X } from 'lucide-react';
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { messagesAPI, userAPI } from '@/services/api';
+import { connectSocket, getSocket, joinChat, onNewMessage, offNewMessage, onIncomingCall, offIncomingCall, sendTyping, sendStopTyping } from '@/services/socket';
 import useAuthStore from '@/store/authStore';
 import { toast } from 'sonner';
 
@@ -18,28 +19,81 @@ const ChatPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const [incomingCall, setIncomingCall] = useState(null);
   const messagesEndRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
+  const selectedChatRef = useRef(null);
+
+  selectedChatRef.current = selectedChat;
+
+  // Connect socket and set up listeners
+  useEffect(() => {
+    const token = localStorage.getItem('tb_access_token');
+    if (token) {
+      connectSocket(token);
+    }
+
+    const handleNewMessage = (data) => {
+      const current = selectedChatRef.current;
+      if (
+        current &&
+        (data.sender_id === current.id || data.receiver_id === current.id)
+      ) {
+        setMessages((prev) => {
+          const exists = prev.some((m) => m.id === data.id);
+          if (exists) return prev;
+          return [
+            ...prev,
+            {
+              id: data.id,
+              sender_id: data.sender_id,
+              content: data.content,
+              created_at: data.created_at,
+            },
+          ];
+        });
+      }
+
+      setConversations((prev) =>
+        prev.map((c) => {
+          if (c.id === data.sender_id) {
+            return { ...c, lastMessage: data.content, unread: (c.unread || 0) + 1 };
+          }
+          return c;
+        })
+      );
+    };
+
+    const handleIncomingCall = (data) => {
+      setIncomingCall(data);
+    };
+
+    onNewMessage(handleNewMessage);
+    onIncomingCall(handleIncomingCall);
+
+    return () => {
+      offNewMessage(handleNewMessage);
+      offIncomingCall(handleIncomingCall);
+    };
+  }, []);
 
   // Handle ?user=userId or /chat/:userId to start new conversation
   useEffect(() => {
     const targetUserId = urlUserId || searchParams.get('user');
     if (targetUserId) {
-      // If we already have this user selected, don't re-fetch
       if (selectedChat?.id === targetUserId) return;
 
-      // Check if user is already in our conversation list
       const existingConv = conversations.find(c => (c.id || c.user_id) === targetUserId);
       if (existingConv) {
         setSelectedChat(existingConv);
         return;
       }
 
-      // Fetch the user profile and start a conversation
       const startNewChat = async () => {
         try {
           const response = await messagesAPI.startConversation(targetUserId);
           const targetUser = response.data.user;
-          // Create a chat object from the user profile
           const newChat = {
             id: targetUserId,
             name: targetUser.name,
@@ -55,6 +109,16 @@ const ChatPage = () => {
       startNewChat();
     }
   }, [urlUserId, searchParams, conversations, selectedChat]);
+
+  // Join socket chat room when a chat is selected
+  useEffect(() => {
+    if (selectedChat?.id) {
+      const socket = getSocket();
+      if (socket?.connected) {
+        joinChat(selectedChat.id).catch(() => {});
+      }
+    }
+  }, [selectedChat?.id]);
 
   // Fetch conversations on mount
   useEffect(() => {
@@ -78,18 +142,14 @@ const ChatPage = () => {
     try {
       const response = await messagesAPI.getConversations();
       if (response.data.conversations && response.data.conversations.length > 0) {
-        // Standardize conversation data
         const formattedConvs = response.data.conversations.map(conv => ({
           ...conv,
-          id: conv.user?.id || conv.user_id, // Ensure we have a top-level ID for the chat
+          id: conv.user?.id || conv.user_id,
           name: conv.user?.name || conv.name,
           avatar: conv.user?.profile_picture || conv.avatar,
           online: conv.user?.is_online || conv.online,
         }));
         setConversations(formattedConvs);
-        
-        // If we have a urlUserId, we might already have set selectedChat in the useEffect above.
-        // If not, we don't automatically select the first one to allow the "start new chat" logic to work.
       } else {
         setConversations([]);
       }
@@ -107,7 +167,6 @@ const ChatPage = () => {
       const response = await messagesAPI.getMessages(userId);
       if (response.data.messages) {
         setMessages(response.data.messages);
-        // Mark messages as read
         await messagesAPI.markRead(userId);
       }
     } catch (error) {
@@ -119,10 +178,19 @@ const ChatPage = () => {
 
   const selectedConversation = conversations.find(c => (c.id || c.user?.id) === selectedChat?.id) || selectedChat;
 
+  const handleTyping = useCallback(() => {
+    if (selectedChat?.id) {
+      sendTyping(selectedChat.id);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => {
+        sendStopTyping(selectedChat.id);
+      }, 2000);
+    }
+  }, [selectedChat?.id]);
+
   const handleSend = async () => {
     if (!message.trim() || !selectedChat) return;
 
-    // Check credits
     if ((user?.credits_balance || 0) < 1) {
       toast.error('You need coins to send messages! Buy more coins.');
       navigate('/dashboard/credits');
@@ -133,30 +201,50 @@ const ChatPage = () => {
     const messageText = message;
     setMessage('');
 
-    // Optimistically add message to UI
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const tempMessage = {
-      id: Date.now(),
-      sender: 'me',
-      text: messageText,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      id: tempId,
+      sender_id: user?.id,
+      content: messageText,
+      created_at: new Date().toISOString(),
+      _temp: true,
     };
     setMessages(prev => [...prev, tempMessage]);
 
     try {
-      await messagesAPI.send(selectedChat.id, messageText);
-      refreshCredits(); // Update credits balance
-      toast.success('Message sent! (-1 coin)');
+      const result = await messagesAPI.send(selectedChat.id, messageText);
+      setMessages(prev =>
+        prev.map(m => m.id === tempId ? { ...m, id: result.data?.message_id || tempId, _temp: false } : m)
+      );
+      refreshCredits();
     } catch (error) {
       if (error.response?.status === 402) {
         toast.error('Insufficient coins! Buy more to continue chatting.');
         navigate('/dashboard/credits');
-        // Remove optimistic message
-        setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
+        setMessages(prev => prev.filter(m => m.id !== tempId));
       } else {
         toast.error('Failed to send message');
+        setMessages(prev => prev.filter(m => m.id !== tempId));
       }
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const handleAcceptCall = () => {
+    if (incomingCall) {
+      navigate(`/call/${incomingCall.caller_id}?type=${incomingCall.call_type || 'audio'}&call_id=${incomingCall.call_id}&incoming=true`);
+      setIncomingCall(null);
+    }
+  };
+
+  const handleRejectCall = () => {
+    if (incomingCall) {
+      const socket = getSocket();
+      if (socket?.connected) {
+        socket.emit('reject_call', { call_id: incomingCall.call_id, reason: 'rejected' });
+      }
+      setIncomingCall(null);
     }
   };
 
@@ -166,12 +254,42 @@ const ChatPage = () => {
 
   return (
     <div className="max-w-6xl mx-auto px-4">
+      {/* Incoming Call Modal */}
+      {incomingCall && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-80 text-center shadow-2xl">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Phone size={28} className="text-green-600 animate-pulse" />
+            </div>
+            <h3 className="text-lg font-bold text-[#0F172A] mb-1">Incoming Call</h3>
+            <p className="text-gray-500 text-sm mb-6">
+              {incomingCall.call_type === 'video' ? 'Video' : 'Voice'} call from user
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleRejectCall}
+                className="flex-1 py-3 bg-red-100 text-red-600 rounded-xl font-semibold hover:bg-red-200 transition-colors flex items-center justify-center gap-2"
+              >
+                <X size={18} />
+                Decline
+              </button>
+              <button
+                onClick={handleAcceptCall}
+                className="flex-1 py-3 bg-green-500 text-white rounded-xl font-semibold hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
+              >
+                <Phone size={18} />
+                Accept
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-3xl shadow-lg overflow-hidden h-[calc(100vh-180px)] flex">
         {/* Conversations List */}
         <div className={`w-full md:w-80 border-r border-gray-100 flex flex-col ${
           selectedChat ? 'hidden md:flex' : 'flex'
         }`}>
-          {/* Search */}
           <div className="p-4 border-b border-gray-100">
             <div className="relative">
               <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -185,7 +303,6 @@ const ChatPage = () => {
             </div>
           </div>
 
-          {/* Conversation List */}
           <div className="flex-1 overflow-y-auto">
             {isLoading ? (
               <div className="flex items-center justify-center h-full">
@@ -198,15 +315,15 @@ const ChatPage = () => {
                 <p className="text-gray-400 text-xs">Start chatting with people nearby!</p>
               </div>
             ) : (
-              filteredConversations.map((conv, idx) => (
+              filteredConversations.map((conv) => (
                 <button
-                  key={conv.id || conv.user_id || idx}
+                  key={conv.id || conv.user_id}
                   onClick={() => {
                     setSelectedChat(conv);
                     navigate(`/dashboard/chat/${conv.id || conv.user_id}`, { replace: true });
                   }}
                   className={`w-full flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors ${
-                    (selectedChat?.id === conv.id || selectedChat?.id === conv.user_id) ? 'bg-[#E9D5FF]/20' : ''
+                    selectedChat?.id === (conv.id || conv.user_id) ? 'bg-[#E9D5FF]/20' : ''
                   }`}
                 >
                   <div className="relative">
@@ -238,9 +355,7 @@ const ChatPage = () => {
         </div>
 
         {/* Chat Area */}
-        <div className={`flex-1 flex flex-col ${
-          selectedChat ? 'flex' : 'hidden md:flex'
-        }`}>
+        <div className={`flex-1 flex flex-col ${selectedChat ? 'flex' : 'hidden md:flex'}`}>
           {selectedConversation ? (
             <>
               {/* Chat Header */}
@@ -252,7 +367,7 @@ const ChatPage = () => {
                   >
                     <ArrowLeft size={20} />
                   </button>
-                  <div 
+                  <div
                     className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
                     onClick={() => navigate(`/dashboard/profile/${selectedChat.id}`)}
                   >
@@ -264,13 +379,13 @@ const ChatPage = () => {
                     <div>
                       <h3 className="font-semibold text-[#0F172A]">{selectedConversation.name}</h3>
                       <p className="text-xs text-green-500">
-                        {selectedConversation.online ? 'Online' : 'Tap to view profile'}
+                        {isTyping ? 'Typing...' : selectedConversation.online ? 'Online' : 'Tap to view profile'}
                       </p>
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button 
+                  <button
                     onClick={() => {
                       if ((user?.credits_balance || 0) < 5) {
                         toast.error('You need at least 5 coins for a voice call');
@@ -284,7 +399,7 @@ const ChatPage = () => {
                     <Phone size={20} className="text-gray-600" />
                     <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-[#0F172A] text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">5 coins/min</span>
                   </button>
-                  <button 
+                  <button
                     onClick={() => {
                       if ((user?.credits_balance || 0) < 10) {
                         toast.error('You need at least 10 coins for a video call');
@@ -312,27 +427,25 @@ const ChatPage = () => {
                   </div>
                 ) : (
                   <>
-                    {messages.map((msg) => (
-                      <div
-                        key={msg.id}
-                        className={`flex ${msg.sender === 'me' || msg.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
-                      >
-                        <div
-                          className={`max-w-[70%] px-4 py-3 rounded-2xl ${
-                            msg.sender === 'me' || msg.sender_id === user?.id
-                              ? 'bg-[#0F172A] text-white rounded-br-md'
-                              : 'bg-white shadow-sm rounded-bl-md'
-                          }`}
-                        >
-                          <p className="text-sm">{msg.text || msg.content}</p>
-                          <p className={`text-xs mt-1 ${
-                            msg.sender === 'me' || msg.sender_id === user?.id ? 'text-white/60' : 'text-gray-400'
-                          }`}>
-                            {msg.time || new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </p>
+                    {messages.map((msg) => {
+                      const isMine = msg.sender === 'me' || msg.sender_id === user?.id;
+                      return (
+                        <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                          <div
+                            className={`max-w-[70%] px-4 py-3 rounded-2xl ${
+                              isMine
+                                ? `bg-[#0F172A] text-white rounded-br-md ${msg._temp ? 'opacity-70' : ''}`
+                                : 'bg-white shadow-sm rounded-bl-md'
+                            }`}
+                          >
+                            <p className="text-sm">{msg.text || msg.content}</p>
+                            <p className={`text-xs mt-1 ${isMine ? 'text-white/60' : 'text-gray-400'}`}>
+                              {msg.time || (msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '')}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                     <div ref={messagesEndRef} />
                   </>
                 )}
@@ -350,7 +463,10 @@ const ChatPage = () => {
                   <input
                     type="text"
                     value={message}
-                    onChange={(e) => setMessage(e.target.value)}
+                    onChange={(e) => {
+                      setMessage(e.target.value);
+                      handleTyping();
+                    }}
                     placeholder="Type a message..."
                     className="flex-1 px-4 py-3 rounded-full bg-[#F8FAFC] border border-gray-200 focus:border-[#0F172A] outline-none text-sm"
                     onKeyPress={(e) => e.key === 'Enter' && !isSending && handleSend()}

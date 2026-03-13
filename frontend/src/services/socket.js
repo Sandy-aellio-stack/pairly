@@ -1,8 +1,9 @@
 import { io } from 'socket.io-client';
+import { API_BASE_URL } from '../config/api';
 
 let socket = null;
 
-const SOCKET_URL = import.meta.env.VITE_API_URL || window.location.origin;
+const SOCKET_URL = API_BASE_URL;
 
 export const connectSocket = (token) => {
   if (socket?.connected) {
@@ -15,6 +16,7 @@ export const connectSocket = (token) => {
     reconnection: true,
     reconnectionAttempts: 5,
     reconnectionDelay: 1000,
+    path: '/socket.io',
   });
 
   socket.on('connect', () => {
@@ -58,7 +60,7 @@ export const joinChat = (userId) => {
       return;
     }
     socket.emit('join_chat', { user_id: userId }, (response) => {
-      if (response.error) reject(new Error(response.error));
+      if (response?.error) reject(new Error(response.error));
       else resolve(response);
     });
   });
@@ -77,7 +79,7 @@ export const sendMessage = (receiverId, content, type = 'text') => {
       return;
     }
     socket.emit('send_message', { receiver_id: receiverId, content, type }, (response) => {
-      if (response.error) reject(new Error(response.error));
+      if (response?.error) reject(new Error(response.error));
       else resolve(response);
     });
   });
@@ -102,7 +104,7 @@ export const callUser = (receiverId, callType, offer) => {
       return;
     }
     socket.emit('call_user', { receiver_id: receiverId, call_type: callType, offer }, (response) => {
-      if (response.error) reject(new Error(response.error));
+      if (response?.error) reject(new Error(response.error));
       else resolve(response);
     });
   });
@@ -115,7 +117,7 @@ export const answerCall = (callId, answer) => {
       return;
     }
     socket.emit('answer_call', { call_id: callId, answer }, (response) => {
-      if (response.error) reject(new Error(response.error));
+      if (response?.error) reject(new Error(response.error));
       else resolve(response);
     });
   });
@@ -128,7 +130,7 @@ export const rejectCall = (callId, reason = 'rejected') => {
       return;
     }
     socket.emit('reject_call', { call_id: callId, reason }, (response) => {
-      if (response.error) reject(new Error(response.error));
+      if (response?.error) reject(new Error(response.error));
       else resolve(response);
     });
   });
@@ -141,7 +143,7 @@ export const endCall = (callId) => {
       return;
     }
     socket.emit('end_call', { call_id: callId }, (response) => {
-      if (response.error) reject(new Error(response.error));
+      if (response?.error) reject(new Error(response.error));
       else resolve(response);
     });
   });
@@ -157,6 +159,10 @@ export const onNewMessage = (callback) => {
   socket?.on('new_message', callback);
 };
 
+export const offNewMessage = (callback) => {
+  socket?.off('new_message', callback);
+};
+
 export const onTyping = (callback) => {
   socket?.on('user_typing', callback);
 };
@@ -167,6 +173,10 @@ export const onStopTyping = (callback) => {
 
 export const onIncomingCall = (callback) => {
   socket?.on('incoming_call', callback);
+};
+
+export const offIncomingCall = (callback) => {
+  socket?.off('incoming_call', callback);
 };
 
 export const onCallAnswered = (callback) => {
@@ -235,9 +245,11 @@ export default {
   endCall,
   sendIceCandidate,
   onNewMessage,
+  offNewMessage,
   onTyping,
   onStopTyping,
   onIncomingCall,
+  offIncomingCall,
   onCallAnswered,
   onCallRejected,
   onCallEnded,

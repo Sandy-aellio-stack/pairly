@@ -34,7 +34,13 @@ def _prepare_mongo_url(url: str) -> str:
 
 async def init_db():
     """Initialize MongoDB connection with Beanie ODM"""
+    import logging
     global MONGO_URL
+
+    if not MONGO_URL:
+        logging.warning("MONGO_URL is not set — database operations will be unavailable. Set the MONGO_URL secret to enable full functionality.")
+        return None
+
     MONGO_URL = _prepare_mongo_url(MONGO_URL)
     
     try:

@@ -77,10 +77,17 @@ def validate_environment() -> Tuple[bool, List[str]]:
 
     # Required for ALL environments
     required_vars = [
-        ("MONGO_URL", "MongoDB connection string"),
         ("JWT_SECRET", "JWT signing secret (must be strong)"),
         ("REDIS_URL", "Redis connection URL"),
     ]
+
+    # Required only in production (warn in development)
+    if is_production:
+        required_vars.append(("MONGO_URL", "MongoDB connection string"))
+    else:
+        mongo_url = os.getenv("MONGO_URL", "")
+        if not mongo_url:
+            warnings.append("MONGO_URL is not set — database operations will be unavailable. Provide a MongoDB connection string to enable full functionality.")
 
     # Required for PRODUCTION only
     production_required_vars = [
