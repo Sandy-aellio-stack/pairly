@@ -111,6 +111,9 @@ export const authAPI = {
 // User APIs
 export const userAPI = {
   getDashboardStats: () => api.get('/api/users/dashboard-stats'),
+  getNearby: (limit = 20) => api.get(`/api/users/nearby?limit=${limit}`),
+  getSuggestions: (limit = 3) => api.get(`/api/users/suggestions?limit=${limit}`),
+  getStreak: () => api.get('/api/users/streak'),
   getProfile: (userId) => api.get(`/api/users/profile/${userId}`),
   updateProfile: (data) => api.put('/api/users/profile', data),
   updatePreferences: (data) => api.put('/api/users/preferences', data),

@@ -1,4 +1,5 @@
 from jose import jwt
+from jose.exceptions import JWTError as JoseJWTError, ExpiredSignatureError as JoseExpiredSignatureError
 import random
 import string
 import os
@@ -156,9 +157,9 @@ class AuthService:
         try:
             payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
             return payload
-        except jwt.ExpiredSignatureError:
+        except JoseExpiredSignatureError:
             raise HTTPException(status_code=401, detail="Token expired")
-        except jwt.InvalidTokenError:
+        except (JoseJWTError, Exception):
             raise HTTPException(status_code=401, detail="Invalid token")
 
     @staticmethod

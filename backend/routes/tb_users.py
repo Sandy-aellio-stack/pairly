@@ -98,6 +98,130 @@ async def get_dashboard_stats(current_user: TBUser = Depends(get_current_user)):
     }
 
 
+@router.get("/nearby")
+async def get_nearby_users_simple(
+    limit: int = 20,
+    current_user: TBUser = Depends(get_current_user)
+):
+    """
+    Get nearby/active users for the home page feed.
+    Returns active users excluding current user and blocked users.
+    """
+    from beanie import PydanticObjectId
+
+    blocked_ids = await _get_blocked_user_ids(str(current_user.id))
+    blocked_ids.add(str(current_user.id))
+
+    blocked_oids = []
+    for uid in blocked_ids:
+        try:
+            blocked_oids.append(PydanticObjectId(uid))
+        except Exception:
+            pass
+
+    query = {"is_active": True}
+    if blocked_oids:
+        query["_id"] = {"$nin": blocked_oids}
+
+    users = await TBUser.find(query).sort(-TBUser.created_at).limit(limit).to_list()
+
+    result = []
+    for u in users:
+        result.append({
+            "id": str(u.id),
+            "name": u.name,
+            "age": u.age,
+            "bio": u.bio or "",
+            "profile_picture": u.profile_pictures[0] if u.profile_pictures else None,
+            "is_online": getattr(u, "is_online", False) or False,
+            "intent": u.intent,
+        })
+
+    return {"users": result, "total": len(result)}
+
+
+@router.get("/suggestions")
+async def get_suggestions(
+    limit: int = 3,
+    current_user: TBUser = Depends(get_current_user)
+):
+    """
+    Get suggested users / today's matches.
+    Returns a curated small list based on activity.
+    """
+    from beanie import PydanticObjectId
+
+    blocked_ids = await _get_blocked_user_ids(str(current_user.id))
+    blocked_ids.add(str(current_user.id))
+
+    blocked_oids = []
+    for uid in blocked_ids:
+        try:
+            blocked_oids.append(PydanticObjectId(uid))
+        except Exception:
+            pass
+
+    query = {"is_active": True, "is_online": True}
+    if blocked_oids:
+        query["_id"] = {"$nin": blocked_oids}
+
+    users = await TBUser.find(query).limit(limit).to_list()
+
+    if len(users) < limit:
+        query2 = {"is_active": True}
+        if blocked_oids:
+            query2["_id"] = {"$nin": blocked_oids}
+        extra = await TBUser.find(query2).limit(limit - len(users)).to_list()
+        existing_ids = {str(u.id) for u in users}
+        users += [u for u in extra if str(u.id) not in existing_ids]
+
+    result = []
+    for u in users:
+        result.append({
+            "id": str(u.id),
+            "name": u.name,
+            "age": u.age,
+            "bio": u.bio or "",
+            "profile_picture": u.profile_pictures[0] if u.profile_pictures else None,
+            "profile_pictures": u.profile_pictures or [],
+            "is_online": getattr(u, "is_online", False) or False,
+            "intent": u.intent,
+        })
+
+    return {"users": result}
+
+
+@router.get("/streak")
+async def get_login_streak(current_user: TBUser = Depends(get_current_user)):
+    """
+    Get the current user's login streak.
+    Calculated from last_login_at field.
+    """
+    from datetime import timezone as tz, timedelta
+
+    streak_days = 1
+    now = datetime.now(timezone.utc)
+
+    if current_user.last_login_at:
+        last = current_user.last_login_at
+        if last.tzinfo is None:
+            last = last.replace(tzinfo=timezone.utc)
+        days_diff = (now.date() - last.date()).days
+        if days_diff == 0:
+            streak_days = 1
+        elif days_diff <= 1:
+            streak_days = 2
+        else:
+            streak_days = 1
+
+    next_reward = 5 if streak_days < 5 else 10
+
+    return {
+        "streak_days": streak_days,
+        "next_reward": next_reward,
+    }
+
+
 @router.get("/{user_id}")
 async def get_user_by_id(user_id: str):
     """

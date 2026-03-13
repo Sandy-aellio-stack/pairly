@@ -1,4 +1,5 @@
 from jose import JWTError, jwt
+from jose.exceptions import ExpiredSignatureError as JoseExpiredSignatureError
 import logging
 import os
 from datetime import datetime, timedelta, timezone
@@ -73,7 +74,7 @@ def verify_token(token: str, expected_type: str):
         if payload.get("type") != expected_type and payload.get("token_type") != expected_type:
             raise HTTPException(401, "Invalid token type")
         return payload
-    except jwt.ExpiredSignatureError:
+    except JoseExpiredSignatureError:
         raise HTTPException(401, "Token expired")
     except JWTError:
         raise HTTPException(401, "Invalid token")

@@ -1,366 +1,425 @@
-import { useState, useEffect } from 'react';
-import { Heart, MessageCircle, MapPin, Sparkles, ChevronRight, X, Loader2, Search } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  Search, Flame, MapPin, Sparkles, MessageCircle,
+  Coins, Eye, Heart, Users, ChevronRight, Loader2,
+  TrendingUp, Star
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '@/store/authStore';
-import { locationAPI, userAPI } from '@/services/api';
-import { toast } from 'sonner';
+import { userAPI } from '@/services/api';
+
+const PLACEHOLDER_AVATAR = 'https://ui-avatars.com/api/?background=E9D5FF&color=0F172A&size=128&name=';
+
+const SkeletonCard = () => (
+  <div className="bg-white rounded-2xl p-4 shadow-sm animate-pulse">
+    <div className="flex items-center gap-3">
+      <div className="w-14 h-14 rounded-full bg-gray-200" />
+      <div className="flex-1 space-y-2">
+        <div className="h-4 bg-gray-200 rounded w-2/3" />
+        <div className="h-3 bg-gray-100 rounded w-1/2" />
+      </div>
+    </div>
+  </div>
+);
+
+const SkeletonStat = () => (
+  <div className="bg-white rounded-2xl p-5 shadow-sm animate-pulse">
+    <div className="h-8 bg-gray-200 rounded w-1/2 mb-2" />
+    <div className="h-3 bg-gray-100 rounded w-3/4" />
+  </div>
+);
 
 const HomePage = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [profiles, setProfiles] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [userLocation, setUserLocation] = useState(null);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
 
-  // Fetch user feed on load
+  const [streak, setStreak] = useState(null);
+  const [streakLoading, setStreakLoading] = useState(true);
+
+  const [nearby, setNearby] = useState([]);
+  const [nearbyLoading, setNearbyLoading] = useState(true);
+
+  const [suggestions, setSuggestions] = useState([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(true);
+
+  const [stats, setStats] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  const searchRef = useRef(null);
+  const debounceRef = useRef(null);
+
   useEffect(() => {
-    const fetchUserFeed = async () => {
-      setIsLoading(true);
-      try {
-        // First try to get location
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            async (position) => {
-              const { latitude, longitude } = position.coords;
-              setUserLocation({ lat: latitude, lng: longitude });
-              
-              // Update user location in backend
-              try {
-                await locationAPI.update(latitude, longitude);
-              } catch (e) {
-                console.log('Could not update location');
-              }
-            },
-            () => {
-              setUserLocation({ lat: 12.9716, lng: 77.5946 });
-            }
-          );
-        }
-
-        // Fetch user feed (not location-dependent)
-        const response = await userAPI.getFeed(1, 20);
-        if (response.data.users && response.data.users.length > 0) {
-          setProfiles(response.data.users);
-          setHasMore(response.data.has_more);
-        } else {
-          setProfiles([]);
-        }
-      } catch (error) {
-        console.error('Failed to fetch feed:', error);
-        setProfiles([]);
-      } finally {
-        setIsLoading(false);
-      }
+    const fetchAll = async () => {
+      await Promise.allSettled([
+        fetchStreak(),
+        fetchNearby(),
+        fetchSuggestions(),
+        fetchStats(),
+      ]);
     };
-
-    fetchUserFeed();
+    fetchAll();
   }, []);
 
-  // Search users
-  const handleSearch = async (query) => {
-    setSearchQuery(query);
-    if (!query.trim()) {
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (searchRef.current && !searchRef.current.contains(e.target)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const fetchStreak = async () => {
+    setStreakLoading(true);
+    try {
+      const res = await userAPI.getStreak();
+      setStreak(res.data);
+    } catch {
+      setStreak({ streak_days: 1, next_reward: 5 });
+    } finally {
+      setStreakLoading(false);
+    }
+  };
+
+  const fetchNearby = async () => {
+    setNearbyLoading(true);
+    try {
+      const res = await userAPI.getNearby(12);
+      setNearby(res.data.users || []);
+    } catch {
+      setNearby([]);
+    } finally {
+      setNearbyLoading(false);
+    }
+  };
+
+  const fetchSuggestions = async () => {
+    setSuggestionsLoading(true);
+    try {
+      const res = await userAPI.getSuggestions(3);
+      setSuggestions(res.data.users || []);
+    } catch {
+      setSuggestions([]);
+    } finally {
+      setSuggestionsLoading(false);
+    }
+  };
+
+  const fetchStats = async () => {
+    setStatsLoading(true);
+    try {
+      const res = await userAPI.getDashboardStats();
+      setStats(res.data);
+    } catch {
+      setStats({ messages_sent: 0, matches: 0, coins: user?.credits_balance ?? 0, profile_views: 0 });
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
+  const handleSearchChange = useCallback((e) => {
+    const q = e.target.value;
+    setSearchQuery(q);
+    setShowDropdown(true);
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (!q.trim()) {
       setSearchResults([]);
       setIsSearching(false);
       return;
     }
 
-    setIsSearching(true);
-    try {
-      const response = await userAPI.search(query, 1, 10);
-      setSearchResults(response.data.users || []);
-    } catch (error) {
-      console.error('Search failed:', error);
-      setSearchResults([]);
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  // Load more users
-  const loadMore = async () => {
-    if (!hasMore) return;
-    
-    try {
-      const response = await userAPI.getFeed(page + 1, 20);
-      if (response.data.users && response.data.users.length > 0) {
-        setProfiles([...profiles, ...response.data.users]);
-        setPage(page + 1);
-        setHasMore(response.data.has_more);
+    debounceRef.current = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const res = await userAPI.search(q, 1, 8);
+        setSearchResults(res.data.users || []);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
       }
-    } catch (error) {
-      console.error('Failed to load more:', error);
-    }
+    }, 300);
+  }, []);
+
+  const goToProfile = (id) => {
+    setShowDropdown(false);
+    setSearchQuery('');
+    navigate(`/dashboard/profile/${id}`);
   };
 
-  const currentProfile = profiles[currentIndex];
+  const coinsBalance = stats?.coins ?? user?.credits_balance ?? user?.credits ?? 0;
 
-  const handleLike = () => {
-    toast.success(`You liked ${currentProfile?.name}!`);
-    if (currentIndex < profiles.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-    }
-  };
-
-  const handlePass = () => {
-    if (currentIndex < profiles.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-    }
-  };
-
-  const handleMessage = () => {
-    if (user?.credits_balance > 0) {
-      navigate('/dashboard/chat');
-    } else {
-      toast.error('You need coins to send messages!');
-      navigate('/dashboard/credits');
-    }
-  };
-
-  const handleViewProfile = (profileId) => {
-    navigate(`/dashboard/profile/${profileId}`);
-  };
-
-  if (isLoading) {
-    return (
-      <div className="max-w-6xl mx-auto px-4 flex items-center justify-center h-[60vh]">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-[#0F172A] mx-auto mb-4" />
-          <p className="text-gray-600">Loading profiles...</p>
-        </div>
-      </div>
-    );
-  }
+  const statCards = [
+    { icon: MessageCircle, label: 'Messages Sent', value: stats?.messages_sent ?? 0, color: 'bg-blue-50', iconColor: 'text-blue-500' },
+    { icon: Heart, label: 'Matches', value: stats?.matches ?? 0, color: 'bg-rose-50', iconColor: 'text-rose-500' },
+    { icon: Coins, label: 'Coins', value: coinsBalance, color: 'bg-amber-50', iconColor: 'text-amber-500' },
+    { icon: Eye, label: 'Profile Views', value: stats?.profile_views ?? 0, color: 'bg-purple-50', iconColor: 'text-purple-500' },
+  ];
 
   return (
-    <div className="max-w-6xl mx-auto px-4">
-      {/* Search Bar */}
-      <div className="mb-6 relative">
+    <div className="max-w-5xl mx-auto px-4 py-6 space-y-8">
+
+      {/* ── Welcome Header ── */}
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-[#0F172A]">
+            Welcome back, {user?.name || 'there'} 👋
+          </h1>
+          <p className="text-gray-500 mt-1 text-sm">Find your perfect match today</p>
+        </div>
+        <button
+          onClick={() => navigate('/dashboard/credits')}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-full text-sm font-semibold text-amber-700 hover:bg-amber-100 transition-colors"
+        >
+          <Coins size={15} />
+          {coinsBalance} coins
+        </button>
+      </div>
+
+      {/* ── Search Bar ── */}
+      <div className="relative" ref={searchRef}>
         <div className="relative">
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
           <input
             type="text"
-            placeholder="Search users by name..."
+            placeholder="Search people by name…"
             value={searchQuery}
-            onChange={(e) => handleSearch(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0F172A]/20"
+            onChange={handleSearchChange}
+            onFocus={() => searchQuery && setShowDropdown(true)}
+            className="w-full pl-12 pr-12 py-3.5 bg-white border border-gray-200 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0F172A]/10 focus:border-[#0F172A]/30 text-sm transition"
           />
           {isSearching && (
-            <Loader2 className="absolute right-4 top-1/2 transform -translate-y-1/2 w-5 h-5 animate-spin text-gray-400" />
+            <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-gray-400" />
           )}
         </div>
-        
-        {/* Search Results Dropdown */}
-        {searchQuery && searchResults.length > 0 && (
-          <div className="absolute z-50 mt-2 w-full max-w-md bg-white rounded-xl shadow-lg border border-gray-200 max-h-80 overflow-y-auto">
-            {searchResults.map((result) => (
-              <div
-                key={result.id}
-                onClick={() => handleViewProfile(result.id)}
-                className="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer"
-              >
-                <img
-                  src={result.profile_pictures?.[0] || 'https://via.placeholder.com/40'}
-                  alt={result.name}
-                  className="w-10 h-10 rounded-full object-cover"
+
+        {showDropdown && searchQuery && (
+          <div className="absolute z-50 top-full mt-2 w-full bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden max-h-72 overflow-y-auto">
+            {searchResults.length > 0 ? (
+              searchResults.map((u) => (
+                <button
+                  key={u.id}
+                  onClick={() => goToProfile(u.id)}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
+                >
+                  <img
+                    src={u.profile_picture || `${PLACEHOLDER_AVATAR}${encodeURIComponent(u.name)}`}
+                    alt={u.name}
+                    className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <p className="font-medium text-[#0F172A] text-sm truncate">{u.name}{u.age ? `, ${u.age}` : ''}</p>
+                    <p className="text-xs text-gray-400 truncate">{u.bio?.slice(0, 50) || 'No bio'}</p>
+                  </div>
+                  {u.is_online && (
+                    <span className="ml-auto flex-shrink-0 w-2 h-2 bg-green-400 rounded-full" />
+                  )}
+                </button>
+              ))
+            ) : !isSearching ? (
+              <div className="px-4 py-6 text-center text-gray-400 text-sm">
+                No users found for &ldquo;{searchQuery}&rdquo;
+              </div>
+            ) : null}
+          </div>
+        )}
+      </div>
+
+      {/* ── Login Streak ── */}
+      {streakLoading ? (
+        <div className="h-20 bg-white rounded-2xl animate-pulse shadow-sm" />
+      ) : (
+        <div className="bg-gradient-to-r from-orange-50 to-amber-50 border border-amber-100 rounded-2xl p-5 flex items-center gap-4 shadow-sm">
+          <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Flame size={24} className="text-amber-500" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-[#0F172A]">
+              🔥 {streak?.streak_days ?? 1} Day Streak
+            </p>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Come back tomorrow to earn {streak?.next_reward ?? 5} bonus coins
+            </p>
+            <div className="flex gap-1 mt-2">
+              {Array.from({ length: 7 }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`h-1.5 flex-1 rounded-full ${
+                    i < (streak?.streak_days ?? 1) ? 'bg-amber-400' : 'bg-amber-100'
+                  }`}
                 />
-                <div>
-                  <p className="font-medium text-[#0F172A]">{result.name}, {result.age}</p>
-                  <p className="text-sm text-gray-500">{result.bio?.slice(0, 50) || 'No bio'}</p>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Nearby People ── */}
+      <section>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <MapPin size={18} className="text-[#0F172A]" />
+            <h2 className="font-semibold text-[#0F172A]">People Nearby</h2>
+          </div>
+          <button
+            onClick={() => navigate('/dashboard/nearby')}
+            className="text-sm text-gray-500 flex items-center gap-1 hover:text-[#0F172A] transition-colors"
+          >
+            View all <ChevronRight size={15} />
+          </button>
+        </div>
+
+        {nearbyLoading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
+          </div>
+        ) : nearby.length === 0 ? (
+          <div className="bg-white rounded-2xl p-8 text-center shadow-sm">
+            <Users size={36} className="text-gray-300 mx-auto mb-2" />
+            <p className="text-gray-400 text-sm">No one nearby yet. Check back soon!</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {nearby.map((person) => (
+              <button
+                key={person.id}
+                onClick={() => goToProfile(person.id)}
+                className="bg-white rounded-2xl p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all text-left group"
+              >
+                <div className="relative mb-3">
+                  <img
+                    src={person.profile_picture || `${PLACEHOLDER_AVATAR}${encodeURIComponent(person.name)}`}
+                    alt={person.name}
+                    className="w-14 h-14 rounded-full object-cover"
+                  />
+                  {person.is_online && (
+                    <span className="absolute bottom-0.5 right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-white" />
+                  )}
+                </div>
+                <p className="font-medium text-[#0F172A] text-sm truncate group-hover:text-purple-700 transition-colors">
+                  {person.name}{person.age ? `, ${person.age}` : ''}
+                </p>
+                <p className="text-xs text-gray-400 truncate mt-0.5">
+                  {person.bio || person.intent || 'New member'}
+                </p>
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* ── Today's Match Suggestions ── */}
+      <section>
+        <div className="flex items-center gap-2 mb-4">
+          <Sparkles size={18} className="text-purple-500" />
+          <h2 className="font-semibold text-[#0F172A]">Today&apos;s Matches</h2>
+        </div>
+
+        {suggestionsLoading ? (
+          <div className="grid sm:grid-cols-3 gap-4">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="bg-white rounded-2xl overflow-hidden shadow-sm animate-pulse">
+                <div className="h-48 bg-gray-200" />
+                <div className="p-4 space-y-2">
+                  <div className="h-4 bg-gray-200 rounded w-2/3" />
+                  <div className="h-3 bg-gray-100 rounded w-full" />
                 </div>
               </div>
             ))}
           </div>
-        )}
-        
-        {searchQuery && searchResults.length === 0 && !isSearching && (
-          <div className="absolute z-50 mt-2 w-full max-w-md bg-white rounded-xl shadow-lg border border-gray-200 p-4 text-center text-gray-500">
-            No users found matching "{searchQuery}"
+        ) : suggestions.length === 0 ? (
+          <div className="bg-white rounded-2xl p-8 text-center shadow-sm">
+            <Star size={36} className="text-gray-300 mx-auto mb-2" />
+            <p className="text-gray-400 text-sm">No suggestions yet. Try again later!</p>
           </div>
-        )}
-      </div>
-
-      {/* Welcome Section */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-[#0F172A] mb-2">
-          Welcome back, {user?.name || 'User'}! 👋
-        </h1>
-        <p className="text-gray-600">Find your perfect match today</p>
-      </div>
-
-      <div className="grid lg:grid-cols-3 gap-8">
-        {/* Main Card Stack */}
-        <div className="lg:col-span-2">
-          {currentProfile ? (
-            <div className="relative">
-              {/* Profile Card */}
-              <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
-                {/* Image - Click to view profile */}
-                <div 
-                  className="relative h-[500px] cursor-pointer"
-                  onClick={() => navigate(`/dashboard/profile/${currentProfile.id}`)}
-                >
-                  <img
-                    src={currentProfile.profile_pictures?.[0] || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400'}
-                    alt={currentProfile.name}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                  
-                  {/* Tap to view indicator */}
-                  <div className="absolute top-4 right-4 px-3 py-1.5 bg-black/30 backdrop-blur-sm rounded-full text-white text-xs">
-                    Tap to view profile
-                  </div>
-                  
-                  {/* Profile Info Overlay */}
-                  <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h2 className="text-3xl font-bold">{currentProfile.name}, {currentProfile.age}</h2>
-                      <span className="px-2 py-1 bg-white/20 rounded-full text-xs backdrop-blur-sm">
-                        {currentProfile.intent}
-                      </span>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 text-sm text-white/80 mb-3">
-                      <MapPin size={14} />
-                      <span>{currentProfile.distance_display || `${currentProfile.distance_km?.toFixed(1) || '?'} km away`}</span>
-                    </div>
-                    
-                    <p className="text-white/90 mb-4">{currentProfile.bio || 'No bio yet'}</p>
-                    
-                    {currentProfile.interests && (
-                      <div className="flex flex-wrap gap-2">
-                        {currentProfile.interests.map((interest, idx) => (
-                          <span
-                            key={idx}
-                            className="px-3 py-1 bg-white/20 rounded-full text-xs backdrop-blur-sm"
-                          >
-                            {interest}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="p-6 flex items-center justify-center gap-4">
-                  <button
-                    onClick={handlePass}
-                    className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors"
-                  >
-                    <X size={28} className="text-gray-500" />
-                  </button>
-                  
-                  <button
-                    onClick={handleMessage}
-                    className="w-14 h-14 rounded-full bg-[#E9D5FF] flex items-center justify-center hover:bg-[#DDD6FE] transition-colors"
-                  >
-                    <MessageCircle size={24} className="text-[#0F172A]" />
-                  </button>
-                  
-                  <button
-                    onClick={handleLike}
-                    className="w-16 h-16 rounded-full bg-rose-500 flex items-center justify-center hover:bg-rose-600 transition-colors shadow-lg"
-                  >
-                    <Heart size={28} className="text-white" fill="white" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Card Stack Indicator */}
-              <div className="flex justify-center gap-2 mt-4">
-                {profiles.map((_, idx) => (
-                  <div
-                    key={idx}
-                    className={`h-1.5 rounded-full transition-all ${
-                      idx === currentIndex ? 'w-8 bg-[#0F172A]' : 'w-1.5 bg-gray-300'
-                    }`}
-                  />
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="bg-white rounded-3xl shadow-xl p-12 text-center">
-              <Sparkles size={48} className="text-[#E9D5FF] mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-[#0F172A] mb-2">You&apos;ve seen everyone!</h2>
-              <p className="text-gray-600">Check back later for more matches</p>
-            </div>
-          )}
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Quick Stats */}
-          <div className="bg-white rounded-2xl p-6 shadow-md">
-            <h3 className="font-semibold text-[#0F172A] mb-4">Your Activity</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-4 bg-[#E9D5FF]/20 rounded-xl">
-                <p className="text-3xl font-bold text-[#0F172A]">{user?.credits_balance || 10}</p>
-                <p className="text-xs text-gray-600">Coins Left</p>
-              </div>
-              <div className="text-center p-4 bg-[#FCE7F3]/50 rounded-xl">
-                <p className="text-3xl font-bold text-[#0F172A]">{profiles.length}</p>
-                <p className="text-xs text-gray-600">People Nearby</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Nearby Preview */}
-          <div className="bg-white rounded-2xl p-6 shadow-md">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-[#0F172A]">People Nearby</h3>
+        ) : (
+          <div className="grid sm:grid-cols-3 gap-4">
+            {suggestions.map((person) => (
               <button
-                onClick={() => navigate('/dashboard/nearby')}
-                className="text-sm text-[#0F172A] font-medium flex items-center gap-1 hover:underline"
+                key={person.id}
+                onClick={() => goToProfile(person.id)}
+                className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all text-left group"
               >
-                View All <ChevronRight size={16} />
-              </button>
-            </div>
-            <div className="flex -space-x-3">
-              {profiles.slice(0, 4).map((profile, idx) => (
-                <img
-                  key={idx}
-                  src={profile.profile_pictures?.[0] || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100'}
-                  alt={profile.name}
-                  className="w-12 h-12 rounded-full border-2 border-white object-cover"
-                />
-              ))}
-              {profiles.length > 4 && (
-                <div className="w-12 h-12 rounded-full bg-[#0F172A] border-2 border-white flex items-center justify-center">
-                  <span className="text-white text-xs font-semibold">+{profiles.length - 4}</span>
+                <div className="relative h-48 overflow-hidden">
+                  <img
+                    src={
+                      person.profile_picture ||
+                      `https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop`
+                    }
+                    alt={person.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                  {person.is_online && (
+                    <div className="absolute top-3 right-3 flex items-center gap-1 bg-green-500/90 text-white text-xs px-2 py-0.5 rounded-full">
+                      <span className="w-1.5 h-1.5 bg-white rounded-full" />
+                      Online
+                    </div>
+                  )}
+                  <div className="absolute bottom-3 left-3 text-white">
+                    <p className="font-semibold">{person.name}{person.age ? `, ${person.age}` : ''}</p>
+                  </div>
                 </div>
-              )}
-            </div>
+                <div className="p-3">
+                  <p className="text-xs text-gray-500 line-clamp-2">
+                    {person.bio || 'Say hello and start a conversation!'}
+                  </p>
+                  <div className="mt-3 flex items-center gap-2">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/chat?user=${person.id}`); }}
+                      className="flex-1 flex items-center justify-center gap-1 py-1.5 bg-[#0F172A] text-white text-xs rounded-lg hover:bg-[#1E293B] transition-colors"
+                    >
+                      <MessageCircle size={12} />
+                      Message
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); goToProfile(person.id); }}
+                      className="flex-1 py-1.5 border border-gray-200 text-gray-600 text-xs rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      View Profile
+                    </button>
+                  </div>
+                </div>
+              </button>
+            ))}
           </div>
+        )}
+      </section>
 
-          {/* Tips */}
-          <div className="bg-gradient-to-br from-[#E9D5FF] to-[#FCE7F3] rounded-2xl p-6">
-            <h3 className="font-semibold text-[#0F172A] mb-2">💡 Tip of the Day</h3>
-            <p className="text-sm text-gray-700">
-              Complete your profile to get 50% more matches! Add a bio and more photos.
-            </p>
+      {/* ── Activity Summary ── */}
+      <section>
+        <div className="flex items-center gap-2 mb-4">
+          <TrendingUp size={18} className="text-[#0F172A]" />
+          <h2 className="font-semibold text-[#0F172A]">Your Activity</h2>
+        </div>
+
+        {statsLoading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[0, 1, 2, 3].map((i) => <SkeletonStat key={i} />)}
           </div>
-        </div>
-      </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {statCards.map(({ icon: Icon, label, value, color, iconColor }) => (
+              <div key={label} className={`${color} rounded-2xl p-5 shadow-sm`}>
+                <div className="flex items-center justify-between mb-3">
+                  <Icon size={20} className={iconColor} />
+                </div>
+                <p className="text-2xl font-bold text-[#0F172A]">{value}</p>
+                <p className="text-xs text-gray-500 mt-1">{label}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
-      {/* Load More Button */}
-      {hasMore && (
-        <div className="flex justify-center mt-8">
-          <button
-            onClick={loadMore}
-            className="px-6 py-3 bg-[#0F172A] text-white rounded-xl hover:bg-[#1E293B] transition-colors"
-          >
-            Load More Profiles
-          </button>
-        </div>
-      )}
     </div>
   );
 };
