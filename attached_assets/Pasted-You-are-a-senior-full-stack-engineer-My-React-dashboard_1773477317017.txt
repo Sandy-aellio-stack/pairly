@@ -1,0 +1,186 @@
+You are a senior full-stack engineer.
+
+My React dashboard page is loading as a **completely black screen** at:
+
+http://localhost:5000/dashboard
+
+This means the React app is crashing during rendering. Fix the issue and ensure the dashboard loads correctly.
+
+Tech stack:
+
+Frontend
+
+* React
+* Vite
+* TailwindCSS
+* Zustand
+* Axios
+
+Backend
+
+* FastAPI
+* MongoDB
+* Beanie
+
+---
+
+PROBLEM
+
+After pulling new code, the dashboard renders a **blank black page**.
+
+This usually happens when:
+
+• A React runtime error crashes the component
+• An API request fails and the component doesn't handle it
+• Zustand store returns null user data
+• A router error occurs
+• The backend API URL is incorrect
+
+Your job is to locate and fix the crash.
+
+---
+
+STEP 1 — ADD GLOBAL ERROR BOUNDARY
+
+Create a React error boundary:
+
+frontend/src/components/ErrorBoundary.jsx
+
+Wrap the entire app with it inside:
+
+frontend/src/main.jsx
+
+So runtime errors do not blank the screen.
+
+---
+
+STEP 2 — FIX API BASE URL
+
+Check:
+
+frontend/src/services/api.js
+
+Ensure Axios uses the correct backend:
+
+const api = axios.create({
+baseURL: "http://localhost:8000/api",
+withCredentials: true
+})
+
+Do NOT use port 5000 because that is the frontend.
+
+---
+
+STEP 3 — PROTECT COMPONENTS FROM NULL DATA
+
+In HomePage.jsx and Dashboard components, ensure user data exists.
+
+Replace code like:
+
+user.name
+
+With:
+
+user?.name
+
+Add safe loading fallback:
+
+if (!user) {
+return ( <div className="flex items-center justify-center h-screen">
+Loading dashboard... </div>
+)
+}
+
+---
+
+STEP 4 — FIX DASHBOARD DATA LOADING
+
+In:
+
+frontend/src/pages/dashboard/HomePage.jsx
+
+Load dashboard data safely:
+
+useEffect(() => {
+const loadDashboard = async () => {
+try {
+const stats = await userAPI.getDashboardStats()
+setStats(stats.data)
+} catch (err) {
+console.error("Dashboard load failed:", err)
+}
+}
+
+loadDashboard()
+}, [])
+
+Never allow unhandled promise errors.
+
+---
+
+STEP 5 — VERIFY ROUTER
+
+Check:
+
+frontend/src/App.jsx
+
+Ensure dashboard route exists:
+
+<Route path="/dashboard" element={<Dashboard />} />
+
+---
+
+STEP 6 — VERIFY BACKEND ENDPOINT
+
+Confirm backend endpoint works:
+
+GET /api/users/dashboard-stats
+
+Example response:
+
+{
+"messages_sent": 10,
+"matches": 4,
+"coins": 25,
+"profile_views": 12
+}
+
+---
+
+STEP 7 — HANDLE FAILED REQUESTS
+
+Add error UI if the dashboard request fails.
+
+Example:
+
+if (error) {
+return <div>Failed to load dashboard data</div>
+}
+
+---
+
+STEP 8 — RESTART DEV SERVERS
+
+After fixing:
+
+Restart backend and frontend:
+
+Backend
+python start_backend.py
+
+Frontend
+npm run dev
+
+---
+
+EXPECTED RESULT
+
+The dashboard should now:
+
+• load without a black screen
+• fetch dashboard statistics
+• display nearby users and suggestions
+• handle API failures safely
+• never crash React rendering
+
+If an API fails, the UI should still render gracefully.

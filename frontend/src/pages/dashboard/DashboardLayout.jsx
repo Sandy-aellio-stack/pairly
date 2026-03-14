@@ -5,7 +5,7 @@ import { locationAPI } from '@/services/api';
 import useAuthStore from '@/store/authStore';
 import IncomingCallModal from '@/components/IncomingCallModal';
 import { toast } from 'sonner';
-import socket from '@/services/socket';
+import { getSocket } from '@/services/socket';
 
 const DashboardLayout = () => {
   const navigate = useNavigate();
@@ -23,12 +23,18 @@ const DashboardLayout = () => {
       toast.info(`${data.name || 'Someone'} is nearby!`, { duration: 4000 });
     };
 
-    socket.on('new_match', handleNewMatch);
-    socket.on('nearby_user', handleNearbyUser);
+    const s = getSocket();
+    if (s) {
+      s.on('new_match', handleNewMatch);
+      s.on('nearby_user', handleNearbyUser);
+    }
 
     return () => {
-      socket.off('new_match', handleNewMatch);
-      socket.off('nearby_user', handleNearbyUser);
+      const s2 = getSocket();
+      if (s2) {
+        s2.off('new_match', handleNewMatch);
+        s2.off('nearby_user', handleNearbyUser);
+      }
     };
   }, [user]);
 
