@@ -91,9 +91,17 @@ const SettingsPage = () => {
     toast.success('Logged out successfully');
   };
 
-  const handleDeleteAccount = () => {
-    if (window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-      toast.info('Account deletion request submitted. Our team will contact you.');
+  const handleDeleteAccount = async () => {
+    if (!window.confirm('Are you sure you want to permanently delete your account? All your data, messages, and matches will be erased. This cannot be undone.')) {
+      return;
+    }
+    try {
+      await userAPI.deleteAccount();
+      toast.success('Account deleted successfully');
+      await logout();
+      navigate('/');
+    } catch (error) {
+      toast.error('Failed to delete account. Please try again.');
     }
   };
 

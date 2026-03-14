@@ -113,7 +113,7 @@ async def connect(sid, environ, auth):
         
         await update_user_presence(user_id, True)
 
-        # Notify others (only if show_online_status is enabled)
+        # Notify others only if show_online_status is enabled
         try:
             user_doc = await TBUser.get(user_id)
             show_online = True
@@ -122,7 +122,7 @@ async def connect(sid, environ, auth):
             if show_online:
                 await sio.emit('user_online', {'user_id': user_id}, skip_sid=sid)
         except Exception:
-            await sio.emit('user_online', {'user_id': user_id}, skip_sid=sid)
+            pass
         logger.info(f"User {user_id} connected (sid: {sid})")
         return True
     except Exception as e:
@@ -244,19 +244,25 @@ async def send_message(sid, data):
             'content': content, 'type': msg_type, 'created_at': message.created_at.isoformat()
         }
 
-        # 5. Create notification for offline receiver
+        # 5. Create notification for offline receiver (respects notifications_messages setting)
         if receiver_id not in user_sockets:
             try:
                 from backend.models.notification import Notification
-                sender = await TBUser.get(user_id)
-                sender_name = sender.name if sender else "Someone"
-                notif = Notification(
-                    user_id=receiver_id,
-                    title="New message",
-                    body=f"{sender_name} sent you a message",
-                    meta={"sender_id": user_id, "message_id": str(message.id), "type": "message"}
-                )
-                await notif.insert()
+                receiver_doc = await TBUser.get(receiver_id)
+                notify_ok = True
+                if receiver_doc and receiver_doc.settings and receiver_doc.settings.notifications:
+                    notify_ok = receiver_doc.settings.notifications.messages
+                if notify_ok:
+                    sender = await TBUser.get(user_id)
+                    sender_name = sender.name if sender else "Someone"
+                    notif = Notification(
+                        user_id=receiver_id,
+                        title="New message",
+                        body=f"{sender_name} sent you a message",
+                        type="message_received",
+                        meta={"sender_id": user_id, "message_id": str(message.id)}
+                    )
+                    await notif.insert()
             except Exception as notif_err:
                 logger.warning(f"Failed to create offline notification: {notif_err}")
 
@@ -394,6 +400,110 @@ async def ice_candidate(sid, data):
             await sio.emit('ice_candidate', ice_data, room=f"user_{other_id}")
     except Exception:
         pass
+
+# ============================================
+# MATCH EVENTS
+# ============================================
+
+@sio.event
+async def like_user(sid, data):
+    """
+    frontend: socket.emit('like_user', { liked_user_id })
+    When both users like each other a match is created and new_match is emitted.
+    """
+    user_id = connected_users.get(sid, {}).get('user_id')
+    if not user_id:
+        return {'error': 'Unauthorized'}
+
+    liked_user_id = data.get('liked_user_id')
+    if not liked_user_id:
+        return {'error': 'Missing liked_user_id'}
+
+    try:
+        from backend.routes.tb_notifications import TBNotification
+        import json
+
+        likes_key_forward = f"like:{user_id}:{liked_user_id}"
+        likes_key_reverse = f"like:{liked_user_id}:{user_id}"
+
+        if redis_pubsub.is_connected():
+            r = redis_pubsub.redis_pub
+            await r.setex(likes_key_forward, 7 * 24 * 3600, "1")
+            mutual = await r.exists(likes_key_reverse)
+        else:
+            mutual = False
+
+        if mutual:
+            liker = await TBUser.get(user_id)
+            liked = await TBUser.get(liked_user_id)
+            liker_name = liker.name if liker else "Someone"
+            liked_name = liked.name if liked else "Someone"
+
+            match_data = {
+                "user_id_a": user_id,
+                "user_id_b": liked_user_id,
+                "name_a": liker_name,
+                "name_b": liked_name,
+            }
+
+            await sio.emit('new_match', {**match_data, "matched_with": liked_user_id, "name": liked_name},
+                           room=f"user_{user_id}")
+            await sio.emit('new_match', {**match_data, "matched_with": user_id, "name": liker_name},
+                           room=f"user_{liked_user_id}")
+
+            for uid, partner_name in [(user_id, liked_name), (liked_user_id, liker_name)]:
+                try:
+                    from backend.models.notification import Notification
+                    notif = Notification(
+                        user_id=uid,
+                        title="New Match!",
+                        body=f"You and {partner_name} liked each other",
+                        type="match_created",
+                        meta={"matched_with": liked_user_id if uid == user_id else user_id}
+                    )
+                    await notif.insert()
+                except Exception:
+                    pass
+
+            return {'matched': True}
+
+        return {'matched': False}
+    except Exception as e:
+        logger.error(f"like_user error: {e}")
+        return {'error': 'Internal server error'}
+
+
+async def emit_match_notification(user_id_a: str, user_id_b: str):
+    """
+    Utility: Call this whenever a mutual match is recorded outside the socket event.
+    Emits new_match to both users and creates DB notifications.
+    """
+    try:
+        from backend.routes.tb_notifications import TBNotification
+        from backend.models.notification import Notification
+
+        user_a = await TBUser.get(user_id_a)
+        user_b = await TBUser.get(user_id_b)
+        name_a = user_a.name if user_a else "Someone"
+        name_b = user_b.name if user_b else "Someone"
+
+        await sio.emit('new_match', {"matched_with": user_id_b, "name": name_b},
+                       room=f"user_{user_id_a}")
+        await sio.emit('new_match', {"matched_with": user_id_a, "name": name_a},
+                       room=f"user_{user_id_b}")
+
+        for uid, partner_name in [(user_id_a, name_b), (user_id_b, name_a)]:
+            notif = Notification(
+                user_id=uid,
+                title="New Match!",
+                body=f"You and {partner_name} liked each other",
+                type="match_created",
+                meta={"matched_with": user_id_b if uid == user_id_a else user_id_a}
+            )
+            await notif.insert()
+    except Exception as e:
+        logger.error(f"emit_match_notification failed: {e}")
+
 
 # ============================================
 # APP UTILS

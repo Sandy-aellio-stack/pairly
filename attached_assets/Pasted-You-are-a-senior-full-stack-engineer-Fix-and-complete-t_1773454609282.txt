@@ -1,0 +1,354 @@
+You are a **senior full-stack engineer**.
+
+Fix and complete the remaining functionality in my **Luveloop dating app**.
+
+Tech stack:
+
+Frontend
+
+* React
+* Vite
+* TailwindCSS
+* Zustand
+* Axios
+* Socket.IO client
+
+Backend
+
+* FastAPI
+* MongoDB
+* Beanie ODM
+* Socket.IO server
+* Redis (optional)
+
+The system already has:
+
+* messaging
+* call signaling
+* dashboard
+* coin system
+
+But several **settings and notification features must be implemented and connected correctly**.
+
+---
+
+GOAL
+
+Make the following systems fully functional:
+
+1. Notifications
+2. Privacy settings
+3. Safety settings
+4. Account settings
+5. Messaging reliability
+6. Audio/video call stability
+
+All settings must persist in the database and affect system behavior.
+
+---
+
+USER SETTINGS MODEL
+
+Update the user model:
+
+backend/models/tb_user.py
+
+Add a settings object:
+
+class UserSettings(BaseModel):
+
+```
+notifications_messages: bool = True
+notifications_matches: bool = True
+notifications_nearby: bool = True
+
+show_online_status: bool = True
+show_last_seen: bool = True
+show_distance: bool = True
+
+block_screenshots: bool = False
+verified_matches_only: bool = False
+hide_from_search: bool = False
+```
+
+Add to TBUser:
+
+settings: UserSettings = Field(default_factory=UserSettings)
+
+---
+
+BACKEND SETTINGS API
+
+Create routes:
+
+backend/routes/tb_users_settings.py
+
+Endpoints:
+
+GET /api/users/settings
+
+Returns:
+
+{
+"notifications_messages": true,
+"notifications_matches": true,
+"notifications_nearby": true,
+"show_online_status": true,
+"show_last_seen": true,
+"show_distance": true,
+"block_screenshots": false,
+"verified_matches_only": false,
+"hide_from_search": false
+}
+
+---
+
+UPDATE SETTINGS
+
+PATCH /api/users/settings
+
+Body example:
+
+{
+"notifications_messages": false,
+"show_distance": false
+}
+
+Update only provided fields.
+
+---
+
+NOTIFICATION SYSTEM
+
+Ensure the notification system works.
+
+Create notification types:
+
+message_received
+match_created
+nearby_user_detected
+
+When message received:
+
+Socket emit:
+
+new_message
+
+If user offline:
+
+Create DB notification.
+
+Model:
+
+backend/models/notification.py
+
+Fields:
+
+user_id
+title
+body
+type
+meta
+created_at
+read
+
+---
+
+MATCH NOTIFICATIONS
+
+When a match occurs:
+
+Emit socket event:
+
+new_match
+
+And create notification record.
+
+---
+
+NEARBY USER NOTIFICATIONS
+
+When a user enters proximity:
+
+Emit:
+
+nearby_user
+
+Respect setting:
+
+notifications_nearby
+
+---
+
+PRIVACY SETTINGS BEHAVIOR
+
+show_online_status = false
+
+Do not broadcast user_online events.
+
+show_last_seen = false
+
+Do not return last_seen in APIs.
+
+show_distance = false
+
+Nearby API should return:
+
+distance = null
+
+---
+
+SAFETY SETTINGS
+
+verified_matches_only = true
+
+User can only match with verified users.
+
+hide_from_search = true
+
+User must be excluded from:
+
+GET /api/users/search
+
+block_screenshots = true
+
+Frontend should overlay profile with screenshot protection (best effort).
+
+---
+
+ACCOUNT SETTINGS
+
+Implement endpoints:
+
+POST /api/users/logout
+
+Invalidate JWT.
+
+DELETE /api/users/account
+
+Delete user and related data:
+
+messages
+matches
+notifications
+calls
+
+---
+
+FRONTEND SETTINGS PAGE
+
+File:
+
+frontend/src/pages/settings/SettingsPage.jsx
+
+Sections:
+
+Notifications
+Privacy
+Safety
+Account
+
+Each setting should use a toggle switch.
+
+When toggled:
+
+PATCH /api/users/settings
+
+Example:
+
+await userAPI.updateSettings({
+notifications_messages: false
+})
+
+---
+
+REALTIME MESSAGING FIXES
+
+Ensure socket server:
+
+1. Deduplicates messages
+2. Handles optimistic updates
+3. Emits new_message only once
+
+Frontend should resolve temp message IDs.
+
+---
+
+CALL SYSTEM
+
+Ensure signaling events exist:
+
+call_user
+incoming_call
+answer_call
+reject_call
+end_call
+ice_candidate
+
+Frontend must create RTCPeerConnection with:
+
+STUN server:
+
+stun:stun.l.google.com:19302
+
+---
+
+COIN RULES
+
+message = 1 coin
+voice call = 5 coins per minute
+video call = 10 coins per minute
+
+Coins deducted:
+
+message → immediately
+call → when call ends
+
+---
+
+PERFORMANCE RULES
+
+Avoid duplicate socket emissions.
+
+Cache settings in Zustand store.
+
+Load settings once on login.
+
+---
+
+EXPECTED RESULT
+
+After implementation:
+
+Notifications
+
+✔ new messages notify user
+✔ new matches notify user
+✔ nearby users notify user
+
+Privacy
+
+✔ hide online status works
+✔ hide last seen works
+✔ hide distance works
+
+Safety
+
+✔ verified matches only works
+✔ hide from search works
+
+Account
+
+✔ logout works
+✔ delete account works
+
+Messaging
+
+✔ no duplicate messages
+
+Calls
+
+✔ audio call works
+✔ video call works
+
+System behaves like a **modern dating application**.

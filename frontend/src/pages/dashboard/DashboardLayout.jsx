@@ -4,10 +4,33 @@ import { Home, MessageCircle, MapPin, User, Coins, LogOut, Heart, Bell, Search, 
 import { locationAPI } from '@/services/api';
 import useAuthStore from '@/store/authStore';
 import IncomingCallModal from '@/components/IncomingCallModal';
+import { toast } from 'sonner';
+import socket from '@/services/socket';
 
 const DashboardLayout = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
+
+  // Global socket events: new_match and nearby_user
+  useEffect(() => {
+    if (!user) return;
+
+    const handleNewMatch = (data) => {
+      toast.success(`You matched with ${data.name || 'someone'}! 💕`, { duration: 5000 });
+    };
+
+    const handleNearbyUser = (data) => {
+      toast.info(`${data.name || 'Someone'} is nearby!`, { duration: 4000 });
+    };
+
+    socket.on('new_match', handleNewMatch);
+    socket.on('nearby_user', handleNearbyUser);
+
+    return () => {
+      socket.off('new_match', handleNewMatch);
+      socket.off('nearby_user', handleNearbyUser);
+    };
+  }, [user]);
 
   // Auto-update location every 30 seconds
   useEffect(() => {

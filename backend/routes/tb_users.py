@@ -594,6 +594,7 @@ async def get_user_settings(user: TBUser = Depends(get_current_user)):
     }
 
 
+@router.patch("/settings")
 @router.put("/settings")
 async def update_user_settings(data: UpdateSettingsRequest, user: TBUser = Depends(get_current_user)):
     """Update user's settings (notifications, privacy, safety)"""

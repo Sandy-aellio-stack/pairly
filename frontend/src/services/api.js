@@ -122,7 +122,8 @@ export const userAPI = {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
   getSettings: () => api.get('/api/users/settings'),
-  updateSettings: (data) => api.put('/api/users/settings', data),
+  updateSettings: (data) => api.patch('/api/users/settings', data),
+  deleteAccount: () => api.delete('/api/users/account'),
   // User Search & Feed
   search: (query, page = 1, limit = 20) => api.get(`/api/users/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`),
   getFeed: (page = 1, limit = 20) => api.get(`/api/users/feed?page=${page}&limit=${limit}`),
