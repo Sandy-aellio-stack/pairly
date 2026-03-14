@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timezone
 from typing import Optional
 from fastapi import HTTPException
@@ -5,6 +6,8 @@ from beanie import PydanticObjectId
 
 from backend.models.tb_user import TBUser
 from backend.models.tb_credit import TBCreditTransaction, TransactionReason
+
+logger = logging.getLogger("credits")
 
 
 class CreditService:
@@ -69,6 +72,10 @@ class CreditService:
         )
         await transaction.insert(session=session)
 
+        logger.info(
+            f"Coins deducted: user={user_id}, amount={amount}, reason={reason.value if hasattr(reason,'value') else reason}, "
+            f"balance_after={new_balance}, ref={reference_id}"
+        )
         return transaction
 
     @staticmethod
@@ -112,6 +119,10 @@ class CreditService:
         )
         await transaction.insert(session=session)
 
+        logger.info(
+            f"Coins added: user={user_id}, amount={amount}, reason={reason.value if hasattr(reason,'value') else reason}, "
+            f"balance_after={result.credits_balance}, ref={reference_id}"
+        )
         return transaction
 
     @staticmethod

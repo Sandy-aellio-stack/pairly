@@ -53,6 +53,16 @@ export const connectSocket = (token) => {
     }
   });
 
+  socket.on('new_notification', (data) => {
+    // Forward admin/system notifications globally
+    try {
+      const event = new CustomEvent('luveloop:new_notification', { detail: data });
+      window.dispatchEvent(event);
+    } catch (e) {
+      // ignore
+    }
+  });
+
   return socket;
 };
 

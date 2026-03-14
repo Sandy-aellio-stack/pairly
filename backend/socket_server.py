@@ -386,11 +386,17 @@ async def end_call(sid, data):
         try:
             new_balance = await CreditService.get_balance(user_id)
             await sio.emit('balance_updated', {'credits': new_balance}, room=f"user_{user_id}")
+            logger.info(
+                f"Call ended: call_id={call_id}, ended_by={user_id}, "
+                f"duration={getattr(call_session, 'duration_seconds', 'N/A')}s, "
+                f"caller_balance_after={new_balance}"
+            )
         except Exception:
             pass
 
         return {'success': True}
     except Exception as e:
+        logger.warning(f"end_call error: call_id={call_id}, user={user_id}, error={e}")
         return {'error': str(e)}
 
 @sio.event

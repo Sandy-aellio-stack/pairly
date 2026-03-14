@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
@@ -5,6 +6,8 @@ from datetime import datetime, timezone
 
 from backend.models.app_settings import AppSettings
 from backend.routes.tb_admin_auth import get_current_admin, check_super_admin
+
+logger = logging.getLogger("admin.settings")
 
 router = APIRouter(prefix="/api/admin/settings", tags=["TrueBond Admin Settings"])
 
@@ -244,3 +247,74 @@ def _get_security_recommendations(environment: str, jwt_valid: bool, config) -> 
         })
     
     return recommendations
+
+
+# ========== ADMIN NOTIFICATION BROADCAST ==========
+
+class AdminNotificationRequest(BaseModel):
+    title: str
+    body: str
+    type: str = "announcement"
+    target_user_ids: Optional[List[str]] = None
+
+
+@router.post("/send-notification", tags=["Admin Notifications"])
+async def send_notification_broadcast(
+    data: AdminNotificationRequest,
+    admin: dict = Depends(get_current_admin)
+):
+    """
+    Broadcast a notification to all users or a specific subset.
+    - Stores notification in DB for offline users
+    - Emits socket event to all connected online users
+    """
+    from backend.models.tb_user import TBUser
+    from backend.routes.tb_notifications import TBNotification
+    from backend.socket_server import sio, user_sockets
+
+    created_count = 0
+    emitted_count = 0
+
+    try:
+        if data.target_user_ids:
+            from beanie import PydanticObjectId
+            oids = [PydanticObjectId(uid) for uid in data.target_user_ids if uid]
+            users = await TBUser.find({"_id": {"$in": oids}, "is_active": True}).to_list()
+        else:
+            users = await TBUser.find({"is_active": True}).to_list()
+
+        for user in users:
+            uid = str(user.id)
+            notif = TBNotification(
+                user_id=uid,
+                title=data.title,
+                body=data.body,
+                notification_type=data.type
+            )
+            await notif.insert()
+            created_count += 1
+
+            if uid in user_sockets and user_sockets[uid]:
+                await sio.emit("new_notification", {
+                    "id": str(notif.id),
+                    "title": data.title,
+                    "body": data.body,
+                    "type": data.type,
+                    "created_at": notif.created_at.isoformat()
+                }, room=f"user_{uid}")
+                emitted_count += 1
+
+        logger.info(
+            f"Admin notification sent by {admin.get('sub', 'unknown')}: "
+            f"title='{data.title}', created={created_count}, emitted={emitted_count}"
+        )
+
+        return {
+            "success": True,
+            "message": f"Notification sent to {created_count} users ({emitted_count} online)",
+            "created": created_count,
+            "emitted": emitted_count
+        }
+    except Exception as e:
+        logger.error(f"Admin notification broadcast failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Broadcast failed: {str(e)}")

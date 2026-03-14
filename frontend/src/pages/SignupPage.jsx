@@ -31,6 +31,8 @@ const SignupPage = () => {
     country: 'India',
     pincode: '',
     profile_image: null,
+    // Referral
+    referral_code: '',
     // Terms
     agreeTerms: false,
   });
@@ -559,6 +561,26 @@ const SignupPage = () => {
                       className="px-4 py-3 rounded-lg border border-gray-200 focus:border-[#0F172A] outline-none transition-all text-sm"
                     />
                   </div>
+                </div>
+
+                {/* Referral Code (Optional) */}
+                <div>
+                  <label className="block text-sm font-medium text-[#0F172A] mb-2">
+                    Referral Code <span className="text-gray-400 font-normal">(Optional)</span>
+                  </label>
+                  <div className="relative">
+                    <Sparkles size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      name="referral_code"
+                      value={formData.referral_code}
+                      onChange={handleChange}
+                      placeholder="Enter referral code"
+                      maxLength={20}
+                      className="w-full pl-12 pr-4 py-4 rounded-xl border border-gray-200 focus:border-[#0F172A] focus:ring-2 focus:ring-[#E9D5FF] outline-none transition-all uppercase"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Your referrer will earn 50 bonus coins when you join</p>
                 </div>
 
                 {/* Terms */}

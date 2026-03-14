@@ -260,6 +260,10 @@ class AuthService:
                 await TBUser.find_one({"_id": referrer.id}).update(
                     {"$inc": {"referral_rewards_count": 1}}
                 )
+                logger.info(
+                    f"Referral reward: referrer={referrer_id} received 50 coins "
+                    f"for inviting new user={str(user.id)} ({user.name})"
+                )
             except Exception as ref_err:
                 logger.warning(f"Failed to process referral reward: {ref_err}")
 
