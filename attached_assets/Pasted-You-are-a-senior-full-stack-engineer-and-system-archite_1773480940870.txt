@@ -1,0 +1,453 @@
+You are a senior full-stack engineer and system architect.
+
+You are debugging and completing a real-time dating application called Luveloop.
+
+Your task is to audit the entire system and fix broken features across frontend, backend, sockets, and admin panel.
+
+Tech Stack
+
+Frontend
+
+React
+
+Vite
+
+TailwindCSS
+
+Zustand
+
+Axios
+
+Socket.IO client
+
+WebRTC (voice + video)
+
+Backend
+
+FastAPI
+
+MongoDB
+
+Beanie ODM
+
+Socket.IO server
+
+Redis (optional)
+
+System Architecture
+
+Ports used:
+
+Frontend
+
+http://localhost:5000
+
+Backend API
+
+http://localhost:8000
+
+Socket Server
+
+http://localhost:8001
+
+Database
+
+MongoDB
+Main Issues That Must Be Fixed
+
+The application runs but many core features are not functioning correctly.
+
+Perform a complete debugging and implementation audit.
+
+1️⃣ Coin System Not Working
+
+The coin system is used for platform monetization.
+
+Costs:
+
+Action	Cost
+Message	1 coin
+Voice Call	5 coins per minute
+Video Call	10 coins per minute
+
+Current issues:
+
+Coins are not deducting correctly
+
+Coins are not updating in frontend
+
+Coin balance sometimes becomes inconsistent
+
+Fix required:
+
+Ensure coin deduction logic works
+
+Ensure database updates correctly
+
+Ensure frontend refreshes coin balance
+
+Prevent negative coin balances
+
+Add transaction logs
+
+Recommended model:
+
+CoinTransaction
+- user_id
+- type (message, voice_call, video_call, referral)
+- amount
+- created_at
+2️⃣ Referral Coins Not Working
+
+Users should receive 50 coins when a referral is successful.
+
+Flow should be:
+
+User A refers User B
+↓
+User B registers using referral code
+↓
+User B verifies account
+↓
+User A receives 50 coins
+
+Fix required:
+
+Referral code generation
+
+Referral code validation
+
+Referral reward logic
+
+Prevent multiple rewards
+
+Expected endpoint example:
+
+POST /api/users/referral
+
+Database fields:
+
+TBUser
+- referral_code
+- referred_by
+- referral_rewards
+3️⃣ OTP System Not Working
+
+OTP verification currently fails or does not send messages.
+
+Check:
+
+OTP generation
+
+OTP storage
+
+OTP expiration
+
+OTP verification
+
+Possible issues:
+
+Email service disabled
+
+SMS provider not configured
+
+OTP not stored in DB
+
+Fix required:
+
+Endpoints:
+
+POST /api/auth/send-otp
+POST /api/auth/verify-otp
+
+OTP rules:
+
+6 digit code
+
+expiry 5 minutes
+
+max retry attempts
+
+secure hashing
+
+4️⃣ Messaging System Not Responding Correctly
+
+Messaging uses Socket.IO realtime chat.
+
+Current issues:
+
+Messages sometimes do not send
+
+Receiver does not receive messages instantly
+
+Coin deduction sometimes fails
+
+Expected socket flow:
+
+User sends message
+↓
+
+socket.emit("send_message")
+
+Backend:
+
+save message
+
+deduct 1 coin
+
+emit event
+
+new_message
+
+Fix required:
+
+socket event reliability
+
+message persistence
+
+duplicate message prevention
+
+reconnect handling
+
+5️⃣ Voice Call Not Working Properly
+
+Voice calls use WebRTC signaling via sockets.
+
+Events:
+
+call_user
+incoming_call
+answer_call
+reject_call
+end_call
+ice_candidate
+
+Current issues:
+
+calls not connecting
+
+call state not syncing
+
+coin cost not calculated
+
+Fix required:
+
+stable WebRTC signaling
+
+call timer tracking
+
+cost calculation
+
+Voice call cost:
+
+5 coins per minute
+6️⃣ Video Call Not Working Properly
+
+Video calls also use WebRTC.
+
+Current issues:
+
+video not connecting
+
+ICE candidates failing
+
+camera permissions issues
+
+Fix required:
+
+WebRTC peer connection stability
+
+ICE candidate handling
+
+video stream management
+
+Cost:
+
+10 coins per minute
+
+Coins deducted when call ends.
+
+7️⃣ Admin Panel Not Working Correctly
+
+The admin panel currently does not show correct analytics.
+
+Admin must be able to view:
+
+Revenue Analytics
+
+Show revenue by:
+
+Per User
+
+Daily
+
+Weekly
+
+Monthly
+
+Overall revenue
+
+Metrics should include:
+
+Total Users
+Active Users
+Messages Sent
+Voice Calls
+Video Calls
+Revenue Generated
+Coins Purchased
+
+Recommended endpoints:
+
+GET /api/admin/revenue/overall
+GET /api/admin/revenue/daily
+GET /api/admin/revenue/weekly
+GET /api/admin/revenue/monthly
+GET /api/admin/revenue/per-user
+8️⃣ Admin Controlled Notifications
+
+Admin must be able to send daily notifications to users.
+
+Examples:
+
+promotions
+
+safety alerts
+
+announcements
+
+Admin control panel should allow:
+
+send to all users
+
+send to selected users
+
+schedule daily notification
+
+Notification model:
+
+Notification
+- user_id
+- title
+- body
+- type
+- created_at
+- read
+
+Admin endpoint example:
+
+POST /api/admin/send-notification
+9️⃣ Settings Page Buttons Not Working
+
+The settings page has multiple buttons that do nothing.
+
+These likely do not have backend APIs connected.
+
+Settings include:
+
+Notification Settings
+
+notifications_messages
+notifications_matches
+notifications_nearby
+
+Privacy Settings
+
+show_online_status
+show_last_seen
+show_distance
+
+Safety Settings
+
+block_screenshots
+verified_matches_only
+hide_from_search
+
+Account Settings
+
+edit_profile
+change_password
+verify_phone
+logout
+delete_account
+
+Required fix:
+
+Connect settings UI to backend endpoint:
+
+PATCH /api/users/settings
+
+Example payload:
+
+{
+ "show_online_status": true,
+ "notifications_messages": true
+}
+
+Ensure settings are:
+
+saved in database
+
+reflected in frontend
+
+10️⃣ Improve Error Handling
+
+Add proper error handling:
+
+Frontend
+
+API failure fallback
+
+loading states
+
+safe optional chaining
+
+Backend
+
+structured API responses
+
+error logging
+
+Example:
+
+{
+ "success": true,
+ "data": {}
+}
+Final Goal
+
+The application must fully support:
+
+realtime chat
+
+voice calls
+
+video calls
+
+coin economy
+
+referral rewards
+
+OTP verification
+
+notifications
+
+admin analytics
+
+user settings
+
+All features must work without runtime errors or broken UI elements.
+
+Deliverables
+
+Provide:
+
+1️⃣ Fixed backend endpoints
+2️⃣ Fixed socket server logic
+3️⃣ Fixed React frontend components
+4️⃣ Coin system implementation
+5️⃣ Referral system implementation
+6️⃣ OTP system implementation
+7️⃣ Admin analytics APIs
+8️⃣ Notification system
+9️⃣ Settings API integration

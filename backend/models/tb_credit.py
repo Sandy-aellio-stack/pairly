@@ -13,6 +13,7 @@ class TransactionReason(str, Enum):
     ADMIN_ADJUSTMENT = "admin_adjustment"
     VOICE_CALL = "voice_call"
     VIDEO_CALL = "video_call"
+    REFERRAL_REWARD = "referral_reward"
 
 
 class TBCreditTransaction(Document):

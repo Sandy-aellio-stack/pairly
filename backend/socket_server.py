@@ -215,10 +215,12 @@ async def send_message(sid, data):
         await message.insert()
 
         # 3. Deduct Credits
-        await CreditService.deduct_credits(
+        tx = await CreditService.deduct_credits(
             user_id=user_id, amount=1, reason=TransactionReason.MESSAGE_SENT, 
             reference_id=str(message.id), description=f"Message to {receiver_id}"
         )
+        # Notify sender of updated balance
+        await sio.emit('balance_updated', {'credits': tx.balance_after}, room=f"user_{user_id}")
 
         # 4. Update Conversation
         participants = sorted([user_id, receiver_id])
@@ -379,7 +381,14 @@ async def end_call(sid, data):
         end_data = {"call_id": call_id, "ended_by": user_id}
         await redis_pubsub.publish("user", other_id, "call_ended", end_data)
         await sio.emit('call_ended', end_data, room=f"user_{other_id}")
-        
+
+        # Emit updated balance to caller after billing deduction
+        try:
+            new_balance = await CreditService.get_balance(user_id)
+            await sio.emit('balance_updated', {'credits': new_balance}, room=f"user_{user_id}")
+        except Exception:
+            pass
+
         return {'success': True}
     except Exception as e:
         return {'error': str(e)}

@@ -193,3 +193,53 @@ async def adjust_user_credits(
         "adjustment": amount,
         "transaction_id": str(transaction.id)
     }
+
+
+# ========== ADMIN NOTIFICATION BROADCAST ==========
+
+from pydantic import BaseModel as _BaseModel
+from typing import List as _List, Optional as _Optional
+
+class AdminSendNotificationRequest(_BaseModel):
+    title: str
+    body: str
+    notification_type: str = "system"
+    user_ids: _Optional[_List[str]] = None  # None = send to all users
+
+
+@router.post("/notifications/send")
+async def send_admin_notification(
+    data: AdminSendNotificationRequest,
+    admin: dict = Depends(get_current_admin)
+):
+    """Send a notification to all users or a specific list of users."""
+    import uuid as _uuid
+    from datetime import datetime, timezone
+    from beanie import Document as _Doc
+    from pydantic import Field as _Field
+
+    # Use the existing TBNotification model from tb_notifications
+    from backend.routes.tb_notifications import TBNotification
+
+    if data.user_ids:
+        recipients = data.user_ids
+    else:
+        all_users = await TBUser.find({"is_active": True}).project(TBUser).to_list()
+        recipients = [str(u.id) for u in all_users]
+
+    created = 0
+    for uid in recipients:
+        notif = TBNotification(
+            user_id=uid,
+            title=data.title,
+            body=data.body,
+            notification_type=data.notification_type
+        )
+        await notif.insert()
+        created += 1
+
+    return {
+        "success": True,
+        "notifications_sent": created,
+        "message": f"Notification sent to {created} user(s)."
+    }

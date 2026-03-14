@@ -23,6 +23,21 @@ const useAuthStore = create((set, get) => ({
 
   initialize: async () => {
     const token = localStorage.getItem('tb_access_token');
+
+    // Listen for real-time balance updates from socket
+    if (typeof window !== 'undefined' && !window.__luveloopBalanceListenerAdded) {
+      window.__luveloopBalanceListenerAdded = true;
+      window.addEventListener('luveloop:balance_updated', (e) => {
+        const newBalance = e.detail?.credits;
+        if (typeof newBalance === 'number') {
+          set((state) => ({
+            credits: newBalance,
+            user: state.user ? { ...state.user, credits: newBalance, credits_balance: newBalance } : null
+          }));
+        }
+      });
+    }
+
     if (token) {
       try {
         const response = await authAPI.getMe();

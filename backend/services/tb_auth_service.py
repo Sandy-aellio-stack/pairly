@@ -22,6 +22,7 @@ from bson.errors import InvalidId
 from bson import ObjectId
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+logger = logging.getLogger(__name__)
 
 JWT_SECRET = os.getenv("JWT_SECRET")
 if not JWT_SECRET:
@@ -56,6 +57,7 @@ class SignupRequest(BaseModel):
     country: str = Field(default="India")
     pincode: str = Field(default="000000")
     device_id: str = Field(..., min_length=1)
+    referral_code: Optional[str] = Field(default=None, max_length=20)
 
 
 class LoginRequest(BaseModel):
@@ -87,6 +89,7 @@ class SignupWithOTPRequest(BaseModel):
     max_distance_km: int = Field(ge=1, le=500, default=50)
     otp_code: str = Field(..., min_length=6, max_length=6)
     device_id: str = Field(..., min_length=1)
+    referral_code: Optional[str] = Field(default=None, max_length=20)
 
 
 class VerifyMobileRequest(BaseModel):
@@ -103,6 +106,13 @@ class TokenResponse(BaseModel):
 
 
 class AuthService:
+    @staticmethod
+    def generate_referral_code(name: str) -> str:
+        """Generate a unique short referral code based on name + random suffix."""
+        prefix = ''.join(filter(str.isalpha, name.upper()))[:4].ljust(4, 'X')
+        suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+        return f"{prefix}{suffix}"
+
     @staticmethod
     def hash_password(password: str) -> str:
         """Hash password using bcrypt."""
@@ -186,6 +196,16 @@ class AuthService:
         except Exception as e:
             raise HTTPException(status_code=503, detail="Database not available. Please try again later.")
 
+        # Resolve referrer if referral_code provided
+        referrer_id = None
+        if data.referral_code:
+            referrer = await TBUser.find_one({"referral_code": data.referral_code.upper()})
+            if referrer:
+                referrer_id = str(referrer.id)
+
+        # Generate unique referral code for this new user
+        new_referral_code = AuthService.generate_referral_code(data.name)
+
         # Create user
         user = TBUser(
             name=data.name,
@@ -210,7 +230,9 @@ class AuthService:
             ),
             credits_balance=10,  # Signup bonus
             is_verified=False,
-            current_device_id=data.device_id
+            current_device_id=data.device_id,
+            referral_code=new_referral_code,
+            referred_by=referrer_id
         )
         await user.insert()
 
@@ -223,6 +245,23 @@ class AuthService:
             description="Welcome bonus credits"
         )
         await transaction.insert()
+
+        # Award referral bonus to referrer (50 coins)
+        if referrer_id:
+            try:
+                from backend.services.tb_credit_service import CreditService
+                await CreditService.add_credits(
+                    user_id=referrer_id,
+                    amount=50,
+                    reason=TransactionReason.REFERRAL_REWARD,
+                    reference_id=str(user.id),
+                    description=f"Referral reward for inviting {user.name}"
+                )
+                await TBUser.find_one({"_id": referrer.id}).update(
+                    {"$inc": {"referral_rewards_count": 1}}
+                )
+            except Exception as ref_err:
+                logger.warning(f"Failed to process referral reward: {ref_err}")
 
         # Generate tokens
         tokens = TokenResponse(
@@ -561,6 +600,14 @@ class AuthService:
         except Exception as e:
             raise HTTPException(status_code=503, detail="Database not available. Please try again later.")
 
+        # Resolve referrer if referral_code provided
+        referrer_id = None
+        referrer = None
+        if getattr(data, 'referral_code', None):
+            referrer = await TBUser.find_one({"referral_code": data.referral_code.upper()})
+            if referrer:
+                referrer_id = str(referrer.id)
+
         # Create user
         user = TBUser(
             name=data.name,
@@ -585,7 +632,9 @@ class AuthService:
             ),
             credits_balance=10,  # Signup bonus
             is_verified=True,  # Verified via OTP
-            current_device_id=data.device_id
+            current_device_id=data.device_id,
+            referral_code=AuthService.generate_referral_code(data.name),
+            referred_by=referrer_id
         )
         await user.insert()
 
@@ -598,6 +647,23 @@ class AuthService:
             description="Welcome bonus credits"
         )
         await transaction.insert()
+
+        # Award referral bonus to referrer (50 coins)
+        if referrer_id:
+            try:
+                from backend.services.tb_credit_service import CreditService
+                await CreditService.add_credits(
+                    user_id=referrer_id,
+                    amount=50,
+                    reason=TransactionReason.REFERRAL_REWARD,
+                    reference_id=str(user.id),
+                    description=f"Referral reward for inviting {user.name}"
+                )
+                await TBUser.find_one({"_id": referrer.id}).update(
+                    {"$inc": {"referral_rewards_count": 1}}
+                )
+            except Exception as ref_err:
+                logger.warning(f"Failed to process referral reward (OTP signup): {ref_err}")
 
         # Generate tokens
         tokens = TokenResponse(

@@ -136,6 +136,7 @@ const SignupPage = () => {
         country: formData.country?.trim() || 'India',
         pincode: formData.pincode?.trim() || '000000',
         device_id: localStorage.getItem('tb_device_id') || Math.random().toString(36).substring(7),
+        ...(formData.referral_code?.trim() ? { referral_code: formData.referral_code.trim().toUpperCase() } : {}),
       };
 
       // Use standard signup API

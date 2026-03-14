@@ -179,4 +179,23 @@ export const notificationsAPI = {
   markAllAsRead: () => api.post('/api/notifications/mark-all-read'),
 };
 
+// Referral APIs
+export const referralAPI = {
+  getMyCode: () => api.get('/api/users/referral/my-code'),
+  applyCode: (referral_code) => api.post('/api/users/referral/apply', { referral_code }),
+  getStats: () => api.get('/api/users/referral/stats'),
+};
+
+// Admin APIs
+export const adminAPI = {
+  getOverview: () => api.get('/api/admin/analytics/overview'),
+  getRevenueOverall: () => api.get('/api/admin/analytics/revenue/overall'),
+  getRevenueDaily: (days = 7) => api.get(`/api/admin/analytics/revenue/daily?days=${days}`),
+  getRevenueWeekly: (weeks = 8) => api.get(`/api/admin/analytics/revenue/weekly?weeks=${weeks}`),
+  getRevenueMonthly: (months = 12) => api.get(`/api/admin/analytics/revenue/monthly?months=${months}`),
+  getRevenuePerUser: (limit = 20) => api.get(`/api/admin/analytics/revenue/per-user?limit=${limit}`),
+  sendNotification: (title, body, type = 'system', userIds = null) =>
+    api.post('/api/admin/users/notifications/send', { title, body, notification_type: type, user_ids: userIds }),
+};
+
 export default api;

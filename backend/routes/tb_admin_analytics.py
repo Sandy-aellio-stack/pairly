@@ -283,3 +283,136 @@ async def get_highlights(
         "newMatches": 0,  # Placeholder - no matching system
         "coinsPurchased": revenue_today
     }
+
+
+# ========== DETAILED REVENUE ENDPOINTS ==========
+
+@router.get("/revenue/overall")
+async def get_revenue_overall(admin: dict = Depends(get_current_admin)):
+    """Overall revenue summary."""
+    rev_pipeline = [
+        {"$match": {"status": "success"}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount_inr"}, "count": {"$sum": 1}}}
+    ]
+    rev_result = await TBPayment.get_motor_collection().aggregate(rev_pipeline).to_list(None)
+    total_revenue = rev_result[0]["total"] if rev_result else 0
+    total_transactions = rev_result[0]["count"] if rev_result else 0
+
+    coins_pipeline = [
+        {"$match": {"reason": "credit_purchase", "amount": {"$gt": 0}}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
+    ]
+    coins_result = await TBCreditTransaction.get_motor_collection().aggregate(coins_pipeline).to_list(None)
+    total_coins_sold = coins_result[0]["total"] if coins_result else 0
+
+    return {
+        "total_revenue_inr": total_revenue,
+        "total_transactions": total_transactions,
+        "total_coins_sold": int(total_coins_sold)
+    }
+
+
+@router.get("/revenue/daily")
+async def get_revenue_daily(
+    days: int = Query(7, ge=1, le=90),
+    admin: dict = Depends(get_current_admin)
+):
+    """Revenue per day for the last N days."""
+    now = datetime.now(timezone.utc)
+    result = []
+    for i in range(days - 1, -1, -1):
+        day_start = (now - timedelta(days=i)).replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = day_start + timedelta(days=1)
+        payments = await TBPayment.find(
+            {"status": "success", "created_at": {"$gte": day_start, "$lt": day_end}}
+        ).to_list()
+        result.append({
+            "date": day_start.strftime("%Y-%m-%d"),
+            "revenue": sum(p.amount_inr for p in payments),
+            "transactions": len(payments)
+        })
+    return {"data": result}
+
+
+@router.get("/revenue/weekly")
+async def get_revenue_weekly(
+    weeks: int = Query(8, ge=1, le=52),
+    admin: dict = Depends(get_current_admin)
+):
+    """Revenue per week for the last N weeks."""
+    now = datetime.now(timezone.utc)
+    result = []
+    for i in range(weeks - 1, -1, -1):
+        week_start = (now - timedelta(weeks=i)).replace(hour=0, minute=0, second=0, microsecond=0)
+        week_start -= timedelta(days=week_start.weekday())
+        week_end = week_start + timedelta(days=7)
+        payments = await TBPayment.find(
+            {"status": "success", "created_at": {"$gte": week_start, "$lt": week_end}}
+        ).to_list()
+        result.append({
+            "week_start": week_start.strftime("%Y-%m-%d"),
+            "revenue": sum(p.amount_inr for p in payments),
+            "transactions": len(payments)
+        })
+    return {"data": result}
+
+
+@router.get("/revenue/monthly")
+async def get_revenue_monthly(
+    months: int = Query(12, ge=1, le=24),
+    admin: dict = Depends(get_current_admin)
+):
+    """Revenue per month for the last N months."""
+    now = datetime.now(timezone.utc)
+    result = []
+    for i in range(months - 1, -1, -1):
+        month_offset = now.month - i
+        year_offset = now.year + (month_offset - 1) // 12
+        month = ((month_offset - 1) % 12) + 1
+        month_start = datetime(year_offset, month, 1, tzinfo=timezone.utc)
+        if month == 12:
+            month_end = datetime(year_offset + 1, 1, 1, tzinfo=timezone.utc)
+        else:
+            month_end = datetime(year_offset, month + 1, 1, tzinfo=timezone.utc)
+        payments = await TBPayment.find(
+            {"status": "success", "created_at": {"$gte": month_start, "$lt": month_end}}
+        ).to_list()
+        result.append({
+            "month": month_start.strftime("%Y-%m"),
+            "revenue": sum(p.amount_inr for p in payments),
+            "transactions": len(payments)
+        })
+    return {"data": result}
+
+
+@router.get("/revenue/per-user")
+async def get_revenue_per_user(
+    limit: int = Query(20, ge=1, le=100),
+    skip: int = Query(0, ge=0),
+    admin: dict = Depends(get_current_admin)
+):
+    """Revenue breakdown per user (top spenders)."""
+    pipeline = [
+        {"$match": {"status": "success"}},
+        {"$group": {
+            "_id": "$user_id",
+            "total_revenue": {"$sum": "$amount_inr"},
+            "transaction_count": {"$sum": 1},
+            "last_payment": {"$max": "$created_at"}
+        }},
+        {"$sort": {"total_revenue": -1}},
+        {"$skip": skip},
+        {"$limit": limit}
+    ]
+    rows = await TBPayment.get_motor_collection().aggregate(pipeline).to_list(None)
+    result = []
+    for row in rows:
+        user = await TBUser.get(row["_id"]) if row["_id"] else None
+        result.append({
+            "user_id": row["_id"],
+            "user_name": user.name if user else "Deleted User",
+            "total_revenue": row["total_revenue"],
+            "transaction_count": row["transaction_count"],
+            "last_payment": row["last_payment"].isoformat() if row.get("last_payment") else None
+        })
+    return {"data": result, "total": len(result)}

@@ -947,3 +947,78 @@ async def _str_to_objectid(user_id: str):
         return ObjectId(user_id)
     except:
         return user_id
+
+
+# ========== REFERRAL SYSTEM ==========
+
+@router.get("/referral/my-code")
+async def get_my_referral_code(user: TBUser = Depends(get_current_user)):
+    """Get the current user's referral code (generate one if missing)."""
+    if not user.referral_code:
+        from backend.services.tb_auth_service import AuthService
+        code = AuthService.generate_referral_code(user.name)
+        await user.update({"$set": {"referral_code": code}})
+        user.referral_code = code
+    return {
+        "referral_code": user.referral_code,
+        "referral_rewards_count": user.referral_rewards_count,
+        "referral_link": f"https://luveloop.app/join?ref={user.referral_code}"
+    }
+
+
+class ApplyReferralRequest(BaseModel):
+    referral_code: str = Field(..., min_length=4, max_length=20)
+
+
+@router.post("/referral/apply")
+async def apply_referral_code(data: ApplyReferralRequest, user: TBUser = Depends(get_current_user)):
+    """Apply a referral code after signup (one-time only)."""
+    if user.referred_by:
+        raise HTTPException(status_code=400, detail="You have already used a referral code.")
+
+    if user.referral_code and data.referral_code.upper() == user.referral_code.upper():
+        raise HTTPException(status_code=400, detail="You cannot use your own referral code.")
+
+    referrer = await TBUser.find_one({"referral_code": data.referral_code.upper()})
+    if not referrer:
+        raise HTTPException(status_code=404, detail="Referral code not found.")
+
+    if str(referrer.id) == str(user.id):
+        raise HTTPException(status_code=400, detail="You cannot refer yourself.")
+
+    # Check this referrer hasn't already referred this user
+    if user.referred_by == str(referrer.id):
+        raise HTTPException(status_code=400, detail="Referral already applied.")
+
+    # Apply referral
+    await user.update({"$set": {"referred_by": str(referrer.id)}})
+
+    # Reward referrer with 50 coins
+    from backend.services.tb_credit_service import CreditService
+    from backend.models.tb_credit import TransactionReason
+    await CreditService.add_credits(
+        user_id=str(referrer.id),
+        amount=50,
+        reason=TransactionReason.REFERRAL_REWARD,
+        reference_id=str(user.id),
+        description=f"Referral reward for inviting {user.name}"
+    )
+    await referrer.update({"$inc": {"referral_rewards_count": 1}})
+
+    return {"success": True, "message": "Referral applied! Your friend earned 50 coins."}
+
+
+@router.get("/referral/stats")
+async def get_referral_stats(user: TBUser = Depends(get_current_user)):
+    """Get referral statistics for the current user."""
+    referred_users = await TBUser.find({"referred_by": str(user.id)}).to_list()
+    return {
+        "referral_code": user.referral_code,
+        "total_referrals": len(referred_users),
+        "rewards_earned": user.referral_rewards_count * 50,
+        "referral_rewards_count": user.referral_rewards_count,
+        "referred_users": [
+            {"name": u.name, "joined_at": u.created_at.isoformat()}
+            for u in referred_users
+        ]
+    }

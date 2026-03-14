@@ -43,6 +43,16 @@ export const connectSocket = (token) => {
     window.location.href = '/';
   });
 
+  socket.on('balance_updated', (data) => {
+    // Update authStore credits in real-time when balance changes
+    try {
+      const event = new CustomEvent('luveloop:balance_updated', { detail: data });
+      window.dispatchEvent(event);
+    } catch (e) {
+      // ignore
+    }
+  });
+
   return socket;
 };
 
@@ -218,6 +228,14 @@ export const onForceLogout = (callback) => {
   socket?.on('force_logout', callback);
 };
 
+export const onBalanceUpdated = (callback) => {
+  socket?.on('balance_updated', callback);
+};
+
+export const offBalanceUpdated = (callback) => {
+  socket?.off('balance_updated', callback);
+};
+
 export const removeAllListeners = () => {
   if (socket) {
     socket.off('new_message');
@@ -229,6 +247,7 @@ export const removeAllListeners = () => {
     socket.off('call_ended');
     socket.off('ice_candidate');
     socket.off('force_logout');
+    socket.off('balance_updated');
   }
 };
 
@@ -257,6 +276,8 @@ export default {
   onCallEnded,
   onIceCandidate,
   onForceLogout,
+  onBalanceUpdated,
+  offBalanceUpdated,
   removeCallListeners,
   removeChatListeners,
   removeAllListeners,

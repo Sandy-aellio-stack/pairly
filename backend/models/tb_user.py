@@ -104,6 +104,11 @@ class TBUser(Document):
     # FCM Push Notification tokens (multiple devices per user)
     fcm_tokens: List[str] = Field(default_factory=list)
     
+    # Referral system
+    referral_code: Optional[str] = None          # This user's unique referral code
+    referred_by: Optional[str] = None            # user_id of the referrer
+    referral_rewards_count: int = Field(default=0)  # How many referrals rewarded
+
     # Session tracking
     current_device_id: Optional[str] = None
     
