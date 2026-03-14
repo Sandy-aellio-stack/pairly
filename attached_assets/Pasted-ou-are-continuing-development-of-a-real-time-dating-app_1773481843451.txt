@@ -1,0 +1,272 @@
+ou are continuing development of a real-time dating application called Luveloop.
+
+The system was already audited and partially implemented, but the AI session stopped due to a quota limit.
+
+Your job is to continue the implementation from where it stopped and complete all remaining features and fixes.
+
+Current Progress Already Implemented
+
+The system audit identified and started implementing the following fixes:
+
+Coin System Fix
+
+Implemented:
+
+balance_updated socket event
+
+coin deduction logic
+
+emit balance update after message send
+
+emit balance update after call ends
+
+Frontend must listen for:
+
+balance_updated
+
+and update the coin balance in the Zustand authStore.
+
+Referral System (New Feature)
+
+Added fields to user model:
+
+referral_code
+referred_by
+referral_rewards
+
+Reward rule:
+
+Referrer receives 50 coins
+
+Referral flow:
+
+User A shares referral code
+↓
+User B signs up with code
+↓
+User B verifies account
+↓
+User A receives 50 coins
+
+Signup process must:
+
+Validate referral code
+
+Assign referred_by
+
+Reward the referrer
+
+Admin Revenue Analytics
+
+New analytics endpoints must be implemented:
+
+GET /api/admin/revenue/overall
+GET /api/admin/revenue/daily
+GET /api/admin/revenue/weekly
+GET /api/admin/revenue/monthly
+GET /api/admin/revenue/per-user
+
+Data source:
+
+TBPayment
+CoinTransaction
+CallBilling
+
+Revenue should include:
+
+coin purchases
+
+call usage billing
+
+Admin Notification Broadcast
+
+Admin must be able to send notifications to users.
+
+Endpoint:
+
+POST /api/admin/send-notification
+
+Payload example:
+
+{
+  "title": "Daily Match Alert",
+  "body": "New matches available near you",
+  "type": "announcement"
+}
+
+System must:
+
+store notification in DB
+
+emit socket event to online users
+
+save for offline users
+
+WebRTC Call Billing Fix
+
+Voice Call:
+
+5 coins per minute
+
+Video Call:
+
+10 coins per minute
+
+Billing occurs when:
+
+end_call
+
+After billing:
+
+emit balance_updated
+Messaging System Fix
+
+Message flow:
+
+send_message
+↓
+save message
+↓
+deduct 1 coin
+↓
+emit new_message
+↓
+emit balance_updated
+Zustand Frontend Fix
+
+Frontend store must listen for:
+
+balance_updated
+
+Example:
+
+socket.on("balance_updated", (data) => {
+  set((state) => ({
+    user: {
+      ...state.user,
+      coins: data.coins
+    }
+  }))
+})
+Remaining Tasks To Finish
+
+Continue implementation and complete the following:
+
+1 Fix OTP System
+
+Ensure OTP flow works:
+
+Endpoints:
+
+POST /api/auth/send-otp
+POST /api/auth/verify-otp
+
+Rules:
+
+6 digit OTP
+
+expire in 5 minutes
+
+hashed storage
+
+max retry attempts
+
+2 Fix Settings Page Backend
+
+The settings page has UI buttons but no backend connection.
+
+Endpoint:
+
+PATCH /api/users/settings
+
+Fields include:
+
+Notification settings
+
+notifications_messages
+notifications_matches
+notifications_nearby
+
+Privacy settings
+
+show_online_status
+show_last_seen
+show_distance
+
+Safety settings
+
+block_screenshots
+verified_matches_only
+hide_from_search
+3 Verify Socket Server
+
+Socket server must support:
+
+Messaging:
+
+join_chat
+leave_chat
+send_message
+typing
+stop_typing
+
+Calls:
+
+call_user
+incoming_call
+answer_call
+reject_call
+end_call
+ice_candidate
+4 Fix Frontend Signup Page
+
+Add referral code field.
+
+Example:
+
+Referral Code (optional)
+
+Send to backend:
+
+referral_code
+5 Add Logging
+
+Backend logging:
+
+coin deduction
+referral rewards
+call billing
+message sending
+Final Goal
+
+Luveloop must support:
+
+✔ realtime messaging
+✔ voice calls
+✔ video calls
+✔ coin economy
+✔ referral rewards
+✔ OTP verification
+✔ admin analytics
+✔ notification system
+✔ working settings page
+
+without runtime errors.
+
+Deliverables
+
+Provide:
+
+Updated backend code
+
+Updated socket server
+
+Updated React frontend
+
+Zustand store updates
+
+Admin analytics implementation
+
+Referral reward system
+
+OTP verification fix
