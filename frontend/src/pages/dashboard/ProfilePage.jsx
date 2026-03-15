@@ -316,7 +316,7 @@ const ProfilePage = () => {
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-2xl p-4 text-center shadow-md">
-          <p className="text-3xl font-bold text-[#0F172A]">{user?.credits_balance || 0}</p>
+          <p className="text-3xl font-bold text-[#0F172A]">{user?.coins || 0}</p>
           <p className="text-xs text-gray-500">Coins</p>
         </div>
         <div className="bg-white rounded-2xl p-4 text-center shadow-md">

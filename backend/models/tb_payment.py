@@ -52,7 +52,7 @@ class TBPayment(Document):
 # Popular: 500 coins for ₹450 = ₹0.90/coin (10% discount)
 # Starter: 100 coins for ₹100 = ₹1.00/coin (0% discount)
 CREDIT_PACKAGES = [
-    {"id": "premium", "credits": 1000, "amount_inr": 800, "label": "Premium", "discount": 20, "popular": True},
-    {"id": "popular", "credits": 500, "amount_inr": 450, "label": "Popular", "discount": 10, "popular": False},
-    {"id": "starter", "credits": 100, "amount_inr": 100, "label": "Starter", "discount": 0, "popular": False},
+    {"id": "premium", "coins": 1000, "amount_inr": 800, "label": "Premium", "discount": 20, "popular": True},
+    {"id": "popular", "coins": 500, "amount_inr": 450, "label": "Popular", "discount": 10, "popular": False},
+    {"id": "starter", "coins": 100, "amount_inr": 100, "label": "Starter", "discount": 0, "popular": False},
 ]

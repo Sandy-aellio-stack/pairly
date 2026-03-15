@@ -9,7 +9,16 @@ import { getSocket } from '@/services/socket';
 
 const DashboardLayout = () => {
   const navigate = useNavigate();
-  const { user, logout } = useAuthStore();
+  const { user, logout, refreshUser } = useAuthStore();
+
+  // Sync user data with backend on load
+  useEffect(() => {
+    if (user) {
+      refreshUser().catch(err => {
+        console.error('[DashboardLayout] Failed to refresh user:', err);
+      });
+    }
+  }, []);
 
   // Global socket events: new_match and nearby_user
   useEffect(() => {
@@ -118,7 +127,7 @@ const DashboardLayout = () => {
             <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-[#E9D5FF]/30 rounded-full">
               <Coins size={16} className="text-[#0F172A]" />
               <span className="text-sm font-semibold text-[#0F172A]">
-                {user?.credits_balance || 10}
+                {user?.coins || 0}
               </span>
             </div>
 

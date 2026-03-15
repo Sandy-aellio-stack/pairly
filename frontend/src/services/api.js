@@ -117,7 +117,7 @@ export const userAPI = {
   getProfile: (userId) => api.get(`/api/users/profile/${userId}`),
   updateProfile: (data) => api.put('/api/users/profile', data),
   updatePreferences: (data) => api.put('/api/users/preferences', data),
-  getCredits: () => api.get('/api/users/credits'),
+  getCoins: () => api.get('/api/users/coins'),
   uploadPhoto: (formData) => api.post('/api/users/upload-photo', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),

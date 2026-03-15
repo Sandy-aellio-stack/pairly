@@ -228,7 +228,7 @@ class AuthService:
                 country=data.country,
                 pincode=data.pincode
             ),
-            credits_balance=10,  # Signup bonus
+            coins=10,  # Signup bonus
             is_verified=False,
             current_device_id=data.device_id,
             referral_code=new_referral_code,
@@ -257,12 +257,22 @@ class AuthService:
                     reference_id=str(user.id),
                     description=f"Referral reward for inviting {user.name}"
                 )
-                await TBUser.find_one({"_id": referrer.id}).update(
+                await TBUser.find_one({"_id": ObjectId(referrer_id)}).update(
                     {"$inc": {"referral_rewards_count": 1}}
                 )
+                
+                # Emit balance update to referrer if online
+                from backend.socket_server import emit_notification_to_user
+                referrer_new_balance = await CreditService.get_balance(referrer_id)
+                await emit_notification_to_user(referrer_id, "balance_updated", {"coins": referrer_new_balance})
+
                 logger.info(
-                    f"Referral reward: referrer={referrer_id} received 50 coins "
-                    f"for inviting new user={str(user.id)} ({user.name})"
+                    "Referral reward granted", 
+                    extra={
+                        "referrer_id": referrer_id,
+                        "new_user_id": str(user.id),
+                        "coins_added": 50
+                    }
                 )
             except Exception as ref_err:
                 logger.warning(f"Failed to process referral reward: {ref_err}")
@@ -309,7 +319,7 @@ class AuthService:
                             intent=Intent.DATING,
                             preferences=Preferences(),
                             address=Address(),
-                            credits_balance=legacy_user.credits_balance or 10,
+                            coins=legacy_user.credits_balance or 10,
                             is_active=not legacy_user.is_suspended
                         )
                         import logging
@@ -409,7 +419,7 @@ class AuthService:
                 preferences=Preferences(interested_in=Gender.OTHER),
                 address=Address(address_line="NA", city="NA", state="NA", country="India", pincode="000000"),
                 is_verified=True,
-                credits_balance=10,
+                coins=10,
                 current_device_id=data.device_id
             )
             await user.insert()
@@ -634,7 +644,7 @@ class AuthService:
                 country="India",
                 pincode="000000"
             ),
-            credits_balance=10,  # Signup bonus
+            coins=10,  # Signup bonus
             is_verified=True,  # Verified via OTP
             current_device_id=data.device_id,
             referral_code=AuthService.generate_referral_code(data.name),
@@ -663,8 +673,22 @@ class AuthService:
                     reference_id=str(user.id),
                     description=f"Referral reward for inviting {user.name}"
                 )
-                await TBUser.find_one({"_id": referrer.id}).update(
+                await TBUser.find_one({"_id": ObjectId(referrer_id)}).update(
                     {"$inc": {"referral_rewards_count": 1}}
+                )
+
+                # Emit balance update to referrer if online
+                from backend.socket_server import emit_notification_to_user
+                referrer_new_balance = await CreditService.get_balance(referrer_id)
+                await emit_notification_to_user(referrer_id, "balance_updated", {"coins": referrer_new_balance})
+
+                logger.info(
+                    "Referral reward granted", 
+                    extra={
+                        "referrer_id": referrer_id,
+                        "new_user_id": str(user.id),
+                        "coins_added": 50
+                    }
                 )
             except Exception as ref_err:
                 logger.warning(f"Failed to process referral reward (OTP signup): {ref_err}")

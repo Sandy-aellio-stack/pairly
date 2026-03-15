@@ -40,6 +40,15 @@ const SignupPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
 
+  // Extract referral code from URL
+  useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref');
+    if (ref) {
+      setFormData(prev => ({ ...prev, referral_code: ref.toUpperCase() }));
+    }
+  }, []);
+
   const handleChange = (e) => {
     const { name, value, type, checked, files } = e.target;
     if (type === 'file' && files[0]) {

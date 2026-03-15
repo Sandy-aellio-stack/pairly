@@ -21,6 +21,10 @@ class TBOTP(Document):
         """
         Create OTP record with configurable expiry (default 5 minutes for login/security)
         """
+        # Ensure mobile_number is not None for Indexed(str)
+        if mobile_number is None:
+            mobile_number = "EMAIL"
+            
         return cls(
             mobile_number=mobile_number,
             email=email,

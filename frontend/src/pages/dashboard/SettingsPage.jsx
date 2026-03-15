@@ -61,25 +61,40 @@ const SettingsPage = () => {
     }
   };
 
-  const handleToggle = async (category, setting) => {
-    const newSettings = {
+  const handleToggle = async (section, key) => {
+    const updatedSettings = {
       ...settings,
-      [category]: {
-        ...settings[category],
-        [setting]: !settings[category][setting]
-      }
+      [section]: {
+        ...settings[section],
+        [key]: !settings[section][key],
+      },
     };
-    setSettings(newSettings);
 
+    setSettings(updatedSettings);
     setIsSaving(true);
+    
     try {
-      await userAPI.updateSettings({
-        [category]: { [setting]: !settings[category][setting] }
-      });
-      toast.success('Setting updated');
+      // Map to flattened fields for backend compatibility
+      const flattenedData = {};
+      if (section === 'notifications') {
+        flattenedData[`notifications_${key}`] = updatedSettings[section][key];
+      } else if (section === 'privacy') {
+        if (key === 'show_online') flattenedData.show_online_status = updatedSettings[section][key];
+        else flattenedData[key] = updatedSettings[section][key];
+      } else if (section === 'safety') {
+        if (key === 'require_verified_matches') flattenedData.verified_matches_only = updatedSettings[section][key];
+        else flattenedData[key] = updatedSettings[section][key];
+      }
+
+      const response = await userAPI.updateSettings(flattenedData);
+      if (response.data?.settings) {
+        setSettings(response.data.settings);
+      }
+      toast.success('Settings updated');
     } catch (error) {
+      toast.error('Failed to update settings');
+      // Rollback on error
       setSettings(settings);
-      toast.error('Failed to update setting');
     } finally {
       setIsSaving(false);
     }

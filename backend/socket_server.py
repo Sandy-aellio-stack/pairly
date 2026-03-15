@@ -214,13 +214,17 @@ async def send_message(sid, data):
         message = TBMessage(sender_id=user_id, receiver_id=receiver_id, content=content)
         await message.insert()
 
-        # 3. Deduct Credits
+        # 3. Deduct Coins
         tx = await CreditService.deduct_credits(
             user_id=user_id, amount=1, reason=TransactionReason.MESSAGE_SENT, 
             reference_id=str(message.id), description=f"Message to {receiver_id}"
         )
+        
+        # Logging coin deduction
+        logger.info(f"Coin deducted: user={user_id}, amount=1, reason=message_sent, balance_after={tx.balance_after}")
+
         # Notify sender of updated balance
-        await sio.emit('balance_updated', {'credits': tx.balance_after}, room=f"user_{user_id}")
+        await sio.emit('balance_updated', {'coins': tx.balance_after}, room=f"user_{user_id}")
 
         # 4. Update Conversation
         participants = sorted([user_id, receiver_id])
@@ -385,7 +389,7 @@ async def end_call(sid, data):
         # Emit updated balance to caller after billing deduction
         try:
             new_balance = await CreditService.get_balance(user_id)
-            await sio.emit('balance_updated', {'credits': new_balance}, room=f"user_{user_id}")
+            await sio.emit('balance_updated', {'coins': new_balance}, room=f"user_{user_id}")
             logger.info(
                 f"Call ended: call_id={call_id}, ended_by={user_id}, "
                 f"duration={getattr(call_session, 'duration_seconds', 'N/A')}s, "

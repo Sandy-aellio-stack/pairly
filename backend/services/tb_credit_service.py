@@ -9,15 +9,20 @@ from backend.models.tb_credit import TBCreditTransaction, TransactionReason
 
 logger = logging.getLogger("credits")
 
+# Developer account with unlimited coins
+UNLIMITED_COINS_USER_ID = "69a18167be16ddc2a28e19aa" # indiranigopi677@gmail.com
 
 class CreditService:
     @staticmethod
     async def get_balance(user_id: str) -> int:
-        """Get user's current credit balance"""
+        """Get user's current coin balance"""
+        if user_id == UNLIMITED_COINS_USER_ID:
+            return 999999
+            
         user = await TBUser.get(user_id)
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        return user.credits_balance
+        return user.coins
 
     @staticmethod
     async def deduct_credits(
@@ -28,7 +33,18 @@ class CreditService:
         description: str = None,
         session = None
     ) -> TBCreditTransaction:
-        """Atomically deduct credits from user. Supports optional session for transactions."""
+        """Atomically deduct coins from user. Supports optional session for transactions."""
+        if user_id == UNLIMITED_COINS_USER_ID:
+            # Bypass deduction for developer account
+            return TBCreditTransaction(
+                user_id=user_id,
+                amount=0,
+                reason=reason,
+                balance_after=999999,
+                reference_id=reference_id,
+                description=f"(DEV BYPASS) {description}"
+            )
+            
         if amount <= 0:
             raise HTTPException(status_code=400, detail="Amount must be positive")
 
@@ -39,10 +55,10 @@ class CreditService:
         result = await TBUser.find_one_and_update(
             {
                 "_id": user_oid,
-                "credits_balance": {"$gte": amount}
+                "coins": {"$gte": amount}
             },
             {
-                "$inc": {"credits_balance": -amount},
+                "$inc": {"coins": -amount},
                 "$set": {"updated_at": datetime.now(timezone.utc)}
             },
             session=session,
@@ -56,10 +72,10 @@ class CreditService:
             else:
                 raise HTTPException(
                     status_code=402,
-                    detail=f"Insufficient credits. Balance: {user.credits_balance}, Required: {amount}"
+                    detail=f"Insufficient coins. Balance: {user.coins}, Required: {amount}"
                 )
 
-        new_balance = result.credits_balance
+        new_balance = result.coins
 
         # Log transaction
         transaction = TBCreditTransaction(
@@ -87,7 +103,7 @@ class CreditService:
         description: str = None,
         session = None
     ) -> TBCreditTransaction:
-        """Add credits to user. Supports optional session for transactions."""
+        """Add coins to user. Supports optional session for transactions."""
         if amount <= 0:
             raise HTTPException(status_code=400, detail="Amount must be positive")
 
@@ -98,7 +114,7 @@ class CreditService:
         result = await TBUser.find_one_and_update(
             {"_id": user_oid},
             {
-                "$inc": {"credits_balance": amount},
+                "$inc": {"coins": amount},
                 "$set": {"updated_at": datetime.now(timezone.utc)}
             },
             session=session,
@@ -113,7 +129,7 @@ class CreditService:
             user_id=user_id,
             amount=amount,
             reason=reason,
-            balance_after=result.credits_balance,
+            balance_after=result.coins,
             reference_id=reference_id,
             description=description
         )
@@ -121,7 +137,7 @@ class CreditService:
 
         logger.info(
             f"Coins added: user={user_id}, amount={amount}, reason={reason.value if hasattr(reason,'value') else reason}, "
-            f"balance_after={result.credits_balance}, ref={reference_id}"
+            f"balance_after={result.coins}, ref={reference_id}"
         )
         return transaction
 

@@ -89,7 +89,7 @@ class TBUser(Document):
     location_updated_at: Optional[datetime] = None
     
     # System fields
-    credits_balance: int = Field(default=10)  # 10 free credits on signup
+    coins: int = Field(default=10)  # 10 free coins on signup
     role: str = Field(default="user")  # user | admin
     is_active: bool = True
     is_suspended: bool = Field(default=False)
@@ -178,7 +178,7 @@ class UserOwnProfile(BaseModel):
     intent: Intent
     email: str
     mobile_number: str
-    credits: int = Field(alias="credits_balance")  # Standardized naming
+    coins: int
     role: str
     is_verified: bool
     is_online: bool

@@ -225,7 +225,7 @@ const NearbyPage = () => {
   };
 
   const handleMessage = (userItem) => {
-    if ((user?.credits_balance || 0) > 0) {
+    if ((user?.coins || 0) > 0) {
       navigate(`/dashboard/chat/${userItem.id}`);
     } else {
       toast.error('You need coins to send messages!');

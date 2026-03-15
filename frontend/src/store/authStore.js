@@ -19,20 +19,25 @@ const useAuthStore = create((set, get) => ({
   user: null,
   isAuthenticated: false,
   isLoading: true,
-  credits: 0,
+  coins: 0,
 
   initialize: async () => {
     const token = localStorage.getItem('tb_access_token');
+    
+    // Clear potentially stale cached storage if any (to ensure fresh data)
+    if (localStorage.getItem('auth-storage')) {
+      localStorage.removeItem('auth-storage');
+    }
 
     // Listen for real-time balance updates from socket
     if (typeof window !== 'undefined' && !window.__luveloopBalanceListenerAdded) {
       window.__luveloopBalanceListenerAdded = true;
       window.addEventListener('luveloop:balance_updated', (e) => {
-        const newBalance = e.detail?.credits;
+        const newBalance = e.detail?.coins;
         if (typeof newBalance === 'number') {
           set((state) => ({
-            credits: newBalance,
-            user: state.user ? { ...state.user, credits: newBalance, credits_balance: newBalance } : null
+            coins: newBalance,
+            user: state.user ? { ...state.user, coins: newBalance } : null
           }));
         }
       });
@@ -40,12 +45,14 @@ const useAuthStore = create((set, get) => ({
 
     if (token) {
       try {
+        // Use getMe to fetch the absolute latest user state from the server
         const response = await authAPI.getMe();
-        // getMe returns "credits" not "credits_balance"
+        const userData = response.data;
+        
         set({
-          user: response.data,
+          user: userData,
           isAuthenticated: true,
-          credits: response.data.credits,
+          coins: userData.coins,
           isLoading: false
         });
         connectSocket(token);
@@ -61,6 +68,25 @@ const useAuthStore = create((set, get) => ({
     }
   },
 
+  refreshUser: async () => {
+    try {
+      const response = await authAPI.getMe();
+      const userData = response.data;
+      set({
+        user: userData,
+        coins: userData.coins,
+        isAuthenticated: true
+      });
+      return userData;
+    } catch (error) {
+      console.error('[AuthStore] refreshUser failed:', error);
+      if (error.response?.status === 401) {
+        get().logout();
+      }
+      throw error;
+    }
+  },
+
   login: async (email, password) => {
     const device_id = getDeviceId();
     const response = await authAPI.login({ email, password, device_id });
@@ -70,15 +96,20 @@ const useAuthStore = create((set, get) => ({
     localStorage.setItem('tb_access_token', access_token);
     localStorage.setItem('tb_refresh_token', refresh_token);
 
-    // User data is already in the login response, use it directly
+    // Set initial user data then immediately refresh to be absolutely sure
     set({
       user: user,
       isAuthenticated: true,
-      credits: user.credits
+      coins: user.coins
     });
+    
     connectSocket(access_token);
     // Initialize FCM for push notifications (non-blocking)
     initializeFCM().catch(err => console.warn('[Auth] FCM init failed:', err));
+    
+    // Explicitly refresh to sync developer coins/unlimited status
+    await get().refreshUser();
+    
     return response.data;
   },
 
@@ -90,7 +121,7 @@ const useAuthStore = create((set, get) => ({
     set({
       user: user,
       isAuthenticated: true,
-      credits: user?.credits || 0
+      coins: user?.coins || 0
     });
     connectSocket(access_token);
     initializeFCM().catch(err => console.warn('[Auth] FCM init failed:', err));
@@ -108,7 +139,7 @@ const useAuthStore = create((set, get) => ({
     set({
       user: user,
       isAuthenticated: true,
-      credits: user.credits
+      coins: user.coins
     });
     // Initialize FCM for push notifications (non-blocking)
     initializeFCM().catch(err => console.warn('[Auth] FCM init failed:', err));
@@ -125,22 +156,15 @@ const useAuthStore = create((set, get) => ({
     disconnectSocket();
     localStorage.removeItem('tb_access_token');
     localStorage.removeItem('tb_refresh_token');
-    set({ user: null, isAuthenticated: false, credits: 0 });
+    set({ user: null, isAuthenticated: false, coins: 0 });
   },
 
   refreshCredits: async () => {
-    try {
-      const response = await creditsAPI.getBalance();
-      const newBalance = response.data.credits ?? response.data.credits_balance ?? 0;
-      set((state) => ({
-        credits: newBalance,
-        user: state.user ? { ...state.user, credits: newBalance, credits_balance: newBalance } : null
-      }));
-    } catch (e) { }
+    return await get().refreshUser();
   },
 
-  updateCredits: (amount) => {
-    set((state) => ({ credits: state.credits + amount }));
+  updateCoins: (amount) => {
+    set((state) => ({ coins: state.coins + amount }));
   },
 }));
 

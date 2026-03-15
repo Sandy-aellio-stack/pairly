@@ -61,6 +61,12 @@ async def get_user_profile(user_id: str):
             "lng": user.location.coordinates[0]
         }
 
+    # Developer account with unlimited coins
+    DEV_USER_ID = "69a18167be16ddc2a28e19aa"
+    DEV_EMAIL = "indiranigopi677@gmail.com"
+    is_dev = str(user.id) == DEV_USER_ID or (hasattr(user, 'email') and user.email.lower() == DEV_EMAIL.lower())
+    coins_to_show = 999999 if is_dev else user.coins
+
     # Return public profile data
     return { 
         "id": str(user.id), 
@@ -74,7 +80,7 @@ async def get_user_profile(user_id: str):
         "is_verified": getattr(user, "is_verified", False),
         "is_online": user.is_online,
         "status": "suspended" if user.is_suspended else "active",
-        "credits": user.credits_balance,
+        "coins": coins_to_show,
         "location": location_data
     }
 
@@ -93,7 +99,6 @@ async def get_dashboard_stats(current_user: TBUser = Depends(get_current_user)):
     return {
         "messages_sent": messages_sent,
         "matches": 0,
-        "coins": current_user.credits_balance,
         "profile_views": 0,
     }
 
@@ -245,7 +250,7 @@ async def get_user_by_id(user_id: str):
     return { 
         "id": str(user.id), 
         "name": user.name, 
-        "credits": user.credits_balance 
+        "coins": user.coins 
     }
 
 
@@ -254,6 +259,17 @@ async def get_own_profile(current_user: TBUser = Depends(get_current_user)):
     """
     Get current user's own profile (includes credits, settings).
     """
+    import logging
+    logger = logging.getLogger("users")
+    logger.info(f"Profile fetch request for user: {current_user.id}")
+    
+    # Developer account with unlimited coins
+    # Hardcoded ID and Email for consistency across all endpoints
+    DEV_USER_ID = "69a18167be16ddc2a28e19aa"
+    DEV_EMAIL = "indiranigopi677@gmail.com"
+    is_dev = str(current_user.id) == DEV_USER_ID or current_user.email.lower() == DEV_EMAIL.lower()
+    coins_to_show = 999999 if is_dev else current_user.coins
+
     return {
         "id": str(current_user.id),
         "name": current_user.name,
@@ -265,9 +281,10 @@ async def get_own_profile(current_user: TBUser = Depends(get_current_user)):
         "intent": current_user.intent,
         "email": current_user.email,
         "mobile_number": current_user.mobile_number,
-        "preferences": current_user.preferences.model_dump(),
+        "preferences": current_user.preferences.model_dump() if current_user.preferences else {},
         "settings": current_user.settings.model_dump() if current_user.settings else {},
-        "credits": current_user.credits_balance,
+        "coins": coins_to_show,
+        "referral_code": current_user.referral_code,
         "is_verified": current_user.is_verified,
         "is_online": current_user.is_online,
         "status": "suspended" if current_user.is_suspended else "active",
@@ -482,11 +499,17 @@ async def update_preferences(data: UpdatePreferencesRequest, user: TBUser = Depe
     return {"message": "Preferences updated"}
 
 
-@router.get("/credits")
-async def get_credits(user: TBUser = Depends(get_current_user)):
-    """Get current user's credit balance"""
+@router.get("/coins")
+async def get_coins(user: TBUser = Depends(get_current_user)):
+    """Get current user's coin balance"""
+    # Developer account with unlimited coins
+    DEV_USER_ID = "69a18167be16ddc2a28e19aa"
+    DEV_EMAIL = "indiranigopi677@gmail.com"
+    is_dev = str(user.id) == DEV_USER_ID or user.email.lower() == DEV_EMAIL.lower()
+    coins_to_show = 999999 if is_dev else user.coins
+
     return {
-        "credits": user.credits_balance
+        "coins": coins_to_show
     }
 
 
@@ -574,6 +597,22 @@ async def upload_photo(file: UploadFile = File(...), user: TBUser = Depends(get_
 # ========== USER SETTINGS ENDPOINTS ==========
 
 class UpdateSettingsRequest(BaseModel):
+    # Flattened notification settings for convenience
+    notifications_messages: Optional[bool] = None
+    notifications_matches: Optional[bool] = None
+    notifications_nearby: Optional[bool] = None
+    
+    # Privacy
+    show_online_status: Optional[bool] = None
+    show_last_seen: Optional[bool] = None
+    show_distance: Optional[bool] = None
+    
+    # Safety
+    block_screenshots: Optional[bool] = None
+    verified_matches_only: Optional[bool] = None
+    hide_from_search: Optional[bool] = None
+    
+    # Other
     notifications: Optional[dict] = None
     privacy: Optional[dict] = None
     safety: Optional[dict] = None
@@ -602,6 +641,32 @@ async def update_user_settings(data: UpdateSettingsRequest, user: TBUser = Depen
     if not hasattr(user, 'settings') or user.settings is None:
         user.settings = UserSettings()
     
+    # Update via flattened fields first (for specific user requirements)
+    # Notifications
+    if data.notifications_messages is not None:
+        user.settings.notifications.messages = data.notifications_messages
+    if data.notifications_matches is not None:
+        user.settings.notifications.matches = data.notifications_matches
+    if data.notifications_nearby is not None:
+        user.settings.notifications.nearby = data.notifications_nearby
+        
+    # Privacy
+    if data.show_online_status is not None:
+        user.settings.privacy.show_online = data.show_online_status
+    if data.show_last_seen is not None:
+        user.settings.privacy.show_last_seen = data.show_last_seen
+    if data.show_distance is not None:
+        user.settings.privacy.show_distance = data.show_distance
+        
+    # Safety
+    if data.block_screenshots is not None:
+        user.settings.safety.block_screenshots = data.block_screenshots
+    if data.verified_matches_only is not None:
+        user.settings.safety.require_verified_matches = data.verified_matches_only
+    if data.hide_from_search is not None:
+        user.settings.safety.hide_from_search = data.hide_from_search
+
+    # Then update via nested dicts if provided (existing logic)
     # Update notifications
     if data.notifications is not None:
         for key, value in data.notifications.items():
@@ -626,6 +691,7 @@ async def update_user_settings(data: UpdateSettingsRequest, user: TBUser = Depen
     if data.language is not None:
         user.settings.language = data.language
     
+    user.updated_at = datetime.now(timezone.utc)
     await user.save()
     
     return {
@@ -1003,9 +1069,19 @@ async def apply_referral_code(data: ApplyReferralRequest, user: TBUser = Depends
         reference_id=str(user.id),
         description=f"Referral reward for inviting {user.name}"
     )
+    
+    # Increment referrer's reward count
     await referrer.update({"$inc": {"referral_rewards_count": 1}})
-
-    return {"success": True, "message": "Referral applied! Your friend earned 50 coins."}
+    
+    # Notify referrer of new balance
+    try:
+        from backend.socket_server import emit_notification_to_user
+        new_bal = await CreditService.get_balance(str(referrer.id))
+        await emit_notification_to_user(str(referrer.id), "balance_updated", {"coins": new_bal})
+    except Exception:
+        pass
+    
+    return {"message": "Referral code applied successfully", "rewarded": True}
 
 
 @router.get("/referral/stats")

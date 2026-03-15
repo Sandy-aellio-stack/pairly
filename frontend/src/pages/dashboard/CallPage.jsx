@@ -33,7 +33,7 @@ const CallPage = () => {
   const incomingOffer = searchParams.get('offer');
   const incomingCallId = searchParams.get('callId');
   
-  const { user, refreshCredits } = useAuthStore();
+  const { user, refreshUser } = useAuthStore();
   
   const [callStatus, setCallStatus] = useState(isIncoming ? 'incoming' : 'connecting');
   const [callDuration, setCallDuration] = useState(0);
@@ -261,7 +261,7 @@ const CallPage = () => {
   };
 
   useEffect(() => {
-    if ((user?.credits_balance || 0) < currentCostPerMin) {
+    if ((user?.coins || 0) < currentCostPerMin) {
       toast.error(`You need at least ${currentCostPerMin} coins to start a ${callType} call`);
       navigate('/dashboard/credits');
       return;
@@ -451,7 +451,7 @@ const CallPage = () => {
       <div className="absolute bottom-8 left-0 right-0 text-center z-10">
         <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
           <Coins size={18} className="text-yellow-400" />
-          <span className="text-white">Balance: {(user?.credits_balance || 0) - coinsUsed} coins</span>
+          <span className="text-white">Balance: {(user?.coins || 0) - coinsUsed} coins</span>
         </div>
       </div>
     </div>

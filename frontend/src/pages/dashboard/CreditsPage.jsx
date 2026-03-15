@@ -5,7 +5,7 @@ import { creditsAPI, paymentsAPI } from '@/services/api';
 import { toast } from 'sonner';
 
 const CreditsPage = () => {
-  const { user, refreshCredits } = useAuthStore();
+  const { user, refreshUser } = useAuthStore();
   const [selectedTier, setSelectedTier] = useState(1);
   const [transactions, setTransactions] = useState([]);
   const [packages, setPackages] = useState([]);
@@ -61,6 +61,7 @@ const CreditsPage = () => {
   ];
 
   useEffect(() => {
+    refreshUser();
     fetchData();
   }, []);
 
@@ -75,11 +76,11 @@ const CreditsPage = () => {
       if (packagesRes.data.packages && packagesRes.data.packages.length > 0) {
         const formattedPackages = packagesRes.data.packages.map((pkg, idx) => ({
           id: pkg.id,
-          name: pkg.label || `${pkg.credits} Coins`,
-          coins: pkg.credits,
+          name: pkg.label || `${pkg.coins} Coins`,
+          coins: pkg.coins,
           price: pkg.amount_inr,
-          pricePerCoin: pkg.amount_inr / pkg.credits,
-          discount: Math.round((1 - (pkg.amount_inr / pkg.credits)) * 100),
+          pricePerCoin: pkg.amount_inr / pkg.coins,
+          discount: Math.round((1 - (pkg.amount_inr / pkg.coins)) * 100),
           popular: idx === 1,
           features: defaultTiers[idx]?.features || defaultTiers[0].features,
         }));
@@ -121,7 +122,7 @@ const CreditsPage = () => {
               payment_intent_id: response.data.payment_intent_id,
             });
             toast.success(`Successfully purchased ${tier.coins} coins!`);
-            refreshCredits();
+            refreshUser();
             fetchData();
           } catch (err) {
             toast.error('Demo purchase failed');
@@ -166,7 +167,7 @@ const CreditsPage = () => {
           <p className="text-white/70 text-sm mb-2">Your Current Balance</p>
           <div className="flex items-center justify-center gap-3">
             <Coins size={48} className="text-yellow-400" />
-            <span className="text-6xl font-bold">{user?.credits_balance || 0}</span>
+            <span className="text-6xl font-bold">{user?.coins || 0}</span>
             <span className="text-white/70 text-xl">coins</span>
           </div>
         </div>

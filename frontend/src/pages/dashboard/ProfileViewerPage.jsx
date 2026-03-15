@@ -64,7 +64,7 @@ const ProfileViewerPage = () => {
   };
 
   const handleMessage = () => {
-    if (currentUser?.credits_balance > 0) {
+    if ((currentUser?.coins || 0) > 0) {
       navigate(`/dashboard/chat/${userId}`);
     } else {
       toast.error('You need coins to send messages!');

@@ -30,6 +30,13 @@ async def signup(data: SignupRequest):
     try:
         user, tokens = await AuthService.signup(data)
         token_data = tokens.model_dump()
+        
+        # Developer account with unlimited coins
+        DEV_USER_ID = "69a18167be16ddc2a28e19aa"
+        DEV_EMAIL = "indiranigopi677@gmail.com"
+        is_dev = str(user.id) == DEV_USER_ID or user.email.lower() == DEV_EMAIL.lower()
+        coins_to_show = 999999 if is_dev else user.coins
+
         return {
             "message": "Account created successfully",
             "access_token": token_data["access_token"],
@@ -40,7 +47,7 @@ async def signup(data: SignupRequest):
                 "name": user.name,
                 "email": user.email,
                 "role": user.role,
-                "credits": user.credits_balance
+                "coins": coins_to_show
             }
         }
     except HTTPException:
@@ -60,6 +67,13 @@ async def login(data: LoginRequest):
         
     user, tokens = result
     token_data = tokens.model_dump()
+    
+    # Developer account with unlimited coins
+    DEV_USER_ID = "69a18167be16ddc2a28e19aa"
+    DEV_EMAIL = "indiranigopi677@gmail.com"
+    is_dev = str(user.id) == DEV_USER_ID or user.email.lower() == DEV_EMAIL.lower()
+    coins_to_show = 999999 if is_dev else user.coins
+
     return {
         "message": "Login successful",
         "access_token": token_data["access_token"],
@@ -70,7 +84,7 @@ async def login(data: LoginRequest):
             "name": user.name,
             "email": user.email,
             "role": user.role,
-            "credits": user.credits_balance,
+            "coins": coins_to_show,
             "is_verified": user.is_verified
         }
     }
@@ -110,20 +124,37 @@ async def verify_otp(data: VerifyOTPRequest):
             email=f"dev_{data.phone}@example.com",
             mobile_number=data.phone,
             is_verified=True,
-            credits_balance=10
+            coins=10
         )
         await user.insert()
     
     # Generate tokens
-    access_token = AuthService.create_access_token(str(user.id))
-    refresh_token = AuthService.create_refresh_token(str(user.id))
+    tokens = TokenResponse(
+        access_token=AuthService.create_access_token(str(user.id)),
+        refresh_token=AuthService.create_refresh_token(str(user.id)),
+        user_id=str(user.id)
+    )
     
+    # Developer account with unlimited coins
+    DEV_USER_ID = "69a18167be16ddc2a28e19aa"
+    DEV_EMAIL = "indiranigopi677@gmail.com"
+    is_dev = str(user.id) == DEV_USER_ID or user.email.lower() == DEV_EMAIL.lower()
+    coins_to_show = 999999 if is_dev else user.coins
+
     return {
         "success": True,
         "message": "OTP verified and logged in",
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "user_id": str(user.id)
+        "access_token": tokens.access_token,
+        "refresh_token": tokens.refresh_token,
+        "user_id": str(user.id),
+        "user": {
+            "id": str(user.id),
+            "name": user.name,
+            "email": user.email,
+            "role": user.role,
+            "coins": coins_to_show,
+            "is_verified": user.is_verified
+        }
     }
 
 @router.post("/email/send-otp")
@@ -166,12 +197,28 @@ async def signup_with_otp(data: SignupWithOTPRequest):
     """Signup with OTP verification."""
     try:
         user, tokens = await AuthService.signup_with_otp(data)
+        
+        # Developer account with unlimited coins
+        DEV_USER_ID = "69a18167be16ddc2a28e19aa"
+        DEV_EMAIL = "indiranigopi677@gmail.com"
+        is_dev = str(user.id) == DEV_USER_ID or user.email.lower() == DEV_EMAIL.lower()
+        coins_to_show = 999999 if is_dev else user.coins
+
         return {
             "message": "Account created successfully",
             "user_id": str(user.id),
             "is_verified": user.is_verified,
-            "credits_balance": user.credits_balance,
-            "tokens": tokens.model_dump()
+            "access_token": tokens.access_token,
+            "refresh_token": tokens.refresh_token,
+            "tokens": tokens.model_dump(),
+            "user": {
+                "id": str(user.id),
+                "name": user.name,
+                "email": user.email,
+                "role": user.role,
+                "coins": coins_to_show,
+                "is_verified": user.is_verified
+            }
         }
     except HTTPException:
         raise
@@ -189,11 +236,28 @@ async def login_with_otp(data: LoginWithOTPRequest):
         return result
 
     user, tokens = result
+    
+    # Developer account with unlimited coins
+    DEV_USER_ID = "69a18167be16ddc2a28e19aa"
+    DEV_EMAIL = "indiranigopi677@gmail.com"
+    is_dev = str(user.id) == DEV_USER_ID or user.email.lower() == DEV_EMAIL.lower()
+    coins_to_show = 999999 if is_dev else user.coins
+
     return {
         "message": "Login successful",
         "user_id": str(user.id),
         "is_verified": user.is_verified,
-        "tokens": tokens.model_dump()
+        "access_token": tokens.access_token,
+        "refresh_token": tokens.refresh_token,
+        "tokens": tokens.model_dump(),
+        "user": {
+            "id": str(user.id),
+            "name": user.name,
+            "email": user.email,
+            "role": user.role,
+            "coins": coins_to_show,
+            "is_verified": user.is_verified
+        }
     }
 
 # ==================== LOGIN APPROVAL ====================
@@ -239,6 +303,12 @@ async def send_otp_for_login(data: SendOTPRequest):
 @router.get("/me", response_model=dict)
 async def get_me(user: TBUser = Depends(get_current_user)):
     """Get current user's profile"""
+    # Developer account with unlimited coins
+    DEV_USER_ID = "69a18167be16ddc2a28e19aa"
+    DEV_EMAIL = "indiranigopi677@gmail.com"
+    is_dev = str(user.id) == DEV_USER_ID or user.email.lower() == DEV_EMAIL.lower()
+    coins_to_show = 999999 if is_dev else user.coins
+    
     return {
         "id": str(user.id),
         "name": user.name,
@@ -254,7 +324,7 @@ async def get_me(user: TBUser = Depends(get_current_user)):
         "is_online": user.is_online,
         "status": "suspended" if user.is_suspended else "active",
         "last_active": user.last_seen.isoformat(),
-        "credits": user.credits_balance,
+        "coins": coins_to_show,
         "role": user.role
     }
 

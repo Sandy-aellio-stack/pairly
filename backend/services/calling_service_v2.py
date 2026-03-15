@@ -168,6 +168,17 @@ class CallingServiceV2:
                 )
                 call_session.credits_transaction_id = str(transaction.id)
                 
+                # Logging coin deduction
+                logger.info(
+                    "Coin deducted", 
+                    extra={
+                        "user_id": call_session.caller_id,
+                        "amount": call_session.credits_spent,
+                        "reason": tx_reason.value,
+                        "balance_after": transaction.balance_after
+                    }
+                )
+                
                 logger.info(
                     f"Call billing processed",
                     extra={

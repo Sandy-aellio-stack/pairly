@@ -117,7 +117,7 @@ const HomePage = () => {
       const res = await userAPI.getDashboardStats();
       setStats(res.data);
     } catch {
-      setStats({ messages_sent: 0, matches: 0, coins: user?.credits_balance ?? 0, profile_views: 0 });
+      setStats({ messages_sent: 0, matches: 0, coins: user?.coins ?? 0, profile_views: 0 });
     } finally {
       setStatsLoading(false);
     }
@@ -155,7 +155,7 @@ const HomePage = () => {
     navigate(`/dashboard/profile/${id}`);
   };
 
-  const coinsBalance = stats?.coins ?? user?.credits_balance ?? user?.credits ?? 0;
+  const coinsBalance = user?.coins ?? 0;
 
   const statCards = [
     { icon: MessageCircle, label: 'Messages Sent', value: stats?.messages_sent ?? 0, color: 'bg-blue-50', iconColor: 'text-blue-500' },

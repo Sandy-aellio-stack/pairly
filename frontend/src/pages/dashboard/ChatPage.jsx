@@ -10,7 +10,7 @@ const ChatPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { userId: urlUserId } = useParams();
-  const { user, refreshCredits } = useAuthStore();
+  const { user, refreshUser } = useAuthStore();
   const [conversations, setConversations] = useState([]);
   const [selectedChat, setSelectedChat] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -211,7 +211,7 @@ const ChatPage = () => {
   const handleSend = async () => {
     if (!message.trim() || !selectedChat) return;
 
-    if ((user?.credits_balance || 0) < 1) {
+    if ((user?.coins || 0) < 1) {
       toast.error('You need coins to send messages! Buy more coins.');
       navigate('/dashboard/credits');
       return;
@@ -407,7 +407,7 @@ const ChatPage = () => {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => {
-                      if ((user?.credits_balance || 0) < 5) {
+                      if ((user?.coins || 0) < 5) {
                         toast.error('You need at least 5 coins for a voice call');
                         navigate('/dashboard/credits');
                       } else {
@@ -421,7 +421,7 @@ const ChatPage = () => {
                   </button>
                   <button
                     onClick={() => {
-                      if ((user?.credits_balance || 0) < 10) {
+                      if ((user?.coins || 0) < 10) {
                         toast.error('You need at least 10 coins for a video call');
                         navigate('/dashboard/credits');
                       } else {

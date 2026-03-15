@@ -63,7 +63,7 @@ class PaymentService:
                     metadata={
                         "user_id": user_id,
                         "package_id": package["id"],
-                        "credits": str(package["credits"])
+                        "coins": str(package["coins"])
                     }
                 )
                 intent_id = payment_intent.id
@@ -79,7 +79,7 @@ class PaymentService:
         payment = TBPayment(
             user_id=user_id,
             amount_inr=package["amount_inr"],
-            credits_purchased=package["credits"],
+            credits_purchased=package["coins"],
             provider=PaymentProvider.STRIPE,
             provider_order_id=intent_id,
             status=PaymentStatus.PENDING
@@ -93,7 +93,7 @@ class PaymentService:
             "client_secret": client_secret,
             "amount": amount_cents,
             "currency": "inr",
-            "credits": package["credits"],
+            "coins": package["coins"],
             "payment_id": str(payment.id)
         }
 
