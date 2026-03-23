@@ -19,6 +19,7 @@ import logging
 from backend.tb_database import init_db, close_db
 from backend.socket_server import create_socket_app, sio
 from backend.core.redis_client import redis_client
+from backend.core.redis_pubsub import redis_pubsub
 from backend.core.security_config import security_config, validate_security_config
 from backend.middleware.security import (
     SecurityHeadersMiddleware,
@@ -82,10 +83,21 @@ async def lifespan(app: FastAPI):
     global mongo_client
     mongo_client = await init_db()
     await redis_client.connect()
+    try:
+        logger.info(f"Redis client ready: {redis_client.is_connected()}")
+    except Exception as e:
+        logger.warning(f"Redis client check failed: {e}")
     
     # Initialize WebSocket Redis Pub/Sub for real-time messaging
     from backend.socket_server import init_websocket_pubsub
-    await init_websocket_pubsub()
+    try:
+        await init_websocket_pubsub()
+    except Exception as e:
+        logger.warning(f"Redis PubSub initialization failed: {e}")
+    try:
+        logger.info(f"Redis PubSub ready: {redis_pubsub.is_connected()}")
+    except Exception as e:
+        logger.warning(f"Redis PubSub check failed: {e}")
 
     # Start periodic call billing worker
     import asyncio

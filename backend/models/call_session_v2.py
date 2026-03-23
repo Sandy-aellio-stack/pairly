@@ -17,6 +17,7 @@ class CallSessionV2(Document):
     id: str = Field(...)
     caller_id: str = Field(...)
     receiver_id: str = Field(...)
+    call_type: str = Field(default="voice")  # "voice" | "video"
     status: CallStatus = Field(default=CallStatus.INITIATED)
     
     # Timestamps
@@ -32,8 +33,8 @@ class CallSessionV2(Document):
     credits_transaction_id: Optional[str] = None
     
     # WebRTC signaling data (mock)
-    sdp_offer: Optional[str] = None
-    sdp_answer: Optional[str] = None
+    sdp_offer: Optional[Dict[str, Any]] = None
+    sdp_answer: Optional[Dict[str, Any]] = None
     ice_candidates_caller: List[Dict[str, Any]] = Field(default_factory=list)
     ice_candidates_receiver: List[Dict[str, Any]] = Field(default_factory=list)
     

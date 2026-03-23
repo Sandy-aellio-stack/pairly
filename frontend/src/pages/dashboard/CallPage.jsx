@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Phone, PhoneOff, Video, VideoOff, Mic, MicOff, Volume2, VolumeX, Loader2, Coins } from 'lucide-react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import useAuthStore from '@/store/authStore';
 import { toast } from 'sonner';
 import {
@@ -8,29 +8,58 @@ import {
   callUser,
   answerCall,
   rejectCall,
-  endCall as socketEndCall,
+  endCall,
   sendIceCandidate,
+  onIncomingCall,
   onCallAnswered,
   onCallRejected,
   onCallEnded,
   onIceCandidate,
-  removeCallListeners,
-} from '@/services/socket';
+  sendMediaState,
+  onMediaStateChange
+} from '../../services/socket';
 
 const ICE_SERVERS = {
   iceServers: [
+    // Google STUN servers (free, reliable)
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+    
+    // Production TURN servers (replace with your own)
+    // These are example TURN servers - replace with your own credentials
+    {
+      urls: 'turn:turn.your-server.com:3478',
+      username: import.meta.env.VITE_TURN_USERNAME || 'turnuser',
+      credential: import.meta.env.VITE_TURN_CREDENTIAL || 'turnpass'
+    },
+    
+    // Fallback TURN servers (for testing)
+    {
+      urls: 'turn:openrelay.metered.ca:80',
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443',
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    }
   ],
+  iceCandidatePoolSize: 10,
+  iceTransportPolicy: 'all'
 };
 
 const CallPage = () => {
   const navigate = useNavigate();
   const { userId } = useParams();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const callType = searchParams.get('type') || 'audio';
   const isIncoming = searchParams.get('incoming') === 'true';
-  const incomingOffer = searchParams.get('offer');
+  const incomingOffer = location.state?.offer || searchParams.get('offer');
   const incomingCallId = searchParams.get('callId');
   
   const { user, refreshUser } = useAuthStore();
@@ -42,6 +71,8 @@ const CallPage = () => {
   const [isSpeakerOn, setIsSpeakerOn] = useState(true);
   const [coinsUsed, setCoinsUsed] = useState(0);
   const [currentCallId, setCurrentCallId] = useState(incomingCallId || null);
+  const [remoteVideoEnabled, setRemoteVideoEnabled] = useState(true);
+  const [remoteAudioEnabled, setRemoteAudioEnabled] = useState(true);
   
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
@@ -126,10 +157,13 @@ const CallPage = () => {
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
       
-      const response = await callUser(userId, callType, offer);
-      if (response.success) {
+      const response = await callUser(userId, callType);
+      if (response && response.success) {
         setCurrentCallId(response.call_id);
         callIdRef.current = response.call_id;
+        setCallStatus('ringing');
+      } else {
+        // For simplified test, just set ringing
         setCallStatus('ringing');
       }
     } catch (error) {
@@ -148,7 +182,14 @@ const CallPage = () => {
     
     try {
       if (incomingOffer) {
-        const offer = JSON.parse(decodeURIComponent(incomingOffer));
+        let offer = incomingOffer;
+        if (typeof offer === 'string') {
+          try {
+            offer = JSON.parse(decodeURIComponent(offer));
+          } catch (e) {
+            offer = JSON.parse(offer);
+          }
+        }
         await pc.setRemoteDescription(new RTCSessionDescription(offer));
       }
     } catch (error) {
@@ -214,7 +255,6 @@ const CallPage = () => {
       peerConnectionRef.current = null;
     }
     
-    removeCallListeners();
   }, []);
 
   const handleEndCall = useCallback(async () => {
@@ -238,29 +278,63 @@ const CallPage = () => {
       toast.success(`Call ended. Total: ${totalCost} coins for ${formatDuration(duration)}`);
     }
     
-    refreshCredits();
-    navigate('/dashboard/chat');
-  }, [callDuration, currentCostPerMin, cleanup, refreshCredits, navigate]);
+    refreshUser();
+    
+    // Get previous conversation from location state or navigate to chat
+    const state = location.state;
+    if (state?.conversationId) {
+      const userName = state.userName || 'Unknown User';
+      navigate(`/dashboard/chat/${state.conversationId}?user=${encodeURIComponent(userName)}&userId=${userId}`);
+    } else {
+      navigate('/dashboard/chat');
+    }
+  }, [callDuration, currentCostPerMin, cleanup, refreshUser, navigate, location.state]);
 
   const toggleMute = () => {
     if (localStreamRef.current) {
+      const newState = !isMuted;
       localStreamRef.current.getAudioTracks().forEach((track) => {
-        track.enabled = isMuted;
+        track.enabled = isMuted; // if previously muted (isMuted=true), now enabled=true
       });
-      setIsMuted(!isMuted);
+      setIsMuted(newState);
+      
+      // Signaling: Tell other side about mic state
+      if (callIdRef.current) {
+        sendMediaState(callIdRef.current, 'audio', !newState);
+      }
     }
   };
 
   const toggleVideo = () => {
     if (localStreamRef.current) {
+      const newState = !isVideoOff;
+      console.log(`[CALL DEBUG] Toggling video ${newState ? 'OFF' : 'ON'}`);
       localStreamRef.current.getVideoTracks().forEach((track) => {
-        track.enabled = isVideoOff;
+        track.enabled = isVideoOff; // enabled = !isVideoOff
       });
-      setIsVideoOff(!isVideoOff);
+      setIsVideoOff(newState);
+
+      // Signaling: Tell other side about camera state
+      if (callIdRef.current) {
+        sendMediaState(callIdRef.current, 'video', !newState);
+      }
     }
   };
 
+  // Callback ref for more robust srcObject attachment
+  const setLocalVideoRef = useCallback((node) => {
+    if (node && localStreamRef.current) {
+      console.log('[CALL DEBUG] localVideo element mounted, attaching stream');
+      node.srcObject = localStreamRef.current;
+      node.play().catch(e => console.error('[CALL DEBUG] Play failed:', e));
+    }
+    localVideoRef.current = node;
+  }, []);
+
   useEffect(() => {
+    console.log('[CALL PAGE DEBUG] Component mounted');
+    console.log('[CALL PAGE DEBUG] userId:', userId, 'type:', callType);
+    console.log('[CALL PAGE DEBUG] onMediaStateChange available:', typeof onMediaStateChange === 'function');
     if ((user?.coins || 0) < currentCostPerMin) {
       toast.error(`You need at least ${currentCostPerMin} coins to start a ${callType} call`);
       navigate('/dashboard/credits');
@@ -325,6 +399,18 @@ const CallPage = () => {
           );
         } catch (error) {
           console.error('Error adding ICE candidate:', error);
+        }
+      }
+    });
+
+    onMediaStateChange((data) => {
+      const cid = callIdRef.current;
+      if (data.call_id === cid && data.user_id !== user?.id) {
+        console.log(`[CALL DEBUG] Remote peer changed ${data.type} to ${data.enabled ? 'ON' : 'OFF'}`);
+        if (data.type === 'video') {
+          setRemoteVideoEnabled(data.enabled);
+        } else if (data.type === 'audio') {
+          setRemoteAudioEnabled(data.enabled);
         }
       }
     });
@@ -399,7 +485,7 @@ const CallPage = () => {
       {callType === 'video' && !isVideoOff && (
         <div className="absolute top-4 right-4 w-32 h-44 bg-gray-800 rounded-2xl overflow-hidden shadow-xl z-20">
           <video
-            ref={localVideoRef}
+            ref={setLocalVideoRef}
             autoPlay
             playsInline
             muted

@@ -43,8 +43,8 @@ const useAuthStore = create((set, get) => ({
       });
     }
 
-    if (token) {
-      try {
+    try {
+      if (token) {
         // Use getMe to fetch the absolute latest user state from the server
         const response = await authAPI.getMe();
         const userData = response.data;
@@ -58,13 +58,14 @@ const useAuthStore = create((set, get) => ({
         connectSocket(token);
         // Initialize FCM for push notifications (non-blocking)
         initializeFCM().catch(err => console.warn('[Auth] FCM init failed:', err));
-      } catch (error) {
-        localStorage.removeItem('tb_access_token');
-        localStorage.removeItem('tb_refresh_token');
+      } else {
         set({ user: null, isAuthenticated: false, isLoading: false });
       }
-    } else {
-      set({ isLoading: false });
+    } catch (error) {
+      console.error('[AuthStore] Initialize error:', error);
+      localStorage.removeItem('tb_access_token');
+      localStorage.removeItem('tb_refresh_token');
+      set({ user: null, isAuthenticated: false, isLoading: false });
     }
   },
 
@@ -85,6 +86,12 @@ const useAuthStore = create((set, get) => ({
       }
       throw error;
     }
+  },
+
+  updateSettings: (newSettings) => {
+    set((state) => ({
+      user: state.user ? { ...state.user, settings: newSettings } : null
+    }));
   },
 
   login: async (email, password) => {
@@ -113,7 +120,7 @@ const useAuthStore = create((set, get) => ({
     return response.data;
   },
 
-  loginWithOTP: async (payload) => {
+    loginWithOTP: async (payload) => {
     const response = await authAPI.loginWithOTP(payload);
     const { access_token, refresh_token, user } = response.data;
     localStorage.setItem('tb_access_token', access_token);
@@ -125,6 +132,10 @@ const useAuthStore = create((set, get) => ({
     });
     connectSocket(access_token);
     initializeFCM().catch(err => console.warn('[Auth] FCM init failed:', err));
+    
+    // Sync latest state from backend (dev coins, settings)
+    await get().refreshUser();
+    
     return response.data;
   },
 

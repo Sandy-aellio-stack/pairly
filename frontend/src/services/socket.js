@@ -1,70 +1,95 @@
-import { io } from 'socket.io-client';
-import { API_BASE_URL } from '../config/api';
+import { io } from "socket.io-client";
 
 let socket = null;
 
-// Use the configured API URL when set, otherwise connect to the same origin
-// (the Vite dev proxy forwards /socket.io to the backend at port 8000).
-const SOCKET_URL = API_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+/*
+  IMPORTANT:
+  Your backend runs on port 8000
+  Your frontend runs on port 5000
+*/
+const SOCKET_URL = window.location.origin;
 
 export const connectSocket = (token) => {
-  if (socket?.connected) {
+  console.log('[SOCKET DEBUG] connectSocket invoked');
+  console.log('[SOCKET DEBUG] SOCKET_URL:', SOCKET_URL);
+  console.log('[SOCKET DEBUG] Token present:', !!token);
+
+  if (socket && socket.connected) {
+    console.log('[SOCKET DEBUG] Reusing existing connected socket');
     return socket;
   }
 
   socket = io(SOCKET_URL, {
     auth: { token },
-    transports: ['websocket', 'polling'],
+    transports: ["polling", "websocket"],
     reconnection: true,
-    reconnectionAttempts: 5,
+    reconnectionAttempts: 10,
     reconnectionDelay: 1000,
-    path: '/socket.io',
+    timeout: 20000,
+    withCredentials: true,
+    path: "/socket.io",
   });
 
-  socket.on('connect', () => {
-    console.log('Socket connected:', socket.id);
+  /* ---------- CONNECTION EVENTS ---------- */
+
+  socket.on("connect", () => {
+    console.log("✅ [SOCKET DEBUG] connected:", socket.id);
   });
 
-  socket.on('disconnect', (reason) => {
-    console.log('Socket disconnected:', reason);
+  socket.on("disconnect", (reason) => {
+    console.log("❌ [SOCKET DEBUG] disconnected, reason:", reason);
   });
 
-  socket.on('connect_error', (error) => {
-    console.error('Socket connection error:', error.message);
+  socket.on("connect_error", (error) => {
+    console.error("❌ [SOCKET DEBUG] connect_error:", error.message);
+    console.error("[SOCKET DEBUG] Full error object:", error);
   });
 
-  socket.on('force_logout', (data) => {
-    console.warn('Force logout received:', data?.reason || 'New device login');
-    localStorage.removeItem('tb_access_token');
-    localStorage.removeItem('tb_refresh_token');
-    localStorage.removeItem('tb_user');
+  socket.io.on("reconnect_attempt", (attempt) => {
+    console.log("🔄 Reconnect attempt:", attempt);
+  });
+
+  socket.io.on("reconnect", (attempt) => {
+    console.log("🔌 Reconnected after", attempt, "attempts");
+  });
+
+  socket.on("call_failed", (err) => {
+    console.error("Call failed:", err);
+  });
+
+  /* ---------- GLOBAL EVENTS ---------- */
+
+  socket.on("force_logout", () => {
+    localStorage.removeItem("tb_access_token");
+    localStorage.removeItem("tb_refresh_token");
+    localStorage.removeItem("tb_user");
+
     socket.disconnect();
     socket = null;
-    window.location.href = '/';
+
+    window.location.href = "/";
   });
 
-  socket.on('balance_updated', (data) => {
-    // Update authStore credits in real-time when balance changes
-    try {
-      const event = new CustomEvent('luveloop:balance_updated', { detail: data });
-      window.dispatchEvent(event);
-    } catch (e) {
-      // ignore
-    }
+  socket.on("balance_updated", (data) => {
+    const event = new CustomEvent("luveloop:balance_updated", {
+      detail: data,
+    });
+    window.dispatchEvent(event);
   });
 
-  socket.on('new_notification', (data) => {
-    // Forward admin/system notifications globally
-    try {
-      const event = new CustomEvent('luveloop:new_notification', { detail: data });
-      window.dispatchEvent(event);
-    } catch (e) {
-      // ignore
-    }
+  socket.on("new_notification", (data) => {
+    const event = new CustomEvent("luveloop:new_notification", {
+      detail: data,
+    });
+    window.dispatchEvent(event);
   });
 
   return socket;
 };
+
+/* ---------- BASIC SOCKET HELPERS ---------- */
+
+export const getSocket = () => socket;
 
 export const disconnectSocket = () => {
   if (socket) {
@@ -73,15 +98,16 @@ export const disconnectSocket = () => {
   }
 };
 
-export const getSocket = () => socket;
+/* ---------- CHAT EVENTS ---------- */
 
 export const joinChat = (userId) => {
   return new Promise((resolve, reject) => {
-    if (!socket?.connected) {
-      reject(new Error('Socket not connected'));
+    if (!socket || !socket.connected) {
+      reject(new Error("Socket not connected"));
       return;
     }
-    socket.emit('join_chat', { user_id: userId }, (response) => {
+
+    socket.emit("join_chat", { user_id: userId }, (response) => {
       if (response?.error) reject(new Error(response.error));
       else resolve(response);
     });
@@ -90,81 +116,130 @@ export const joinChat = (userId) => {
 
 export const leaveChat = (roomId) => {
   if (socket?.connected) {
-    socket.emit('leave_chat', { room_id: roomId });
+    socket.emit("leave_chat", { room_id: roomId });
   }
 };
 
-export const sendMessage = (receiverId, content, type = 'text') => {
+export const sendMessage = (receiverId, content, type = "text", conversationId = null, tempId = null) => {
   return new Promise((resolve, reject) => {
-    if (!socket?.connected) {
-      reject(new Error('Socket not connected'));
+    if (!socket || !socket.connected) {
+      reject(new Error("Socket not connected"));
       return;
     }
-    socket.emit('send_message', { receiver_id: receiverId, content, type }, (response) => {
-      if (response?.error) reject(new Error(response.error));
-      else resolve(response);
-    });
+
+    const payload = { receiver_id: receiverId, content, type };
+    if (conversationId) {
+      payload.conversation_id = conversationId;
+    }
+    if (tempId) {
+      payload.temp_id = tempId;
+    }
+
+    // Debug: payload logged only on error
+
+    socket.emit(
+      "message:send",
+      payload,
+      (response) => {
+        // Ack handled by caller
+        if (response?.error) {
+          console.error("[SOCKET DEBUG] Ack error:", response.error);
+          reject(new Error(response.error));
+        } else {
+          resolve(response);
+        }
+      }
+    );
   });
 };
 
 export const sendTyping = (receiverId) => {
   if (socket?.connected) {
-    socket.emit('typing', { receiver_id: receiverId });
+    socket.emit("message:typing", { receiver_id: receiverId });
   }
 };
 
 export const sendStopTyping = (receiverId) => {
   if (socket?.connected) {
-    socket.emit('stop_typing', { receiver_id: receiverId });
+    socket.emit("message:stop-typing", { receiver_id: receiverId });
   }
 };
 
-export const callUser = (receiverId, callType, offer) => {
+export const markMessageRead = (senderId) => {
+  if (socket?.connected) {
+    socket.emit("message:read", { sender_id: senderId });
+  }
+};
+
+/* ---------- CALL EVENTS ---------- */
+
+export const callUser = (receiverId, callType) => {
   return new Promise((resolve, reject) => {
-    if (!socket?.connected) {
-      reject(new Error('Socket not connected'));
+    if (!socket || !socket.connected) {
+      reject(new Error("Socket not connected"));
       return;
     }
-    socket.emit('call_user', { receiver_id: receiverId, call_type: callType, offer }, (response) => {
-      if (response?.error) reject(new Error(response.error));
-      else resolve(response);
+
+    console.log("Initiating call", {
+      targetUserId: receiverId,
+      callType: callType
     });
+
+    socket.emit(
+      "call_user",
+      { user_id: receiverId, call_type: callType },
+      (response) => {
+        if (response?.error) reject(new Error(response.error));
+        else resolve(response);
+      }
+    );
   });
 };
 
 export const answerCall = (callId, answer) => {
   return new Promise((resolve, reject) => {
-    if (!socket?.connected) {
-      reject(new Error('Socket not connected'));
+    if (!socket || !socket.connected) {
+      reject(new Error("Socket not connected"));
       return;
     }
-    socket.emit('answer_call', { call_id: callId, answer }, (response) => {
-      if (response?.error) reject(new Error(response.error));
-      else resolve(response);
-    });
+
+    socket.emit(
+      "call:accept",
+      { call_id: callId, answer },
+      (response) => {
+        if (response?.error) reject(new Error(response.error));
+        else resolve(response);
+      }
+    );
   });
 };
 
-export const rejectCall = (callId, reason = 'rejected') => {
+export const rejectCall = (callId, reason = "rejected") => {
   return new Promise((resolve, reject) => {
-    if (!socket?.connected) {
-      reject(new Error('Socket not connected'));
+    if (!socket || !socket.connected) {
+      reject(new Error("Socket not connected"));
       return;
     }
-    socket.emit('reject_call', { call_id: callId, reason }, (response) => {
-      if (response?.error) reject(new Error(response.error));
-      else resolve(response);
-    });
+
+    socket.emit(
+      "call:reject",
+      { call_id: callId, reason },
+      (response) => {
+        if (response?.error) reject(new Error(response.error));
+        else resolve(response);
+      }
+    );
   });
 };
 
 export const endCall = (callId) => {
   return new Promise((resolve, reject) => {
-    if (!socket?.connected) {
-      reject(new Error('Socket not connected'));
+    if (!socket || !socket.connected) {
+      reject(new Error("Socket not connected"));
       return;
     }
-    socket.emit('end_call', { call_id: callId }, (response) => {
+
+    socket.emit("call:end", { call_id: callId }, (response) => {
       if (response?.error) reject(new Error(response.error));
       else resolve(response);
     });
@@ -173,92 +248,87 @@ export const endCall = (callId) => {
 
 export const sendIceCandidate = (callId, candidate) => {
   if (socket?.connected) {
-    socket.emit('ice_candidate', { call_id: callId, candidate });
+    socket.emit("webrtc:ice-candidate", { call_id: callId, candidate });
   }
 };
+
+export const sendMediaState = (callId, type, enabled) => {
+  if (socket?.connected) {
+    socket.emit("call:media-state", { call_id: callId, type, enabled });
+  }
+};
+
+/* Emit call:initiate - lightweight call signal (no SDP needed upfront) */
+export const initiateCall = (targetUserId, type = 'audio') => {
+  return new Promise((resolve, reject) => {
+    if (!socket || !socket.connected) {
+      reject(new Error('Socket not connected'));
+      return;
+    }
+    socket.emit('call:initiate', { targetUserId, type }, (response) => {
+      if (response?.error) reject(new Error(response.error));
+      else resolve(response);
+    });
+  });
+};
+
+/* ---------- LISTENERS ---------- */
 
 export const onNewMessage = (callback) => {
-  socket?.on('new_message', callback);
+  socket?.on("message:new", callback);
 };
-
 export const offNewMessage = (callback) => {
-  socket?.off('new_message', callback);
+  socket?.off("message:new", callback);
 };
 
-export const onTyping = (callback) => {
-  socket?.on('user_typing', callback);
-};
+export const onTyping = (callback) => socket?.on("message:typing", callback);
+export const onStopTyping = (callback) =>
+  socket?.on("message:stop-typing", callback);
 
-export const onStopTyping = (callback) => {
-  socket?.on('user_stopped_typing', callback);
-};
+export const onMessageRead = (callback) => socket?.on("message:read", callback);
+export const offMessageRead = (callback) => socket?.off("message:read", callback);
 
-export const onIncomingCall = (callback) => {
-  socket?.on('incoming_call', callback);
-};
+export const onIncomingCall = (callback) =>
+  socket?.on("incoming_call", callback);
 
-export const offIncomingCall = (callback) => {
-  socket?.off('incoming_call', callback);
-};
+export const offIncomingCall = (callback) =>
+  socket?.off("incoming_call", callback);
 
-export const onCallAnswered = (callback) => {
-  socket?.on('call_answered', callback);
-};
+export const onCallIncoming = (callback) =>
+  socket?.on("incoming_call", callback);
 
-export const onCallRejected = (callback) => {
-  socket?.on('call_rejected', callback);
-};
+export const offCallIncoming = (callback) =>
+  socket?.off("incoming_call", callback);
 
-export const onCallEnded = (callback) => {
-  socket?.on('call_ended', callback);
-};
+export const onCallAnswered = (callback) =>
+  socket?.on("call:accept", callback);
 
-export const onIceCandidate = (callback) => {
-  socket?.on('ice_candidate', callback);
-};
+export const onCallRejected = (callback) =>
+  socket?.on("call:reject", callback);
 
-export const removeCallListeners = () => {
-  if (socket) {
-    socket.off('call_answered');
-    socket.off('call_rejected');
-    socket.off('call_ended');
-    socket.off('ice_candidate');
-  }
-};
+export const onCallEnded = (callback) => socket?.on("call:end", callback);
 
-export const removeChatListeners = () => {
-  if (socket) {
-    socket.off('new_message');
-    socket.off('user_typing');
-    socket.off('user_stopped_typing');
-  }
-};
+export const onIceCandidate = (callback) =>
+  socket?.on("webrtc:ice-candidate", callback);
 
-export const onForceLogout = (callback) => {
-  socket?.on('force_logout', callback);
-};
-
-export const onBalanceUpdated = (callback) => {
-  socket?.on('balance_updated', callback);
-};
-
-export const offBalanceUpdated = (callback) => {
-  socket?.off('balance_updated', callback);
-};
+export const onMediaStateChange = (callback) =>
+  socket?.on("call:media-state", callback);
 
 export const removeAllListeners = () => {
-  if (socket) {
-    socket.off('new_message');
-    socket.off('user_typing');
-    socket.off('user_stopped_typing');
-    socket.off('incoming_call');
-    socket.off('call_answered');
-    socket.off('call_rejected');
-    socket.off('call_ended');
-    socket.off('ice_candidate');
-    socket.off('force_logout');
-    socket.off('balance_updated');
-  }
+  if (!socket) return;
+
+  socket.removeAllListeners("message:new");
+  socket.removeAllListeners("message:read");
+  socket.removeAllListeners("message:typing");
+  socket.removeAllListeners("message:stop-typing");
+  socket.removeAllListeners("incoming_call");
+  socket.removeAllListeners("call:accept");
+  socket.removeAllListeners("call:reject");
+  socket.removeAllListeners("call:end");
+  socket.removeAllListeners("webrtc:ice-candidate");
+  socket.removeAllListeners("webrtc:offer");
+  socket.removeAllListeners("webrtc:answer");
+  socket.removeAllListeners("call:media-state");
 };
 
 export default {
@@ -270,13 +340,18 @@ export default {
   sendMessage,
   sendTyping,
   sendStopTyping,
+  markMessageRead,
   callUser,
+  initiateCall,
   answerCall,
   rejectCall,
   endCall,
   sendIceCandidate,
+  sendMediaState,
   onNewMessage,
   offNewMessage,
+  onMessageRead,
+  offMessageRead,
   onTyping,
   onStopTyping,
   onIncomingCall,
@@ -285,10 +360,6 @@ export default {
   onCallRejected,
   onCallEnded,
   onIceCandidate,
-  onForceLogout,
-  onBalanceUpdated,
-  offBalanceUpdated,
-  removeCallListeners,
-  removeChatListeners,
-  removeAllListeners,
+  onMediaStateChange,
+  removeAllListeners
 };

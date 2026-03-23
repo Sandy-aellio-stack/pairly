@@ -89,6 +89,9 @@ const SettingsPage = () => {
       const response = await userAPI.updateSettings(flattenedData);
       if (response.data?.settings) {
         setSettings(response.data.settings);
+        // Sync to global auth store
+        const authStore = useAuthStore.getState();
+        authStore.updateSettings(response.data.settings);
       }
       toast.success('Settings updated');
     } catch (error) {

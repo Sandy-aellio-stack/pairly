@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Socket.IO Call Test</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+    <h1>Socket.IO Call Test</h1>
+    
+    <div>
+        <label>Your User ID: </label>
+        <input type="text" id="userId" placeholder="Enter your user ID">
+        <button onclick="connect()">Connect</button>
+    </div>
+    
+    <div>
+        <label>Target User ID: </label>
+        <input type="text" id="targetUserId" placeholder="Enter target user ID">
+        <button onclick="initiateCall()">Initiate Call</button>
+    </div>
+    
+    <div id="logs"></div>
+
+    <script>
+        let socket = null;
+        
+        function log(message) {
+            const logs = document.getElementById('logs');
+            logs.innerHTML += '<div>' + new Date().toLocaleTimeString() + ': ' + message + '</div>';
+            console.log(message);
+        }
+        
+        function connect() {
+            const userId = document.getElementById('userId').value;
+            if (!userId) {
+                log('Please enter your user ID');
+                return;
+            }
+            
+            // Connect with mock token (in real app, use real JWT)
+            socket = io('http://localhost:8000', {
+                auth: { token: 'mock-token-' + userId },
+                transports: ['websocket']
+            });
+            
+            socket.on('connect', () => {
+                log('✅ Connected to server with ID: ' + socket.id);
+            });
+            
+            socket.on('disconnect', () => {
+                log('❌ Disconnected from server');
+            });
+            
+            socket.on('connect_error', (error) => {
+                log('❌ Connection error: ' + error.message);
+            });
+            
+            // Listen for incoming calls
+            socket.on('incoming_call', (data) => {
+                log('📞 Incoming call received: ' + JSON.stringify(data));
+                alert('Incoming call received from: ' + data.from);
+            });
+            
+            socket.on('call_failed', (data) => {
+                log('❌ Call failed: ' + JSON.stringify(data));
+            });
+        }
+        
+        function initiateCall() {
+            const targetUserId = document.getElementById('targetUserId').value;
+            if (!targetUserId) {
+                log('Please enter target user ID');
+                return;
+            }
+            
+            if (!socket || !socket.connected) {
+                log('Please connect first');
+                return;
+            }
+            
+            log('🔥 Initiating call to user: ' + targetUserId);
+            
+            // EXACT CODE AS REQUESTED - no offer yet
+            socket.emit('call_user', {
+                user_id: targetUserId,
+                call_type: 'audio'
+            });
+        }
+    </script>
+</body>
+</html>

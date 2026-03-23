@@ -76,39 +76,70 @@ async def update_user_presence(user_id: str, is_online: bool):
         logger.error(f"Presence update failed for user {user_id}: {e}")
 
 async def handle_pubsub_message(channel: str, event: str, data: dict):
-    if not channel.startswith("truebond:"):
-        return
-    parts = channel.split(":")
-    if len(parts) >= 3:
-        user_id = parts[2]
-        if user_id in user_sockets:
-            try:
-                await sio.emit(event, data, room=f"user_{user_id}")
-            except Exception as e:
-                logger.error(f"PubSub emit failed: {e}")
+    """
+    Unified handle for all Redis Pub/Sub messages across the 3 core channels.
+    Routes events to local Socket.IO rooms.
+    """
+    try:
+        # 1. Determine the target for the event
+        receiver_id = data.get('receiver_id')
+        sender_id = data.get('sender_id') # For receipts (read/delivered)
+        
+        target_room = None
+        if receiver_id:
+            target_room = f"user_{receiver_id}"
+        elif sender_id and (event.startswith("message:") or event.startswith("call:")):
+            # Receipts for messages/calls are often sent back to the sender
+            target_room = f"user_{sender_id}"
+        
+        # 2. Emit to the room (or globally for presence)
+        if target_room:
+            await sio.emit(event, data, room=target_room)
+        elif event in ['user:online', 'user:offline']:
+            # Global status broadcast
+            await sio.emit(event, data)
+            
+    except Exception as e:
+        logger.error(f"Error handling pubsub message from Redis: {e}")
 
 @sio.event
 async def connect(sid, environ, auth):
     try:
-        token = auth.get('token') if auth else None
+        # Auth token can be in auth dict (Socket.IO v4) or query params
+        token = None
+        if auth and isinstance(auth, dict):
+            token = auth.get('token')
+        
+        # [BACKEND SOCKET DEBUG]
+        logger.info(f"[BACKEND SOCKET] Connect Attempt - SID={sid}, Auth={bool(auth)}, Token={bool(token)}")
+
         if not token:
+            # Fallback to query string
+            from urllib.parse import parse_qs
+            query_string = environ.get('QUERY_STRING', '')
+            query_params = parse_qs(query_string)
+            token = query_params.get('token', [None])[0]
+
+        if not token:
+            logger.warning(f"[BACKEND SOCKET] Auth Failed - SID={sid} (No token provided)")
             return False
 
         payload = await verify_token(token)
         if not payload:
+            logger.warning(f"[BACKEND SOCKET] Auth Failed - SID={sid} (Invalid token)")
             return False
 
         user_id = payload.get('sub')
+        logger.info(f"[BACKEND SOCKET] Auth Success - SID={sid}, UserID={user_id}")
         connected_users[sid] = {'user_id': user_id, 'connected_at': datetime.now(timezone.utc).isoformat()}
         
         if user_id not in user_sockets:
             user_sockets[user_id] = set()
         user_sockets[user_id].add(sid)
 
-        await sio.enter_room(sid, f"user_{user_id}")
+        await sio.enter_room(sid, f"user:{user_id}")
         
-        if redis_pubsub.is_connected():
-            await redis_pubsub.subscribe_user(user_id, handle_pubsub_message)
+        if redis_pubsub.is_connected:
             await redis_pubsub.publish_presence(user_id, is_online=True)
         
         await update_user_presence(user_id, True)
@@ -120,22 +151,25 @@ async def connect(sid, environ, auth):
             if user_doc and user_doc.settings and user_doc.settings.privacy:
                 show_online = user_doc.settings.privacy.show_online
             if show_online:
-                await sio.emit('user_online', {'user_id': user_id}, skip_sid=sid)
+                await sio.emit('user:online', {'user_id': user_id}, skip_sid=sid)
         except Exception:
             pass
-        logger.info(f"User {user_id} connected (sid: {sid})")
+        logger.info(f"[BACKEND SOCKET] User {user_id} fully connected (sid: {sid})")
         return True
     except Exception as e:
-        logger.error(f"Connect error: {e}")
+        logger.error(f"[BACKEND SOCKET] Connect error for sid {sid}: {e}")
         return False
 
 @sio.event
 async def disconnect(sid):
     try:
         if sid not in connected_users:
+            logger.info(f"[BACKEND SOCKET] Disconnect - SID={sid} (Unknown user or already processed)")
             return
         
         user_id = connected_users[sid]['user_id']
+        logger.info(f"[BACKEND SOCKET] Disconnect - SID={sid}, UserID={user_id}")
+        
         del connected_users[sid]
         
         if user_id in user_sockets:
@@ -144,7 +178,7 @@ async def disconnect(sid):
                 del user_sockets[user_id]
                 
                 # Safe cleanup
-                if redis_pubsub.is_connected():
+                if redis_pubsub.is_connected:
                     await redis_pubsub.unsubscribe_user(user_id)
                     await redis_pubsub.publish_presence(user_id, is_online=False)
                 
@@ -157,7 +191,7 @@ async def disconnect(sid):
                 except Exception as loc_err:
                     logger.warning(f"Could not clear location on disconnect for {user_id}: {loc_err}")
                 
-                await sio.emit('user_offline', {
+                await sio.emit('user:offline', {
                     'user_id': user_id, 
                     'last_seen': datetime.now(timezone.utc).isoformat()
                 })
@@ -190,235 +224,418 @@ async def leave_chat(sid, data):
     if room_id:
         await sio.leave_room(sid, room_id)
     return {'success': True}
-
-@sio.event
-async def send_message(sid, data):
-    """frontend: socket.emit('send_message', { receiver_id, content, type })"""
-    user_id = connected_users.get(sid, {}).get('user_id')
-    if not user_id: return {'error': 'Unauthorized'}
-
+@sio.on('message:send')
+async def message_send(sid, data):
+    """Handle sending a message via WebSocket."""
+    # Extract and validate data
     receiver_id = data.get('receiver_id')
+    conversation_id = data.get('conversation_id')
     content = data.get('content')
+    temp_id = data.get('temp_id')  # Capture temp_id for optimistic UI
     msg_type = data.get('type', 'text')
+    
+    if not content:
+        await sio.emit('error', {'message': 'Message content is required'}, room=sid)
+        return
+    
+    # Get sender from session
+    user_id_from_session = await sio.get_session(sid)
+    sender_id = user_id_from_session.get('user_id')
+    
+    if not sender_id:
+        return {'error': 'Unauthorized'}
 
-    if not receiver_id or not content:
-        return {'error': 'Missing content or receiver'}
+    # 1. Resolve conversation_id if missing (Task 6)
+    from beanie import PydanticObjectId
+    conversation = None
+    
+    if conversation_id:
+        try:
+            conversation_oid = PydanticObjectId(conversation_id)
+            conversation = await TBConversation.get(conversation_oid)
+        except Exception as e:
+            logger.error(f"Invalid conversation_id format: {e}")
+            pass  # Invalid conversation_id format
+
+    if not conversation and receiver_id:
+        try:
+            receiver_oid = PydanticObjectId(receiver_id)
+            sender_oid = PydanticObjectId(sender_id)
+            # Fallback 1: Create or get by participants
+            conversation = await TBConversation.find_one({
+                "participants": {"$all": [sender_oid, receiver_oid]}
+            })
+            if conversation:
+                pass
+            else:
+                # Fallback 2: Create new conversation
+                conversation = TBConversation(
+                    participants=sorted([sender_oid, receiver_oid]),
+                    last_message="",
+                    last_message_at=datetime.now(timezone.utc),
+                    unread_count={str(receiver_id): 0, str(sender_id): 0}
+                )
+                await conversation.insert()
+        except Exception as e:
+            pass
+
+    if not conversation:
+        return {'error': 'Could not resolve conversation context'}
+    
+    # Re-extract receiver_id from conversation to be safe
+    receiver_oid = [p for p in conversation.participants if str(p) != sender_id]
+    if not receiver_oid:
+        # Self-chat case
+        receiver_oid = PydanticObjectId(sender_id)
+    else:
+        receiver_oid = receiver_oid[0]
+    
+    receiver_id = str(receiver_oid)
+    sender_oid = PydanticObjectId(sender_id)
+
+    # 2. Persist Message
+
+    message = TBMessage(
+        conversation_id=conversation.id,
+        sender_id=sender_oid, 
+        receiver_id=receiver_oid, 
+        content=content,
+        message_type=msg_type
+    )
+    try:
+        await message.insert()
+    except Exception as insert_err:
+        raise
 
     try:
-        # 1. Credits Check
-        can_send = await CreditService.can_send_message(user_id)
-        if not can_send:
-            return {'error': 'Insufficient credits', 'code': 402}
-
-        # 2. Persist Message
-        message = TBMessage(sender_id=user_id, receiver_id=receiver_id, content=content)
-        await message.insert()
-
         # 3. Deduct Coins
         tx = await CreditService.deduct_credits(
-            user_id=user_id, amount=1, reason=TransactionReason.MESSAGE_SENT, 
+            user_id=sender_id, amount=1, reason=TransactionReason.MESSAGE_SENT, 
             reference_id=str(message.id), description=f"Message to {receiver_id}"
         )
-        
-        # Logging coin deduction
-        logger.info(f"Coin deducted: user={user_id}, amount=1, reason=message_sent, balance_after={tx.balance_after}")
-
         # Notify sender of updated balance
-        await sio.emit('balance_updated', {'coins': tx.balance_after}, room=f"user_{user_id}")
+        await sio.emit('balance_updated', {'coins': tx.balance_after}, room=f"user:{sender_id}")
+    except Exception as credit_err:
+        pass  # Non-fatal
 
-        # 4. Update Conversation
-        participants = sorted([user_id, receiver_id])
-        await TBConversation.find_one({"participants": participants}).upsert(
-            {
-                "$set": {
-                    "last_message": content[:100],
-                    "last_message_at": message.created_at,
-                    "last_sender_id": user_id,
-                    "updated_at": datetime.now(timezone.utc)
-                },
-                "$inc": {f"unread_count.{receiver_id}": 1}
-            },
-            on_insert=TBConversation(
-                participants=participants, last_message=content[:100],
-                last_message_at=message.created_at, last_sender_id=user_id,
-                unread_count={receiver_id: 1}
-            )
-        )
+    # 4. Update Conversation
+    if conversation:
+        await conversation.update({
+            "$set": {
+                "last_message": content[:100],
+                "last_message_at": message.created_at,
+                "last_sender_id": sender_oid,
+                "updated_at": datetime.now(timezone.utc)
+            }
+        })
 
-        message_data = {
-            'id': str(message.id), 'sender_id': user_id, 'receiver_id': receiver_id,
-            'content': content, 'type': msg_type, 'created_at': message.created_at.isoformat()
-        }
+    message_data = {
+        'id': str(message.id), 
+        'sender_id': sender_id, 
+        'receiver_id': receiver_id, 
+        'content': content, 
+        'type': msg_type, 
+        'created_at': message.created_at.isoformat(),
+        'status': "delivered",  # Delivered to recipient socket
+        'conversation_id': str(conversation.id)
+    }
+    
+    # Include temp_id in broadcast if provided for optimistic UI matching
+    if temp_id:
+        message_data['temp_id'] = temp_id
 
-        # 5. Create notification for offline receiver (respects notifications_messages setting)
-        if receiver_id not in user_sockets:
-            try:
-                from backend.models.notification import Notification
-                receiver_doc = await TBUser.get(receiver_id)
-                notify_ok = True
-                if receiver_doc and receiver_doc.settings and receiver_doc.settings.notifications:
-                    notify_ok = receiver_doc.settings.notifications.messages
-                if notify_ok:
-                    sender = await TBUser.get(user_id)
-                    sender_name = sender.name if sender else "Someone"
-                    notif = Notification(
-                        user_id=receiver_id,
-                        title="New message",
-                        body=f"{sender_name} sent you a message",
-                        type="message_received",
-                        meta={"sender_id": user_id, "message_id": str(message.id)}
-                    )
-                    await notif.insert()
-            except Exception as notif_err:
-                logger.warning(f"Failed to create offline notification: {notif_err}")
-
-        # 6. Broadcast
-        await redis_pubsub.publish_new_message(receiver_id, message_data)
-        room_id = f"chat_{min(user_id, receiver_id)}_{max(user_id, receiver_id)}"
-        await sio.emit('new_message', message_data, room=room_id)
+    try:
+        # 5. Broadcast via Pub/Sub and local emit with delivered status
+        delivered_data = {**message_data, 'status': 'delivered'}
+        if redis_pubsub.is_connected:
+            await redis_pubsub.publish_new_message(receiver_id, delivered_data)
         
-        return {'success': True, 'message_id': str(message.id)}
-    except Exception as e:
-        logger.error(f"Send message failed: {e}")
-        return {'error': 'Internal server error'}
+        # Local emit
+        await sio.emit('message:new', delivered_data, room=f"user:{receiver_id}")
+        await sio.emit('message:new', message_data, room=f"user:{sender_id}")  # sender sees 'delivered'
+    except Exception as broadcast_err:
+        logger.warning(f"Broadcast failed: {broadcast_err}")
+        pass  # Non-fatal
+    ack_payload = {
+        'success': True, 
+        'message_id': str(message.id), 
+        'status': 'delivered',
+        'message': message_data, 
+        'conversation_id': str(conversation.id),
+        'error': None
+    }
 
-@sio.event
+    
+    # Include temp_id in ack for immediate frontend replacement
+    if temp_id:
+        ack_payload['temp_id'] = temp_id
+        
+    # End-to-end example logged by frontend
+    return ack_payload
+
+@sio.on('message:typing')
 async def typing(sid, data):
     user_id = connected_users.get(sid, {}).get('user_id')
     receiver_id = data.get('receiver_id')
     if user_id and receiver_id:
         await redis_pubsub.publish_typing(receiver_id, user_id, is_typing=True)
-        await sio.emit('user_typing', {'user_id': user_id}, room=f"user_{receiver_id}")
+        await sio.emit('message:typing', {'user_id': user_id, 'receiver_id': receiver_id}, room=f"user:{receiver_id}")
 
-@sio.event
+@sio.on('message:stop-typing')
 async def stop_typing(sid, data):
     user_id = connected_users.get(sid, {}).get('user_id')
     receiver_id = data.get('receiver_id')
     if user_id and receiver_id:
         await redis_pubsub.publish_typing(receiver_id, user_id, is_typing=False)
-        await sio.emit('user_stopped_typing', {'user_id': user_id}, room=f"user_{receiver_id}")
+        await sio.emit('message:stop-typing', {'user_id': user_id, 'receiver_id': receiver_id}, room=f"user:{receiver_id}")
+
+@sio.on('message:read')
+async def message_read(sid, data):
+    """Mark messages as read via Socket → emit 'seen' status"""
+    user_id = connected_users.get(sid, {}).get('user_id')
+    sender_id = data.get('sender_id') # sender whose messages are read
+    if user_id and sender_id:
+        # 1. Update DB
+        from backend.services.tb_message_service import MessageService
+        result = await MessageService.mark_messages_read(user_id, sender_id)
+        
+        # 2. Notify sender: message seen/read by recipient
+        read_data = {
+            'reader_id': user_id,
+            'sender_id': sender_id,
+            'count': result['marked_read'],
+            'read_at': datetime.now(timezone.utc).isoformat(),
+            'status': 'seen'  # Frontend expects this for pink ticks
+        }
+        try:
+            if redis_pubsub.is_connected:
+                await redis_pubsub.publish_read_receipt(sender_id, user_id, result['marked_read'])
+            
+            # Emit to sender (status update their outgoing messages)
+            await sio.emit('message:read', read_data, room=f"user:{sender_id}")
+            # Emit to reader (sync status)
+            await sio.emit('message:read', read_data, room=f"user:{user_id}")
+        except Exception as emit_err:
+            logger.warning(f"Read receipt emit failed: {emit_err}")
+        
+        logger.info(f"[{user_id}] marked {result['marked_read']} msgs from {sender_id} as read")
+        return {'success': True, 'count': result['marked_read']}
+
 
 # ============================================
 # CALLING EVENTS (Aligned with socket.js)
 # ============================================
 
-@sio.event
-async def call_user(sid, data):
-    """frontend: socket.emit('call_user', { receiver_id, call_type, offer })"""
+@sio.on("call:initiate")
+async def initiate_call_socket(sid, data):
+    """Handle frontend socket.emit('call:initiate', { targetUserId, type })"""
+    print("🔥 CALL INITIATE RECEIVED:", data)
+    
     user_id = connected_users.get(sid, {}).get('user_id')
-    if not user_id: return {'error': 'Unauthorized'}
-
-    receiver_id = data.get('receiver_id')
-    call_type = data.get('call_type', 'voice')
-    offer = data.get('offer') # SDP Offer
-
+    if not user_id:
+        return {'error': 'Unauthorized'}
+    
+    target_user_id = data.get('targetUserId') or data.get('receiver_id') or data.get('user_id')
+    raw_call_type = data.get('type', 'audio')
+    
+    # Normalize call_type: frontend sends 'audio', backend expects 'voice'
+    call_type = 'voice' if raw_call_type in ['audio', 'voice'] else 'video'
+    
+    if not target_user_id:
+        print("[ERROR] No target_user_id found in data:", data)
+        return {'error': 'Missing target user ID (targetUserId)'}
+    
     try:
+        from backend.services.calling_service_v2 import get_calling_service_v2
         service = await get_calling_service_v2()
         call_session = await service.initiate_call(
-            caller_id=user_id, receiver_id=receiver_id, 
-            call_type=call_type, sdp_offer=offer
+            caller_id=user_id,
+            receiver_id=target_user_id,
+            call_type=call_type
         )
         
-        # Notify receiver
-        call_data = {
-            "type": "call_incoming", "call_id": call_session.id,
-            "caller_id": user_id, "call_type": call_type, "offer": offer
-        }
-        await redis_pubsub.publish("user", receiver_id, "incoming_call", call_data)
-        await sio.emit('incoming_call', call_data, room=f"user_{receiver_id}")
+        print(f"✅ Call session created: {call_session.id}")
+        
+        # Notify caller (ack)
+        await sio.emit('call:created', {
+            'success': True,
+            'call_id': call_session.id,
+            'status': call_session.status.value
+        }, room=sid)
+        
+        # Notify receiver about incoming call
+        caller = await TBUser.get(user_id)
+        await sio.emit('incoming_call', {
+            'caller_id': user_id,
+            'call_id': call_session.id,
+            'call_type': call_type,
+            'caller_name': caller.name if caller else 'Someone'
+        }, room=f"user:{target_user_id}")
         
         return {'success': True, 'call_id': call_session.id}
+        
     except Exception as e:
-        logger.error(f"Call initiation failed: {e}")
+        print(f"❌ CALL INITIATE ERROR: {e}")
+        logger.error(f"Call initiate failed: {e}")
         return {'error': str(e)}
 
-@sio.event
+@sio.on("call_user")
+async def call_user(sid, data):
+    print("🔥 CALL EVENT RECEIVED:", data)
+    
+    try:
+        target_user = data.get("user_id")
+        
+        if not target_user:
+            raise Exception("No target user")
+        
+        # Send incoming call event
+        await sio.emit(
+            "incoming_call",
+            {
+                "from": sid,
+                "type": data.get("call_type", "audio"),
+                "offer": data.get("offer")
+            },
+            room=f"user:{target_user}"
+        )
+        
+        print("✅ Call event sent to:", target_user)
+        
+    except Exception as e:
+        print("❌ CALL ERROR:", str(e))
+        
+        await sio.emit(
+            "call_failed",
+            {"error": str(e)},
+            room=sid
+        )
+
+@sio.on("call:accept")
 async def answer_call(sid, data):
-    """frontend: socket.emit('answer_call', { call_id, answer })"""
     user_id = connected_users.get(sid, {}).get('user_id')
     call_id = data.get('call_id')
-    answer = data.get('answer') # SDP Answer
-
     try:
         service = await get_calling_service_v2()
-        call_session = await service.accept_call(call_id=call_id, receiver_id=user_id, sdp_answer=answer)
-        
-        # Notify caller
-        ans_data = {"call_id": call_id, "receiver_id": user_id, "answer": answer}
-        await redis_pubsub.publish("user", call_session.caller_id, "call_answered", ans_data)
-        await sio.emit('call_answered', ans_data, room=f"user_{call_session.caller_id}")
-        
+        call_session = await service.accept_call(call_id=call_id, receiver_id=user_id)
+        ans_data = {"call_id": call_id, "receiver_id": user_id, "sender_id": call_session.caller_id}
+        if redis_pubsub.is_connected:
+            await redis_pubsub.publish("calls", "", "call:accept", ans_data)
+        await sio.emit('call:accept', ans_data, room=f"user:{call_session.caller_id}")
         return {'success': True}
     except Exception as e:
         return {'error': str(e)}
 
-@sio.event
+@sio.on("call:reject")
 async def reject_call(sid, data):
-    """frontend: socket.emit('reject_call', { call_id, reason })"""
     user_id = connected_users.get(sid, {}).get('user_id')
     call_id = data.get('call_id')
     reason = data.get('reason', 'rejected')
-
     try:
         service = await get_calling_service_v2()
         call_session = await service.reject_call(call_id=call_id, receiver_id=user_id, reason=reason)
-        
-        rej_data = {"call_id": call_id, "reason": reason}
-        await redis_pubsub.publish("user", call_session.caller_id, "call_rejected", rej_data)
-        await sio.emit('call_rejected', rej_data, room=f"user_{call_session.caller_id}")
-        
+        rej_data = {"call_id": call_id, "reason": reason, "sender_id": call_session.caller_id}
+        if redis_pubsub.is_connected:
+            await redis_pubsub.publish("calls", "", "call:reject", rej_data)
+        await sio.emit('call:reject', rej_data, room=f"user:{call_session.caller_id}")
         return {'success': True}
     except Exception as e:
         return {'error': str(e)}
 
-@sio.event
+@sio.on("call:end")
 async def end_call(sid, data):
-    """frontend: socket.emit('end_call', { call_id })"""
     user_id = connected_users.get(sid, {}).get('user_id')
     call_id = data.get('call_id')
-
     try:
         service = await get_calling_service_v2()
         call_session = await service.end_call(call_id=call_id, user_id=user_id)
-        
-        other_id = call_session.receiver_id if user_id == call_session.caller_id else call_session.caller_id
-        end_data = {"call_id": call_id, "ended_by": user_id}
-        await redis_pubsub.publish("user", other_id, "call_ended", end_data)
-        await sio.emit('call_ended', end_data, room=f"user_{other_id}")
-
-        # Emit updated balance to caller after billing deduction
-        try:
-            new_balance = await CreditService.get_balance(user_id)
-            await sio.emit('balance_updated', {'coins': new_balance}, room=f"user_{user_id}")
-            logger.info(
-                f"Call ended: call_id={call_id}, ended_by={user_id}, "
-                f"duration={getattr(call_session, 'duration_seconds', 'N/A')}s, "
-                f"caller_balance_after={new_balance}"
-            )
-        except Exception:
-            pass
-
+        other_id = call_session.receiver_id if user_id == str(call_session.caller_id) else call_session.caller_id
+        end_data = {"call_id": call_id, "ended_by": user_id, "receiver_id": str(other_id)}
+        if redis_pubsub.is_connected:
+            await redis_pubsub.publish("calls", "", "call:end", end_data)
+        await sio.emit('call:end', end_data, room=f"user:{other_id}")
         return {'success': True}
     except Exception as e:
-        logger.warning(f"end_call error: call_id={call_id}, user={user_id}, error={e}")
         return {'error': str(e)}
 
-@sio.event
-async def ice_candidate(sid, data):
-    """frontend: socket.emit('ice_candidate', { call_id, candidate })"""
+@sio.on("webrtc:offer")
+async def webrtc_offer(sid, data):
     user_id = connected_users.get(sid, {}).get('user_id')
     call_id = data.get('call_id')
-    candidate = data.get('candidate')
-
+    offer = data.get('offer')
     try:
         call_session = await CallSessionV2.get(call_id)
         if call_session:
-            other_id = call_session.receiver_id if user_id == call_session.caller_id else call_session.caller_id
-            ice_data = {"call_id": call_id, "candidate": candidate, "from_user_id": user_id}
-            await redis_pubsub.publish("user", other_id, "ice_candidate", ice_data)
-            await sio.emit('ice_candidate', ice_data, room=f"user_{other_id}")
-    except Exception:
-        pass
+            other_id = call_session.receiver_id if user_id == str(call_session.caller_id) else call_session.caller_id
+            offer_data = {"call_id": call_id, "offer": offer, "from_user_id": user_id, "receiver_id": str(other_id)}
+            if redis_pubsub.is_connected:
+                await redis_pubsub.publish("calls", "", "webrtc:offer", offer_data)
+            await sio.emit('webrtc:offer', offer_data, room=f"user:{other_id}")
+            return {'success': True}
+    except Exception as e:
+        return {'error': str(e)}
+
+@sio.on("webrtc:answer")
+async def webrtc_answer(sid, data):
+    user_id = connected_users.get(sid, {}).get('user_id')
+    call_id = data.get('call_id')
+    answer = data.get('answer')
+    try:
+        call_session = await CallSessionV2.get(call_id)
+        if call_session:
+            other_id = call_session.receiver_id if user_id == str(call_session.caller_id) else call_session.caller_id
+            ans_data = {"call_id": call_id, "answer": answer, "from_user_id": user_id, "receiver_id": str(other_id)}
+            if redis_pubsub.is_connected:
+                await redis_pubsub.publish("calls", "", "webrtc:answer", ans_data)
+            await sio.emit('webrtc:answer', ans_data, room=f"user:{other_id}")
+            return {'success': True}
+    except Exception as e:
+        return {'error': str(e)}
+
+@sio.on("webrtc:ice-candidate")
+async def ice_candidate(sid, data):
+    user_id = connected_users.get(sid, {}).get('user_id')
+    call_id = data.get('call_id')
+    candidate = data.get('candidate')
+    try:
+        call_session = await CallSessionV2.get(call_id)
+        if call_session:
+            other_id = call_session.receiver_id if user_id == str(call_session.caller_id) else call_session.caller_id
+            ice_data = {"call_id": call_id, "candidate": candidate, "from_user_id": user_id, "receiver_id": str(other_id)}
+            if redis_pubsub.is_connected:
+                await redis_pubsub.publish("calls", "", "webrtc:ice-candidate", ice_data)
+            await sio.emit('webrtc:ice-candidate', ice_data, room=f"user:{other_id}")
+            return {'success': True}
+    except Exception as e:
+        return {'error': str(e)}
+
+@sio.on("call:media-state")
+async def media_state(sid, data):
+    """
+    Handle camera/mic toggle signaling.
+    payload: { call_id, type: "video"|"audio", enabled: bool }
+    """
+    user_id = connected_users.get(sid, {}).get('user_id')
+    call_id = data.get('call_id')
+    media_type = data.get('type')
+    enabled = data.get('enabled')
+    
+    try:
+        call_session = await CallSessionV2.get(call_id)
+        if call_session:
+            other_id = call_session.receiver_id if user_id == str(call_session.caller_id) else call_session.caller_id
+            state_data = {
+                "call_id": call_id, 
+                "user_id": user_id, 
+                "type": media_type, 
+                "enabled": enabled
+            }
+            if redis_pubsub.is_connected:
+                await redis_pubsub.publish("calls", "", "call:media-state", state_data)
+            await sio.emit('call:media-state', state_data, room=f"user:{other_id}")
+            return {'success': True}
+    except Exception as e:
+        return {'error': str(e)}
 
 # ============================================
 # MATCH EVENTS
@@ -466,9 +683,9 @@ async def like_user(sid, data):
             }
 
             await sio.emit('new_match', {**match_data, "matched_with": liked_user_id, "name": liked_name},
-                           room=f"user_{user_id}")
+                           room=f"user:{user_id}")
             await sio.emit('new_match', {**match_data, "matched_with": user_id, "name": liker_name},
-                           room=f"user_{liked_user_id}")
+                           room=f"user:{liked_user_id}")
 
             for uid, partner_name in [(user_id, liked_name), (liked_user_id, liker_name)]:
                 try:
@@ -507,9 +724,9 @@ async def emit_match_notification(user_id_a: str, user_id_b: str):
         name_b = user_b.name if user_b else "Someone"
 
         await sio.emit('new_match', {"matched_with": user_id_b, "name": name_b},
-                       room=f"user_{user_id_a}")
+                       room=f"user:{user_id_a}")
         await sio.emit('new_match', {"matched_with": user_id_a, "name": name_a},
-                       room=f"user_{user_id_b}")
+                       room=f"user:{user_id_b}")
 
         for uid, partner_name in [(user_id_a, name_b), (user_id_b, name_a)]:
             notif = Notification(
@@ -533,7 +750,7 @@ async def emit_message_to_user(receiver_id: str, message_data: dict):
     try:
         if redis_pubsub.is_connected():
             await redis_pubsub.publish_new_message(receiver_id, message_data)
-        await sio.emit('new_message', message_data, room=f"user_{receiver_id}")
+        await sio.emit('message:new', message_data, room=f"user:{receiver_id}")
     except Exception as e:
         logger.error(f"Failed to emit message to {receiver_id}: {e}")
 
@@ -544,7 +761,7 @@ async def emit_notification_to_user(user_id: str, event: str, data: dict):
     """
     try:
         if not user_id: return
-        await sio.emit(event, data, room=f"user_{user_id}")
+        await sio.emit(event, data, room=f"user:{user_id}")
         logger.debug(f"Notification '{event}' emitted to user {user_id}")
     except Exception as e:
         logger.error(f"Failed to emit notification '{event}' to {user_id}: {e}")
@@ -558,4 +775,6 @@ def create_socket_app(app):
 
 async def init_websocket_pubsub():
     await redis_pubsub.connect()
-    await redis_pubsub.start_subscriber(handle_pubsub_message)
+    if redis_pubsub.is_connected:
+        await redis_pubsub.subscribe_app_channels(handle_pubsub_message)
+        await redis_pubsub.start_subscriber(handle_pubsub_message)

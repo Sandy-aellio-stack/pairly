@@ -63,9 +63,24 @@ const ProfileViewerPage = () => {
     navigate(-1);
   };
 
-  const handleMessage = () => {
+  const handleMessage = async () => {
     if ((currentUser?.coins || 0) > 0) {
-      navigate(`/dashboard/chat/${userId}`);
+      try {
+        console.log('Creating conversation from profile for user:', userId);
+        const response = await api.post('/api/users/create-or-get-conversation', { user_id: userId });
+        console.log('Conversation response:', response.data);
+        
+        if (response.data?.conversation_id) {
+          const userName = encodeURIComponent(profile?.name || 'Unknown User');
+          navigate(`/dashboard/chat/${response.data.conversation_id}?user=${userName}&userId=${userId}`);
+        } else {
+          console.error('Failed to create conversation:', response);
+          toast.error('Failed to start conversation');
+        }
+      } catch (error) {
+        console.error('Conversation creation error:', error);
+        toast.error('Failed to start conversation');
+      }
     } else {
       toast.error('You need coins to send messages!');
       navigate('/dashboard/credits');

@@ -7,6 +7,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '@/store/authStore';
 import { userAPI } from '@/services/api';
+import { toast } from 'sonner';
 
 const PLACEHOLDER_AVATAR = 'https://ui-avatars.com/api/?background=E9D5FF&color=0F172A&size=128&name=';
 
@@ -153,6 +154,27 @@ const HomePage = () => {
     setShowDropdown(false);
     setSearchQuery('');
     navigate(`/dashboard/profile/${id}`);
+  };
+
+  const handleMessageClick = async (e, person) => {
+    e.stopPropagation();
+    if ((user?.coins || 0) <= 0) {
+      toast.error('You need coins to send messages!');
+      navigate('/dashboard/credits');
+      return;
+    }
+    try {
+      const response = await userAPI.createOrGetConversation(person.id);
+      const conv = response.data;
+      if (conv && conv.conversation_id) {
+        const encodedName = encodeURIComponent(person.name || 'User');
+        navigate(`/dashboard/chat/${conv.conversation_id}?user=${encodedName}&userId=${person.id}`);
+      } else {
+        toast.error('Failed to start conversation');
+      }
+    } catch (error) {
+      toast.error('Failed to start conversation');
+    }
   };
 
   const coinsBalance = user?.coins ?? 0;
@@ -374,7 +396,7 @@ const HomePage = () => {
                   </p>
                   <div className="mt-3 flex items-center gap-2">
                     <button
-                      onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/chat?user=${person.id}`); }}
+                      onClick={(e) => handleMessageClick(e, person)}
                       className="flex-1 flex items-center justify-center gap-1 py-1.5 bg-[#0F172A] text-white text-xs rounded-lg hover:bg-[#1E293B] transition-colors"
                     >
                       <MessageCircle size={12} />

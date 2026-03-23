@@ -164,8 +164,44 @@ async def list_conversations(
     service: MessagingServiceV2 = Depends(get_messaging_service_v2)
 ):
     """List all conversations for current user"""
-    conversations = await service.list_conversations(str(user.id))
-    return {"conversations": conversations}
+    import time
+    start_time = time.time()
+    user_id = str(user.id)
+    
+    print(f"[CONV API] Route entry - user_id: {user_id}")
+    print(f"[CONV API] Auth resolved - user: {user.email if hasattr(user, 'email') else user_id}")
+    
+    try:
+        print(f"[CONV API] Before service call - elapsed: {(time.time() - start_time)*1000:.2f}ms")
+        conversations = await service.list_conversations(user_id)
+        print(f"[CONV API] Service returned {len(conversations)} conversations - elapsed: {(time.time() - start_time)*1000:.2f}ms")
+        
+        # Enrich with user info
+        from backend.models.user import User
+        enriched_conversations = []
+        for conv in conversations:
+            partner_id = conv.get('partner_id')
+            if partner_id:
+                partner = await User.get(partner_id)
+                conv['user'] = {
+                    'id': partner_id,
+                    'name': partner.name if partner else 'Unknown',
+                    'profile_picture': partner.profile_picture if partner else None,
+                    'is_online': partner.is_online if partner else False
+                }
+                conv['conversation_id'] = partner_id  # Use partner_id as conversation_id for direct chats
+            enriched_conversations.append(conv)
+        
+        total_time = (time.time() - start_time) * 1000
+        print(f"[CONV API] Response ready - total time: {total_time:.2f}ms")
+        return {"conversations": enriched_conversations}
+        
+    except Exception as e:
+        total_time = (time.time() - start_time) * 1000
+        print(f"[CONV API] ERROR after {total_time:.2f}ms: {e}")
+        import traceback
+        print(f"[CONV API] Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Failed to load conversations: {str(e)}")
 
 @router.post("/mark-delivered/{message_id}")
 async def mark_delivered(

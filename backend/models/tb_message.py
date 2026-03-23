@@ -6,10 +6,14 @@ from typing import Optional
 
 class TBMessage(Document):
     """One-to-one private message"""
+    conversation_id: Indexed(PydanticObjectId)  # Link to conversation
     sender_id: Indexed(PydanticObjectId)
     receiver_id: Indexed(PydanticObjectId)
-    content: str = Field(min_length=1, max_length=2000)
+    content: Optional[str] = None  # Text content
+    media_url: Optional[str] = None # External URL for S3/R2/Supabase
+    message_type: str = "text"  # "text" | "image"
     is_read: bool = False
+    status: str = "sent" # sent | delivered | read
     read_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -17,6 +21,8 @@ class TBMessage(Document):
         name = "tb_messages"
         indexes = [
             # Conversation lookup (both directions)
+            [("conversation_id", 1), ("created_at", -1)],
+            # Legacy sender/receiver lookup
             [("sender_id", 1), ("receiver_id", 1), ("created_at", -1)],
             # Unread message queries
             [("receiver_id", 1), ("is_read", 1)],
@@ -38,8 +44,8 @@ class TBConversation(Document):
     class Settings:
         name = "tb_conversations"
         indexes = [
-            # Participant lookup
-            [("participants", 1)],
+            # Participant lookup and sort
+            [("participants", 1), ("last_message_at", -1)],
             # Recent conversations
             [("last_message_at", -1)],
         ]

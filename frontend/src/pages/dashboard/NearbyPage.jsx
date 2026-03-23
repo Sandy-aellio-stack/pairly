@@ -3,7 +3,7 @@ import { Search, Filter, MapPin, Heart, X, MessageCircle, Users, Loader2, Refres
 import { useNavigate } from 'react-router-dom';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { locationAPI, userAPI } from '@/services/api';
+import { locationAPI, userAPI, messagesAPI } from '@/services/api';
 import useAuthStore from '@/store/authStore';
 import { toast } from 'sonner';
 
@@ -224,9 +224,89 @@ const NearbyPage = () => {
     toast.success('Refreshed!');
   };
 
-  const handleMessage = (userItem) => {
+  const handleMessage = async (userItem) => {
     if ((user?.coins || 0) > 0) {
-      navigate(`/dashboard/chat/${userItem.id}`);
+      try {
+        console.log("=== CONVERSATION CREATION DEBUG ===");
+        console.log("Starting conversation with user:", userItem.id);
+        console.log("Current user authenticated:", !!user);
+        console.log("User coins:", user?.coins);
+        console.log("API Base URL:", import.meta.env.VITE_API_URL || 'Using proxy');
+        console.log("Frontend URL:", window.location.origin);
+        
+        // Test API connectivity first
+        try {
+          console.log("Testing API connectivity...");
+          const testResponse = await messagesAPI.testEndpoint();
+          console.log("API test successful:", testResponse.data);
+          console.log("API test status:", testResponse.status);
+        } catch (testError) {
+          console.error("API test failed:", testError);
+          console.error("Test error details:", {
+            message: testError.message,
+            code: testError.code,
+            response: testError.response,
+            config: testError.config
+          });
+          
+          if (testError.code === 'ERR_NETWORK') {
+            toast.error('Backend server not running - Please start backend on localhost:8000');
+          } else if (testError.response?.status === 404) {
+            toast.error('API endpoint not found - Check backend routes');
+          } else {
+            toast.error('API connectivity issue - Please check console for details');
+          }
+          return;
+        }
+        
+        // Use central conversation API
+        console.log("Creating conversation...");
+        const response = await messagesAPI.createOrGetConversation(userItem.id);
+        console.log("API response status:", response.status);
+        console.log("API response data:", response.data);
+        
+        const conv = response.data;
+        
+        console.log("Conversation creation response:", conv);
+        
+        if (conv && conv.conversation_id && typeof conv.conversation_id === 'string') {
+          const userName = encodeURIComponent(userItem.name || 'Unknown User');
+          const chatUrl = `/dashboard/chat/${conv.conversation_id}?user=${userName}&userId=${userItem.id}`;
+          console.log("Navigating to chat:", chatUrl);
+          console.log("Conversation ID:", conv.conversation_id);
+          console.log("User ID:", userItem.id);
+          console.log("User ID type:", typeof userItem.id);
+          navigate(chatUrl);
+        } else {
+          console.error("No valid conversation_id in response:", conv);
+          console.error("Full response:", response);
+          console.error("Conversation ID value:", conv?.conversation_id);
+          console.error("Conversation ID type:", typeof conv?.conversation_id);
+          toast.error('Failed to start conversation - invalid response');
+        }
+      } catch (error) {
+        console.error('Conversation creation error:', error);
+        console.error('Error details:', {
+          message: error.message,
+          code: error.code,
+          response: error.response,
+          status: error.response?.status,
+          data: error.response?.data,
+          config: error.config
+        });
+        
+        if (error.code === 'ERR_NETWORK') {
+          toast.error('Backend server not running - Please start backend on localhost:8000');
+        } else if (error.response?.status === 405) {
+          toast.error('Method Not Allowed - Please contact support');
+        } else if (error.response?.status === 401) {
+          toast.error('Authentication required - Please login again');
+        } else if (error.response?.status === 404) {
+          toast.error('API endpoint not found - Please contact support');
+        } else {
+          toast.error(error.response?.data?.detail || 'Failed to start conversation');
+        }
+      }
     } else {
       toast.error('You need coins to send messages!');
       navigate('/dashboard/credits');

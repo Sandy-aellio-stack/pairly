@@ -1,0 +1,38 @@
+python-dotenv could not parse statement starting at line 1
+python-dotenv could not parse statement starting at line 3
+python-dotenv could not parse statement starting at line 6
+python-dotenv could not parse statement starting at line 9
+python-dotenv could not parse statement starting at line 13
+python-dotenv could not parse statement starting at line 16
+python-dotenv could not parse statement starting at line 21
+python-dotenv could not parse statement starting at line 28
+python-dotenv could not parse statement starting at line 32
+\u26a0\ufe0f Email service is DISABLED. Using mock mode.
+\u26a0\ufe0f Set EMAIL_ENABLED=true to enable real emails.
+python-dotenv could not parse statement starting at line 1
+python-dotenv could not parse statement starting at line 3
+python-dotenv could not parse statement starting at line 6
+python-dotenv could not parse statement starting at line 9
+python-dotenv could not parse statement starting at line 13
+python-dotenv could not parse statement starting at line 16
+python-dotenv could not parse statement starting at line 21
+python-dotenv could not parse statement starting at line 28
+python-dotenv could not parse statement starting at line 32
+Traceback (most recent call last):
+  File "C:\Git\pairly\test_send_500.py", line 35, in run
+    result = await MessageService.send_message(str(sender.id), req)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Git\pairly\backend\services\tb_message_service.py", line 49, in send_message
+    await CreditService.deduct_credits(
+    ...<4 lines>...
+    )
+  File "C:\Git\pairly\backend\services\tb_credit_service.py", line 55, in deduct_credits
+    result = await TBUser.find_one_and_update(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Santhosh\AppData\Local\Programs\Python\Python313\Lib\site-packages\pydantic\_internal\_model_construction.py", line 289, in __getattr__
+    raise AttributeError(item)
+AttributeError: find_one_and_update
+Initializing DB...
+Sender: 696a760053e86eb1d455fc8a, Receiver: 696b99484db9a4574fb23df9
+Sending message...
+CAUGHT EXCEPTION!

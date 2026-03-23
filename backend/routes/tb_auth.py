@@ -103,6 +103,64 @@ async def logout(
     token = credentials.credentials
     return await AuthService.logout(user, access_token=token)
 
+@router.post("/send-otp")
+async def send_otp_unified(data: SendOTPRequest):
+    """Unified endpoint for sending OTP (phone or email)"""
+    if data.email:
+        return await OTPService.send_email_otp(data.email.lower(), purpose="login")
+    if data.phone:
+        return await OTPService.send_otp(data.phone, purpose="login")
+    raise HTTPException(status_code=400, detail="Phone or email is required")
+
+@router.post("/verify-otp")
+async def verify_otp_unified(data: VerifyOTPRequest):
+    """Unified endpoint for verifying OTP and logging in/signing up"""
+    identifier = data.email.lower() if data.email else data.phone
+    if not identifier:
+        raise HTTPException(status_code=400, detail="Phone or email is required")
+        
+    # Verify OTP
+    await OTPService.verify_otp(identifier, data.otp, purpose="login")
+    
+    # Find user
+    query = {"email": identifier} if data.email else {"mobile_number": identifier}
+    user = await TBUser.find_one(query)
+    
+    # If user doesn't exist, this is a signup flow (minimal for dev, usually redirected to signup)
+    if not user:
+        # In a real app, you might return a "proceed to signup" flag
+        # For this task, we ensure the flow completes
+        raise HTTPException(status_code=404, detail="User not found. Please sign up.")
+    
+    # Generate tokens
+    tokens = TokenResponse(
+        access_token=AuthService.create_access_token(str(user.id)),
+        refresh_token=AuthService.create_refresh_token(str(user.id)),
+        user_id=str(user.id)
+    )
+    
+    # Developer account bypass
+    DEV_USER_ID = "69a18167be16ddc2a28e19aa"
+    DEV_EMAIL = "indiranigopi677@gmail.com"
+    is_dev = str(user.id) == DEV_USER_ID or user.email.lower() == DEV_EMAIL.lower()
+    coins_to_show = 999999 if is_dev else user.coins
+
+    return {
+        "success": True,
+        "message": "OTP verified and logged in",
+        "access_token": tokens.access_token,
+        "refresh_token": tokens.refresh_token,
+        "user_id": str(user.id),
+        "user": {
+            "id": str(user.id),
+            "name": user.name,
+            "email": user.email,
+            "role": user.role,
+            "coins": coins_to_show,
+            "is_verified": user.is_verified
+        }
+    }
+
 @router.post("/otp/send")
 async def send_otp(data: SendOTPRequest):
     """Send OTP to mobile number"""

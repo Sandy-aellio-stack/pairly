@@ -9,6 +9,7 @@ const IncomingCallModal = () => {
   const [incomingCall, setIncomingCall] = useState(null);
 
   const handleIncomingCall = useCallback((data) => {
+    console.log("Incoming call:", data);
     setIncomingCall(data);
     toast.info(`Incoming ${data.call_type} call...`);
   }, []);

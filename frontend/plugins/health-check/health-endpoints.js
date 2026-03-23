@@ -75,7 +75,7 @@ function setupHealthEndpoints(devServer, healthPlugin) {
           used: formatBytes(os.totalmem() - os.freemem()),
         },
       },
-      environment: process.env.NODE_ENV || 'development',
+      environment: import.meta.env.MODE || 'development',
     });
   });
 

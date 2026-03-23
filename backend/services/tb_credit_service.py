@@ -51,8 +51,10 @@ class CreditService:
         from backend.utils.objectid_utils import to_object_id
         user_oid = to_object_id(user_id)
 
-        # Atomic find-and-update
-        result = await TBUser.find_one_and_update(
+        from pymongo import ReturnDocument
+
+        # Atomic find-and-update using native PyMongo collection via Beanie
+        result = await TBUser.get_motor_collection().find_one_and_update(
             {
                 "_id": user_oid,
                 "coins": {"$gte": amount}
@@ -62,7 +64,7 @@ class CreditService:
                 "$set": {"updated_at": datetime.now(timezone.utc)}
             },
             session=session,
-            return_document=True
+            return_document=ReturnDocument.AFTER
         )
 
         if not result:
@@ -75,7 +77,7 @@ class CreditService:
                     detail=f"Insufficient coins. Balance: {user.coins}, Required: {amount}"
                 )
 
-        new_balance = result.coins
+        new_balance = result.get("coins", 0) if isinstance(result, dict) else result.coins
 
         # Log transaction
         transaction = TBCreditTransaction(
@@ -110,15 +112,17 @@ class CreditService:
         from backend.utils.objectid_utils import to_object_id
         user_oid = to_object_id(user_id)
 
+        from pymongo import ReturnDocument
+
         # Atomic update
-        result = await TBUser.find_one_and_update(
+        result = await TBUser.get_motor_collection().find_one_and_update(
             {"_id": user_oid},
             {
                 "$inc": {"coins": amount},
                 "$set": {"updated_at": datetime.now(timezone.utc)}
             },
             session=session,
-            return_document=True
+            return_document=ReturnDocument.AFTER
         )
 
         if not result:
@@ -129,7 +133,7 @@ class CreditService:
             user_id=user_id,
             amount=amount,
             reason=reason,
-            balance_after=result.coins,
+            balance_after=result.get("coins", 0) if isinstance(result, dict) else result.coins,
             reference_id=reference_id,
             description=description
         )
@@ -137,7 +141,7 @@ class CreditService:
 
         logger.info(
             f"Coins added: user={user_id}, amount={amount}, reason={reason.value if hasattr(reason,'value') else reason}, "
-            f"balance_after={result.coins}, ref={reference_id}"
+            f"balance_after={result.get('coins', 0) if isinstance(result, dict) else result.coins}, ref={reference_id}"
         )
         return transaction
 

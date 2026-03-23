@@ -13,21 +13,22 @@ const useAdminStore = create((set, get) => ({
 
   initialize: async () => {
     const token = localStorage.getItem('tb_admin_token');
-    if (token) {
-      try {
+    try {
+      if (token) {
         const response = await adminAuthAPI.getMe();
         set({ 
           admin: response.data, 
           isAuthenticated: true, 
           isLoading: false 
         });
-      } catch (error) {
-        localStorage.removeItem('tb_admin_token');
-        localStorage.removeItem('tb_admin_user');
-        set({ admin: null, isAuthenticated: false, isLoading: false });
+      } else {
+        set({ isLoading: false });
       }
-    } else {
-      set({ isLoading: false });
+    } catch (error) {
+      console.error('[AdminStore] Initialize error:', error);
+      localStorage.removeItem('tb_admin_token');
+      localStorage.removeItem('tb_admin_user');
+      set({ admin: null, isAuthenticated: false, isLoading: false });
     }
   },
 

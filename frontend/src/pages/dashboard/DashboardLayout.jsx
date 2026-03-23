@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { Home, MessageCircle, MapPin, User, Coins, LogOut, Heart, Bell, Search, Settings } from 'lucide-react';
+import { Home, MessageCircle, MapPin, User, Coins, LogOut, Heart, Bell, Search, Settings, Phone } from 'lucide-react';
 import { locationAPI } from '@/services/api';
 import useAuthStore from '@/store/authStore';
 import IncomingCallModal from '@/components/IncomingCallModal';
@@ -89,6 +89,7 @@ const DashboardLayout = () => {
     { path: '/dashboard', icon: Home, label: 'Home', end: true },
     { path: '/dashboard/nearby', icon: MapPin, label: 'Nearby' },
     { path: '/dashboard/chat', icon: MessageCircle, label: 'Messages' },
+    { path: '/dashboard/call-history', icon: Phone, label: 'Call History' },
     { path: '/dashboard/credits', icon: Coins, label: 'Coins' },
     { path: '/dashboard/profile', icon: User, label: 'Profile' },
     { path: '/dashboard/settings', icon: Settings, label: 'Settings' },

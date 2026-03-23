@@ -96,10 +96,17 @@ async def get_dashboard_stats(current_user: TBUser = Depends(get_current_user)):
     except Exception:
         messages_sent = 0
 
+    # Developer account with unlimited coins
+    DEV_USER_ID = "69a18167be16ddc2a28e19aa"
+    DEV_EMAIL = "indiranigopi677@gmail.com"
+    is_dev = str(current_user.id) == DEV_USER_ID or (hasattr(current_user, 'email') and current_user.email.lower() == DEV_EMAIL.lower())
+    coins_to_show = 999999 if is_dev else current_user.coins
+
     return {
         "messages_sent": messages_sent,
         "matches": 0,
         "profile_views": 0,
+        "coins": coins_to_show
     }
 
 
@@ -1098,3 +1105,86 @@ async def get_referral_stats(user: TBUser = Depends(get_current_user)):
             for u in referred_users
         ]
     }
+
+
+class CreateConversationRequest(BaseModel):
+    user_id: str = Field(..., description="ID of the user to create conversation with")
+
+
+@router.post("/create-or-get-conversation")
+async def create_or_get_conversation(
+    request: CreateConversationRequest,
+    current_user: TBUser = Depends(get_current_user)
+):
+    """
+    Create a new conversation or get existing one between current user and target user.
+    This prevents duplicate conversations.
+    """
+    from backend.utils.objectid_utils import validate_object_id
+    from backend.models.tb_message import TBConversation
+    from backend.models.tb_user import TBUser
+    from datetime import datetime, timezone
+    
+    print(f"[CONVERSATION DEBUG] Creating conversation - Request: {request}")
+    print(f"[CONVERSATION DEBUG] Current user: {current_user.id}")
+    
+    # Validate target user ID
+    target_user_oid = validate_object_id(request.user_id, "Target user")
+    current_user_oid = current_user.id
+    
+    if target_user_oid == current_user_oid:
+        raise HTTPException(status_code=400, detail="Cannot create conversation with yourself")
+    
+    # Check if target user exists
+    target_user = await TBUser.get(target_user_oid)
+    if not target_user:
+        raise HTTPException(status_code=404, detail="Target user not found")
+    
+    print(f"[CONVERSATION DEBUG] Target user found: {target_user.id}")
+    
+    # Check if conversation already exists using $all query
+    existing_conversation = await TBConversation.find_one({
+        "participants": {
+            "$all": [current_user_oid, target_user_oid]
+        }
+    })
+    
+    if existing_conversation:
+        print(f"[CONVERSATION DEBUG] Found existing conversation: {existing_conversation.id}")
+        response = {
+            "conversation_id": str(existing_conversation.id),
+            "user": {
+                "id": str(target_user.id),
+                "name": target_user.name,
+                "profile_picture": target_user.profile_pictures[0] if target_user.profile_pictures else None,
+                "is_online": target_user.is_online,
+                "status": "suspended" if target_user.is_suspended else "active"
+            },
+            "existing": True
+        }
+        print(f"[CONVERSATION DEBUG] Returning existing conversation: {response}")
+        return response
+    else:
+        # Create new conversation
+        new_conversation = TBConversation(
+            participants=sorted([current_user_oid, target_user_oid]),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
+        )
+        await new_conversation.insert()
+        
+        print(f"[CONVERSATION DEBUG] Created new conversation: {new_conversation.id}")
+        
+        response = {
+            "conversation_id": str(new_conversation.id),
+            "user": {
+                "id": str(target_user.id),
+                "name": target_user.name,
+                "profile_picture": target_user.profile_pictures[0] if target_user.profile_pictures else None,
+                "is_online": target_user.is_online,
+                "status": "suspended" if target_user.is_suspended else "active"
+            },
+            "existing": False
+        }
+        print(f"[CONVERSATION DEBUG] Returning new conversation: {response}")
+        return response

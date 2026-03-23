@@ -131,57 +131,62 @@ class MessagingServiceV2:
         return count
     
     async def list_conversations(self, user_id: str) -> List[Dict[str, Any]]:
-        """List all conversations for a user with metadata"""
-        # Get all messages involving the user
-        messages = await MessageV2.find(
-            {
-                "is_deleted": False,
-                "$or": [
-                    {"sender_id": user_id},
-                    {"receiver_id": user_id}
-                ]
-            }
-        ).to_list()
+        """List all conversations for a user with metadata - OPTIMIZED VERSION using TBConversation"""
+        import time
+        start_time = time.time()
         
-        # Group by conversation partner
-        partners = {}
-        for msg in messages:
-            partner_id = msg.receiver_id if msg.sender_id == user_id else msg.sender_id
-            
-            if partner_id not in partners:
-                partners[partner_id] = {
-                    "messages": [],
-                    "partner_id": partner_id
-                }
-            partners[partner_id]["messages"].append(msg)
+        print(f"[CONV SERVICE] Starting list_conversations for user: {user_id}")
+        
+        # OPTIMIZED: Use TBConversation which has proper indexing
+        from backend.models.tb_message import TBConversation
+        from beanie import PydanticObjectId
+        
+        user_oid = PydanticObjectId(user_id)
+        
+        print(f"[CONV SERVICE] Before TBConversation query - elapsed: {(time.time() - start_time)*1000:.2f}ms")
+        
+        # Find all conversations where user is a participant - uses index on participants
+        conversations = await TBConversation.find(
+            {"participants": user_oid}
+        ).sort(-TBConversation.last_message_at).limit(50).to_list()
+        
+        query_time = (time.time() - start_time) * 1000
+        print(f"[CONV SERVICE] TBConversation query returned {len(conversations)} results - elapsed: {query_time:.2f}ms")
         
         # Build conversation list
-        conversations = []
-        for partner_id, data in partners.items():
-            msgs = data["messages"]
-            last_msg = max(msgs, key=lambda m: m.created_at)
+        result = []
+        for conv in conversations:
+            # Get the other participant
+            other_participant = None
+            for p in conv.participants:
+                if str(p) != user_id:
+                    other_participant = str(p)
+                    break
             
-            # Count unread from this partner
-            unread = sum(
-                1 for m in msgs
-                if m.receiver_id == user_id and m.status != MessageStatus.READ
-            )
+            if not other_participant:
+                continue
             
-            conversations.append({
-                "partner_id": partner_id,
+            # Get unread count for this user
+            unread = conv.unread_count.get(user_id, 0)
+            
+            result.append({
+                "partner_id": other_participant,
+                "conversation_id": str(conv.id),
                 "last_message": {
-                    "content": last_msg.content[:100],
-                    "type": last_msg.message_type.value,
-                    "sender_id": last_msg.sender_id,
-                    "created_at": last_msg.created_at.isoformat()
+                    "content": conv.last_message[:100] if conv.last_message else "Start a conversation",
+                    "type": "text",
+                    "sender_id": str(conv.last_sender_id) if conv.last_sender_id else None,
+                    "created_at": conv.last_message_at.isoformat() if conv.last_message_at else conv.updated_at.isoformat()
                 },
                 "unread_count": unread,
-                "total_messages": len(msgs)
+                "total_messages": 0,  # We don't track this in TBConversation
+                "is_my_last_message": str(conv.last_sender_id) == user_id if conv.last_sender_id else False
             })
         
-        # Sort by most recent
-        conversations.sort(key=lambda c: c["last_message"]["created_at"], reverse=True)
-        return conversations
+        total_time = (time.time() - start_time) * 1000
+        print(f"[CONV SERVICE] Built {len(result)} conversations - total time: {total_time:.2f}ms")
+        
+        return result
     
     async def delete_message(self, message_id: str, user_id: str) -> bool:
         """Soft delete a message (sender only)"""

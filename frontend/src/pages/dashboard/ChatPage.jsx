@@ -1,15 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, Send, MoreVertical, Phone, Video, ArrowLeft, Image, Smile, Coins, Loader2, X } from 'lucide-react';
+import { Search, Send, MoreVertical, Phone, Video, ArrowLeft, Image, Smile, Coins, Loader2, X, CheckCircle } from 'lucide-react';
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
-import { messagesAPI, userAPI } from '@/services/api';
-import { connectSocket, getSocket, joinChat, onNewMessage, offNewMessage, onIncomingCall, offIncomingCall, sendTyping, sendStopTyping } from '@/services/socket';
-import useAuthStore from '@/store/authStore';
+import { messagesAPI, userAPI } from '../../services/api';
+import { connectSocket, getSocket, joinChat, onNewMessage, offNewMessage, onIncomingCall, offIncomingCall, sendTyping, sendStopTyping } from '../../services/socket';
+import useAuthStore from '../../store/authStore';
 import { toast } from 'sonner';
 
 const ChatPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { userId: urlUserId } = useParams();
+  const { conversationId } = useParams();
   const { user, refreshUser } = useAuthStore();
   const [conversations, setConversations] = useState([]);
   const [selectedChat, setSelectedChat] = useState(null);
@@ -98,37 +98,93 @@ const ChatPage = () => {
     };
   }, []);
 
-  // Handle ?user=userId or /chat/:userId to start new conversation
+  // Handle route hydration and direct chat startup
   useEffect(() => {
-    const targetUserId = urlUserId || searchParams.get('user');
-    if (targetUserId) {
-      if (selectedChat?.id === targetUserId) return;
+    const queryUserId = searchParams.get('userId');
+    const queryUserName = searchParams.get('user');
+    
+    console.log('[INIT DEBUG] Hydration effect triggered:', { 
+      conversationId, 
+      queryUserId, 
+      queryUserName, 
+      conversationsCount: conversations.length,
+      isLoading 
+    });
 
-      const existingConv = conversations.find(c => (c.id || c.user_id) === targetUserId);
-      if (existingConv) {
+    // If skip logic if still loading initial conversations
+    if (isLoading) return;
+
+    // 1. Try to find existing conversation in the sidebar list
+    let existingConv = null;
+    
+    if (conversationId) {
+      existingConv = conversations.find(c => 
+        c.id === conversationId || 
+        c.user_id === conversationId ||
+        c._id === conversationId ||
+        c.conversation_id === conversationId
+      );
+      if (existingConv) console.log('[INIT DEBUG] Found conversation by route conversationId:', conversationId);
+    }
+    
+    if (!existingConv && queryUserId) {
+      existingConv = conversations.find(c => 
+        c.id === queryUserId || 
+        c.user_id === queryUserId
+      );
+      if (existingConv) console.log('[INIT DEBUG] Found conversation by query userId:', queryUserId);
+    }
+
+    if (existingConv) {
+      if (selectedChat?.id !== (existingConv.id || existingConv.user_id)) {
+        console.log('[INIT DEBUG] Selecting existing conversation:', existingConv.id);
         setSelectedChat(existingConv);
-        return;
       }
+      return;
+    }
+
+    // 2. If no existing conversation found but we have a target userId, start/placeholder it
+    if (queryUserId) {
+      if (selectedChat?.id === queryUserId) return;
+      
+      console.log('[INIT DEBUG] Creating placeholder chat for userId:', queryUserId);
 
       const startNewChat = async () => {
         try {
-          const response = await messagesAPI.startConversation(targetUserId);
+          // Attempt to get real metadata from server
+          console.log('[INIT DEBUG] Calling startConversation for:', queryUserId);
+          const response = await messagesAPI.startConversation(queryUserId);
           const targetUser = response.data.user;
           const newChat = {
-            id: targetUserId,
-            name: targetUser.name,
+            id: queryUserId,
+            name: targetUser.name || queryUserName || 'User',
             avatar: targetUser.profile_picture,
             online: targetUser.is_online,
+            conversation_id: response.data.conversation_id
           };
+          console.log('[INIT DEBUG] startConversation success:', newChat);
           setSelectedChat(newChat);
         } catch (error) {
-          console.error('Failed to load user for chat:', error);
-          toast.error('Could not start conversation with this user');
+          console.error('[INIT DEBUG] Failed to load user for chat:', error);
+          
+          // If we have a name from query, show a lightweight UI instead of failing
+          if (queryUserName) {
+            console.log('[INIT DEBUG] Using fallback lightweight chat state');
+            setSelectedChat({
+              id: queryUserId,
+              name: queryUserName,
+              avatar: null,
+              online: false,
+            });
+          } else {
+            // Only toast if we literally have no way to show who we're talking to
+            toast.error('Could not start conversation with this user');
+          }
         }
       };
       startNewChat();
     }
-  }, [urlUserId, searchParams, conversations, selectedChat]);
+  }, [conversationId, searchParams, conversations, isLoading, selectedChat?.id]);
 
   // Join socket chat room when a chat is selected
   useEffect(() => {
@@ -158,22 +214,48 @@ const ChatPage = () => {
   }, [messages]);
 
   const fetchConversations = async () => {
+    console.log('[CHAT INIT DEBUG] fetchConversations started');
     setIsLoading(true);
     try {
       const response = await messagesAPI.getConversations();
-      if (response.data.conversations && response.data.conversations.length > 0) {
-        const formattedConvs = response.data.conversations.map(conv => ({
-          ...conv,
-          id: conv.user?.id || conv.user_id,
-          name: conv.user?.name || conv.name,
-          avatar: conv.user?.profile_picture || conv.avatar,
-          online: conv.user?.is_online || conv.online,
-        }));
-        setConversations(formattedConvs);
+      console.log('[CHAT INIT DEBUG] fetchConversations raw response.data:', response.data);
+
+      if (response.data.conversations && Array.isArray(response.data.conversations)) {
+        console.log('[CHAT INIT DEBUG] Received conversations count:', response.data.conversations.length);
+        
+        const formattedConvs = response.data.conversations.map(conv => {
+          const targetId = conv.user?.id || conv.user_id || conv._id;
+          const targetName = conv.user?.name || conv.name || 'Unknown User';
+          
+          return {
+            ...conv,
+            id: targetId,
+            name: targetName,
+            avatar: conv.user?.profile_picture || conv.profile_pictures?.[0] || conv.avatar,
+            online: conv.user?.is_online || conv.online || false,
+          };
+        });
+        
+        console.log('[CHAT INIT DEBUG] Formatted result:', formattedConvs);
+
+        // Dedupe conversations by id
+        const uniqueConvs = [];
+        const seenIds = new Set();
+        for (const conv of formattedConvs) {
+          if (conv.id && !seenIds.has(conv.id)) {
+            seenIds.add(conv.id);
+            uniqueConvs.push(conv);
+          }
+        }
+        
+        console.log('[CHAT INIT DEBUG] Unique conversations to set:', uniqueConvs.length);
+        setConversations(uniqueConvs);
       } else {
+        console.log('[CHAT INIT DEBUG] No conversations or invalid format received');
         setConversations([]);
       }
     } catch (error) {
+      console.error('[CHAT INIT DEBUG] fetchConversations failed:', error);
       setConversations([]);
     } finally {
       setIsLoading(false);
@@ -221,6 +303,12 @@ const ChatPage = () => {
     const messageText = message;
     setMessage('');
 
+    console.log('[SEND DEBUG] Preparing to send message:', {
+      recipientId: selectedChat.id,
+      conversationId: selectedChat.conversation_id || selectedChat._id || selectedChat.id,
+      textLength: messageText.length
+    });
+
     const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const tempMessage = {
       id: tempId,
@@ -232,12 +320,39 @@ const ChatPage = () => {
     setMessages(prev => [...prev, tempMessage]);
 
     try {
-      const result = await messagesAPI.send(selectedChat.id, messageText);
+      const payload = { 
+        receiver_id: selectedChat.id, 
+        content: messageText 
+      };
+      
+      // If we have a conversation_id, include it to help the backend
+      if (selectedChat.conversation_id || selectedChat._id) {
+        payload.conversation_id = selectedChat.conversation_id || selectedChat._id;
+      }
+      
+      console.log('[SEND DEBUG] Calling messagesAPI.send with payload:', payload);
+      const result = await messagesAPI.send(payload);
+      
+      const ack = result.data;
+      console.log('[SEND DEBUG] Send response raw (ack):', ack);
+      console.log('[SEND DEBUG] ack interpreted success:', ack.success === true || !!ack.message_id);
+      
+      if (ack.success === false || ack.error) {
+        throw new Error(ack.error || 'Backend reported failure');
+      }
+
+      console.log('[SEND DEBUG] Send success, message_id:', ack.message_id);
+      
       setMessages(prev =>
-        prev.map(m => m.id === tempId ? { ...m, id: result.data?.message_id || tempId, _temp: false } : m)
+        prev.map(m => m.id === tempId ? { ...m, id: ack.message_id || tempId, _temp: false } : m)
       );
-      refreshCredits();
+      
+      if (refreshUser) {
+        console.log('[SEND DEBUG] Refreshing user data/credits');
+        refreshUser();
+      }
     } catch (error) {
+      console.error('[SEND DEBUG] Send failed:', error.response?.data || error.message);
       if (error.response?.status === 402) {
         toast.error('Insufficient coins! Buy more to continue chatting.');
         navigate('/dashboard/credits');
@@ -246,6 +361,41 @@ const ChatPage = () => {
         toast.error('Failed to send message');
         setMessages(prev => prev.filter(m => m.id !== tempId));
       }
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleImageSend = async (file) => {
+    if (!selectedChat || (user?.coins || 0) < 1) {
+      toast.error('You need coins to send images!');
+      navigate('/dashboard/credits');
+      return;
+    }
+
+    setIsSending(true);
+    const formData = new FormData();
+    formData.append('image', file);
+    formData.append('receiver_id', selectedChat.id);
+
+    try {
+      const response = await messagesAPI.uploadImage(formData);
+      
+      const tempId = `temp_image_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      const tempMessage = {
+        id: tempId,
+        sender_id: user?.id,
+        image_url: URL.createObjectURL(file),
+        created_at: new Date().toISOString(),
+        _temp: true,
+      };
+      setMessages(prev => [...prev, tempMessage]);
+      
+      if (refreshUser) {
+        refreshUser();
+      }
+    } catch (error) {
+      toast.error('Failed to send image');
     } finally {
       setIsSending(false);
     }
@@ -449,6 +599,7 @@ const ChatPage = () => {
                   <>
                     {messages.map((msg) => {
                       const isMine = msg.sender === 'me' || msg.sender_id === user?.id;
+                      const isSeen = msg.status === 'seen';
                       return (
                         <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                           <div
@@ -459,9 +610,17 @@ const ChatPage = () => {
                             }`}
                           >
                             <p className="text-sm">{msg.text || msg.content}</p>
-                            <p className={`text-xs mt-1 ${isMine ? 'text-white/60' : 'text-gray-400'}`}>
-                              {msg.time || (msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '')}
-                            </p>
+                            <div className="flex items-center gap-1 mt-1">
+                              <p className={`text-xs ${isMine ? 'text-white/60' : 'text-gray-400'}`}>
+                                {msg.time || (msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '')}
+                              </p>
+                              {isMine && (
+                                <CheckCircle 
+                                  size={12}
+                                  className={`ml-1 ${isSeen ? 'text-pink-400' : 'text-white/60'}`}
+                                />
+                              )}
+                            </div>
                           </div>
                         </div>
                       );

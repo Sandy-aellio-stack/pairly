@@ -9,9 +9,9 @@ Architecture:
 - Database remains the source of truth
 
 Channels:
-- user:{user_id} - User-specific events (messages, notifications)
-- typing:{user_id} - Typing indicators for a user
-- presence:{user_id} - Online/offline status
+- messages - Real-time messaging and notifications
+- calls - WebRTC signaling and call management
+- presence - User online/offline and typing status
 """
 import asyncio
 import json
@@ -86,34 +86,41 @@ class RedisPubSub:
         """Get full channel name with prefix"""
         return f"{self._channel_prefix}{channel_type}:{identifier}"
     
-    async def subscribe_user(self, user_id: str, handler: Callable):
+    async def subscribe_app_channels(self, handler: Callable):
         """
-        Subscribe to all channels for a user.
+        Subscribe to all application-wide channels.
         
         Channels:
-        - user:{user_id} - Messages and notifications
-        - typing:{user_id} - Typing indicators
-        - presence:{user_id} - Presence updates
+        - messages - Messaging and notifications
+        - calls - Call signaling
+        - presence - Presence updates
         """
         if not self._pubsub:
             return False
         
         channels = [
-            self._get_channel("user", user_id),
-            self._get_channel("typing", user_id),
-            self._get_channel("presence", user_id),
+            self._get_channel("messages", ""),
+            self._get_channel("calls", ""),
+            self._get_channel("presence", ""),
         ]
         
+        # Strip trailing colon if identifier was empty
+        channels = [c.rstrip(":") for c in channels]
+
         try:
             for channel in channels:
                 self._handlers[channel] = handler
             
             await self._pubsub.subscribe(*channels)
-            logger.debug(f"Subscribed to channels for user {user_id}")
+            logger.info(f"Subscribed to core channels: {channels}")
             return True
         except Exception as e:
-            logger.error(f"Failed to subscribe for user {user_id}: {e}")
+            logger.error(f"Failed to subscribe to core channels: {e}")
             return False
+
+    async def subscribe_user(self, user_id: str, handler: Callable):
+        """Deprecated: using subscribe_app_channels instead"""
+        return await self.subscribe_app_channels(handler)
     
     async def unsubscribe_user(self, user_id: str):
         """Unsubscribe from all user channels"""
@@ -179,12 +186,12 @@ class RedisPubSub:
         receiver_id: str,
         message_data: Dict[str, Any]
     ) -> bool:
-        """Publish new message event to receiver"""
+        """Publish new message event"""
         return await self.publish(
-            channel_type="user",
-            identifier=receiver_id,
-            event="new_message",
-            data=message_data
+            channel_type="messages",
+            identifier="",
+            event="message:new",
+            data={**message_data, "receiver_id": receiver_id}
         )
     
     async def publish_message_notification(
@@ -192,12 +199,12 @@ class RedisPubSub:
         receiver_id: str,
         notification_data: Dict[str, Any]
     ) -> bool:
-        """Publish message notification to receiver"""
+        """Publish message notification"""
         return await self.publish(
-            channel_type="user",
-            identifier=receiver_id,
-            event="new_message_notification",
-            data=notification_data
+            channel_type="messages",
+            identifier="",
+            event="message:notification",
+            data={**notification_data, "receiver_id": receiver_id}
         )
     
     async def publish_typing(
@@ -207,13 +214,14 @@ class RedisPubSub:
         is_typing: bool
     ) -> bool:
         """Publish typing indicator"""
-        event = "user_typing" if is_typing else "user_stopped_typing"
+        event = "message:typing" if is_typing else "message:stop-typing"
         return await self.publish(
-            channel_type="typing",
-            identifier=receiver_id,
+            channel_type="presence",
+            identifier="",
             event=event,
             data={
                 "user_id": sender_id,
+                "receiver_id": receiver_id,
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
         )
@@ -224,13 +232,14 @@ class RedisPubSub:
         reader_id: str,
         count: int
     ) -> bool:
-        """Publish read receipt to original message sender"""
+        """Publish read receipt (message:read) to original message sender"""
         return await self.publish(
-            channel_type="user",
-            identifier=sender_id,
-            event="messages_read",
+            channel_type="messages",
+            identifier="",
+            event="message:read",
             data={
                 "reader_id": reader_id,
+                "sender_id": sender_id,
                 "count": count,
                 "read_at": datetime.now(timezone.utc).isoformat()
             }
@@ -243,10 +252,11 @@ class RedisPubSub:
     ) -> bool:
         """Publish delivery receipt to message sender"""
         return await self.publish(
-            channel_type="user",
-            identifier=sender_id,
-            event="message_delivered",
+            channel_type="messages",
+            identifier="",
+            event="message:delivered",
             data={
+                "sender_id": sender_id,
                 "message_id": message_id,
                 "delivered_at": datetime.now(timezone.utc).isoformat()
             }
@@ -258,16 +268,15 @@ class RedisPubSub:
         is_online: bool
     ) -> bool:
         """Publish user presence change"""
-        event = "user_online" if is_online else "user_offline"
+        event = "user:online" if is_online else "user:offline"
         data = {"user_id": user_id}
         
         if not is_online:
             data["last_seen"] = datetime.now(timezone.utc).isoformat()
         
-        # Publish to a global presence channel for contacts
         return await self.publish(
             channel_type="presence",
-            identifier="global",
+            identifier="", # Global
             event=event,
             data=data
         )
@@ -284,6 +293,10 @@ class RedisPubSub:
             logger.warning("Cannot start subscriber - pub/sub not initialized")
             return
         
+        if not self._handlers:
+            logger.warning("No channels subscribed; skipping subscriber loop")
+            return
+        
         self._subscriber_task = asyncio.create_task(
             self._subscriber_loop(message_handler)
         )
@@ -293,6 +306,16 @@ class RedisPubSub:
         """Main subscriber loop"""
         while self._running:
             try:
+                if not self._pubsub:
+                    await asyncio.sleep(1)
+                    continue
+                
+                channels = self._pubsub.channels()
+                if not channels:
+                    logger.debug("No subscriptions active; waiting for subscriptions...")
+                    await asyncio.sleep(1)
+                    continue
+                
                 message = await self._pubsub.get_message(
                     ignore_subscribe_messages=True,
                     timeout=1.0
@@ -308,7 +331,9 @@ class RedisPubSub:
                         event = payload.get("event")
                         data = payload.get("data", {})
                         
-                        await message_handler(channel, event, data)
+                        handler = self._handlers.get(channel)
+                        if handler:
+                            await handler(channel, event, data)
                     except json.JSONDecodeError as e:
                         logger.error(f"Invalid JSON in message: {e}")
                     except Exception as e:

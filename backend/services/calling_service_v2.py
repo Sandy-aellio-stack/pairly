@@ -20,12 +20,12 @@ class CallingServiceV2:
         caller_id: str,
         receiver_id: str,
         call_type: str = "voice",
-        sdp_offer: Optional[str] = None
+        sdp_offer: Optional[Dict[str, Any]] = None
     ) -> CallSessionV2:
         """Initiate a new call"""
         try:
             # Set rate based on call type
-            rate = 5 if call_type == "voice" else 10
+            rate = 5 if call_type in ["voice", "audio"] else 10
             
             # Check if caller has enough credits for at least 1 minute
             caller_balance = await CreditService.get_balance(caller_id)
@@ -66,7 +66,7 @@ class CallingServiceV2:
         self,
         call_id: str,
         receiver_id: str,
-        sdp_answer: Optional[str] = None
+        sdp_answer: Optional[Dict[str, Any]] = None
     ) -> CallSessionV2:
         """Accept an incoming call"""
         call_session = await CallSessionV2.find_one(

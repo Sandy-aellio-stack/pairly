@@ -37,6 +37,8 @@ import ProfilePage from '@/pages/dashboard/ProfilePage';
 import CreditsPage from '@/pages/dashboard/CreditsPage';
 import SettingsPage from '@/pages/dashboard/SettingsPage';
 import CallPage from '@/pages/dashboard/CallPage';
+import CallTest from '@/components/CallTest';
+import CallHistoryPage from '@/pages/dashboard/CallHistoryPage';
 import NotificationsPage from '@/pages/dashboard/NotificationsPage';
 import ProfileViewerPage from '@/pages/dashboard/ProfileViewerPage';
 
@@ -117,19 +119,49 @@ function App() {
   const { initialize: initializeAdmin } = useAdminStore();
 
   useEffect(() => {
-    initialize();
-    initializeAdmin();
+    console.log('[App] Component mounted, isLoading:', isLoading);
+    
+    const initAuth = async () => {
+      try {
+        console.log('[App] Starting auth initialization...');
+        await Promise.all([
+          initialize(),
+          initializeAdmin()
+        ]);
+        console.log('[App] Auth initialization completed');
+      } catch (error) {
+        console.error('[App] Auth initialization failed:', error);
+      }
+    };
+
+    initAuth();
+
+    // Add timeout fallback to prevent infinite loading
+    const timeout = setTimeout(() => {
+      const store = useAuthStore.getState();
+      if (store.isLoading) {
+        console.warn('[App] Auth initialization timeout, forcing load state to false');
+        useAuthStore.setState({ isLoading: false });
+      }
+    }, 5000); // 5 second timeout
+
+    return () => clearTimeout(timeout);
   }, [initialize, initializeAdmin]);
 
   // Show loading while checking auth
   if (isLoading) {
+    console.log('[App] Showing loading screen');
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
-        <div className="w-12 h-12 border-4 border-[#E9D5FF] border-t-[#0F172A] rounded-full animate-spin"></div>
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-[#E9D5FF] border-t-[#0F172A] rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 text-sm">Loading...</p>
+        </div>
       </div>
     );
   }
 
+  console.log('[App] Rendering app routes');
   return (
     <BrowserRouter>
       <CursorController />
@@ -182,14 +214,18 @@ function App() {
         }>
           <Route index element={<HomePage />} />
           <Route path="chat" element={<ChatPage />} />
-          <Route path="chat/:userId" element={<ChatPage />} />
+          <Route path="chat/:conversationId" element={<ChatPage />} />
           <Route path="nearby" element={<NearbyPage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="profile/:userId" element={<ProfileViewerPage />} />
           <Route path="credits" element={<CreditsPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
+          <Route path="call-history" element={<CallHistoryPage />} />
         </Route>
+
+        {/* Call Test Page - For debugging */}
+        <Route path="/test-call" element={<CallTest />} />
 
         {/* Call Page - Full Screen */}
         <Route path="/call/:userId" element={
