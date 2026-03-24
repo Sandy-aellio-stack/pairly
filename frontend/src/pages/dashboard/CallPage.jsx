@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Phone, PhoneOff, Video, VideoOff, Mic, MicOff, Volume2, VolumeX, Loader2, Coins } from 'lucide-react';
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
-import useAuthStore from '@/store/authStore';
+import useAuthStore from '../../store/authStore';
 import { toast } from 'sonner';
 import {
   getSocket,
@@ -265,7 +265,7 @@ const CallPage = () => {
     
     if (cid) {
       try {
-        await socketEndCall(cid);
+        await endCall(cid);
       } catch (error) {
         console.error('Error ending call:', error);
       }

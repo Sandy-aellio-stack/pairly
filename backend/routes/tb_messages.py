@@ -267,46 +267,32 @@ async def get_single_conversation(conversation_id: str, user: TBUser = Depends(g
 async def get_conversations(user: TBUser = Depends(get_current_user)):
     """
     Get all conversations for current user.
-    
-    Used for:
-    - Conversation list UI
-    - Unread count badges
-    - Fallback when WebSocket unavailable
-    
-    Returns conversations sorted by last_message_at descending.
     """
-    # [CONV ROUTE ENTRY] Incoming request
-    print(f"[CONV ROUTE ENTRY] GET /api/messages/conversations called")
-    # [CONV AUTH DEBUG] Token verification
-    print(f"[CONV AUTH DEBUG] Auth Success: ID={str(user.id)}, Email={getattr(user, 'email', 'N/A')}")
-    
-    route_start = time.time()
+    print(f"[GET CONVERSATIONS] userId: {str(user.id)}")
     
     try:
-        service_start = time.time()
-        print(f"[CONV ROUTE ENTRY] Calling MessageService.get_conversations for user {user.id}")
-    
         conversations = await MessageService.get_conversations(str(user.id))
+        print(f"[GET CONVERSATIONS] raw results count: {len(conversations)}")
+        print(f"[GET CONVERSATIONS] final count: {len(conversations)}")
         
-        service_end = time.time()
-        route_end = time.time()
-        print(f"[CONV ROUTE ENTRY] Method complete. Response count: {len(conversations)}")
-        print(f"[CONV ROUTE ENTRY] Total Route Time: {((route_end - route_start)*1000):.2f}ms")
-        
-        response_data = {
+        return {
             "success": True,
             "conversations": conversations,
-            "count": len(conversations),
-            "keys": list(conversations[0].keys()) if conversations and isinstance(conversations[0], dict) else []
+            "count": len(conversations)
         }
-        # [CONV ROUTE ENTRY] Final response check
-        print(f"[CONV ROUTE ENTRY] Final JSON Keys: {list(response_data.keys())}")
-        if conversations:
-            print(f"[CONV ROUTE ENTRY] Sample Conv ID: {conversations[0].get('conversation_id')}")
-            
-        return response_data
     except Exception as e:
-        print(f"[CONV ERROR] Backend failure: {str(e)}")
+        print(f"[CONV API ERROR] Backend failure: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to load conversations: {str(e)}")
+            
+        return {
+            "success": True,
+            "conversations": conversations,
+            "count": len(conversations)
+        }
+    except Exception as e:
+        print(f"[CONV API ERROR] Backend failure: {str(e)}")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to load conversations: {str(e)}")

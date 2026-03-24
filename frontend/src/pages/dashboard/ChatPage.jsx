@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, Send, MoreVertical, Phone, Video, ArrowLeft, Image, Smile, Coins, Loader2, X, CheckCircle } from 'lucide-react';
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
+import api from '../../services/api';
 import { messagesAPI, userAPI } from '../../services/api';
 import { connectSocket, getSocket, joinChat, onNewMessage, offNewMessage, onIncomingCall, offIncomingCall, sendTyping, sendStopTyping } from '../../services/socket';
 import useAuthStore from '../../store/authStore';
@@ -11,6 +12,12 @@ const ChatPage = () => {
   const [searchParams] = useSearchParams();
   const { conversationId } = useParams();
   const { user, refreshUser } = useAuthStore();
+
+  const currentUserId = user?._id || user?.id || user?.user_id;
+
+  console.log("[CHAT INIT] component mounted");
+  console.log("[CHAT INIT] currentUserId:", currentUserId);
+  
   const [conversations, setConversations] = useState([]);
   const [selectedChat, setSelectedChat] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -196,14 +203,60 @@ const ChatPage = () => {
     }
   }, [selectedChat?.id]);
 
-  // Fetch conversations on mount
+  // Step 1: Exact normalization helper per 1121
+  const normalizeConversations = (res) => {
+    const payload = res?.data ?? res;
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.conversations)) return payload.conversations;
+    if (Array.isArray(payload?.data?.conversations)) return payload.data.conversations;
+    return [];
+  };
+
+  const fetchConversations = useCallback(async () => {
+    if (!currentUserId) {
+      console.log("[CHAT INIT] no currentUserId, skip fetch");
+      return;
+    }
+
+    try {
+      console.log("[CHAT INIT] fetching conversations for:", currentUserId);
+      const res = await messagesAPI.getConversations();
+      const list =
+        res?.data?.conversations ||
+        res?.data?.data ||
+        res?.data ||
+        [];
+
+      console.log("[CHAT INIT] raw response:", res?.data);
+      console.log("[CHAT INIT] parsed list:", list);
+      console.log("[CHAT INIT] before setConversations count:", list?.length || 0);
+
+      setConversations(Array.isArray(list) ? list : []);
+      setIsLoading(false);
+    } catch (error) {
+      console.error("[CHAT INIT] failed to fetch conversations:", error);
+      setConversations([]);
+      setIsLoading(false);
+    }
+  }, [currentUserId]);
+
   useEffect(() => {
+    if (!currentUserId) return;
+    console.log("[CHAT INIT] starting fetchConversations");
     fetchConversations();
+  }, [currentUserId, fetchConversations]);
+
+  useEffect(() => {
+    refreshUser?.();
   }, []);
 
+
+
   // Fetch messages when a chat is selected
+  // Step 3 & 5: fetchMessages only when chat is selected
   useEffect(() => {
     if (selectedChat) {
+      console.log('[MSG PAGE DEBUG] Fetching messages for:', selectedChat.id);
       fetchMessages(selectedChat.id);
     }
   }, [selectedChat]);
@@ -213,54 +266,6 @@ const ChatPage = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const fetchConversations = async () => {
-    console.log('[CHAT INIT DEBUG] fetchConversations started');
-    setIsLoading(true);
-    try {
-      const response = await messagesAPI.getConversations();
-      console.log('[CHAT INIT DEBUG] fetchConversations raw response.data:', response.data);
-
-      if (response.data.conversations && Array.isArray(response.data.conversations)) {
-        console.log('[CHAT INIT DEBUG] Received conversations count:', response.data.conversations.length);
-        
-        const formattedConvs = response.data.conversations.map(conv => {
-          const targetId = conv.user?.id || conv.user_id || conv._id;
-          const targetName = conv.user?.name || conv.name || 'Unknown User';
-          
-          return {
-            ...conv,
-            id: targetId,
-            name: targetName,
-            avatar: conv.user?.profile_picture || conv.profile_pictures?.[0] || conv.avatar,
-            online: conv.user?.is_online || conv.online || false,
-          };
-        });
-        
-        console.log('[CHAT INIT DEBUG] Formatted result:', formattedConvs);
-
-        // Dedupe conversations by id
-        const uniqueConvs = [];
-        const seenIds = new Set();
-        for (const conv of formattedConvs) {
-          if (conv.id && !seenIds.has(conv.id)) {
-            seenIds.add(conv.id);
-            uniqueConvs.push(conv);
-          }
-        }
-        
-        console.log('[CHAT INIT DEBUG] Unique conversations to set:', uniqueConvs.length);
-        setConversations(uniqueConvs);
-      } else {
-        console.log('[CHAT INIT DEBUG] No conversations or invalid format received');
-        setConversations([]);
-      }
-    } catch (error) {
-      console.error('[CHAT INIT DEBUG] fetchConversations failed:', error);
-      setConversations([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const fetchMessages = async (userId) => {
     if (!userId) return;
@@ -277,8 +282,6 @@ const ChatPage = () => {
       setLoadingMessages(false);
     }
   };
-
-  const selectedConversation = conversations.find(c => (c.id || c.user?.id) === selectedChat?.id) || selectedChat;
 
   const handleTyping = useCallback(() => {
     if (selectedChat?.id) {
@@ -334,21 +337,23 @@ const ChatPage = () => {
       const result = await messagesAPI.send(payload);
       
       const ack = result.data;
-      console.log('[SEND DEBUG] Send response raw (ack):', ack);
-      console.log('[SEND DEBUG] ack interpreted success:', ack.success === true || !!ack.message_id);
       
-      if (ack.success === false || ack.error) {
+      // Step 6: Robust success check to avoid false error toast
+      const isSuccess = ack.success === true || !!ack.message_id || !!ack.id;
+      
+      if (!isSuccess) {
         throw new Error(ack.error || 'Backend reported failure');
       }
 
-      console.log('[SEND DEBUG] Send success, message_id:', ack.message_id);
-      
+      // Step 6: Success path
       setMessages(prev =>
-        prev.map(m => m.id === tempId ? { ...m, id: ack.message_id || tempId, _temp: false } : m)
+        prev.map(m => m.id === tempId ? { ...m, id: ack.message_id || ack.id || tempId, _temp: false } : m)
       );
       
+      // If messages still appear missing in sidebar, refresh list
+      fetchConversations();
+      
       if (refreshUser) {
-        console.log('[SEND DEBUG] Refreshing user data/credits');
         refreshUser();
       }
     } catch (error) {
@@ -356,11 +361,10 @@ const ChatPage = () => {
       if (error.response?.status === 402) {
         toast.error('Insufficient coins! Buy more to continue chatting.');
         navigate('/dashboard/credits');
-        setMessages(prev => prev.filter(m => m.id !== tempId));
       } else {
         toast.error('Failed to send message');
-        setMessages(prev => prev.filter(m => m.id !== tempId));
       }
+      setMessages(prev => prev.filter(m => m.id !== tempId));
     } finally {
       setIsSending(false);
     }
@@ -418,9 +422,55 @@ const ChatPage = () => {
     }
   };
 
-  const filteredConversations = conversations.filter(conv =>
-    conv.name?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Step 2 & 7: Derived state and deduplication
+  const safeConversations = Array.isArray(conversations) ? conversations : [];
+  
+  // Step 7: Robust dedupe by conversation_id or user id
+  const dedupedConversations = Object.values(
+    safeConversations.reduce((acc, conv) => {
+      const key = conv?.id || conv?.user_id || conv?.conversation_id || conv?._id || Math.random().toString();
+      const prev = acc[key];
+      if (!prev) acc[key] = conv;
+      else {
+        // Keep latest
+        const prevTime = new Date(prev?.last_message_at || prev?.updated_at || 0).getTime();
+        const nextTime = new Date(conv?.last_message_at || conv?.updated_at || 0).getTime();
+        acc[key] = nextTime >= prevTime ? conv : prev;
+      }
+      return acc;
+    }, {})
+  ).sort((a, b) => {
+    const timeA = new Date(a.last_message_at || a.updated_at || 0).getTime();
+    const timeB = new Date(b.last_message_at || b.updated_at || 0).getTime();
+    return timeB - timeA;
+  });
+
+  const filteredConversations = dedupedConversations.filter((conv) => {
+    const q = (searchQuery || "").toLowerCase();
+    const name =
+      conv?.user?.name?.toLowerCase?.() ||
+      conv?.name?.toLowerCase?.() ||
+      "";
+    return !q || name.includes(q);
+  });
+
+  const selectedConversation = safeConversations.find(c => (c.id || c.user?.id) === selectedChat?.id) || selectedChat;
+
+  // Step 3: Handler aliases
+  const sendMessage = handleSend;
+  const toggleEmoji = () => {
+    toast.info('Emoji picker coming soon!');
+  }; 
+  const openImageUpload = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (file) handleImageSend(file);
+    };
+    input.click();
+  };
 
   return (
     <div className="max-w-6xl mx-auto px-4">
@@ -633,10 +683,16 @@ const ChatPage = () => {
               {/* Message Input */}
               <div className="p-4 border-t border-gray-100 bg-white">
                 <div className="flex items-center gap-3">
-                  <button className="p-2 hover:bg-gray-100 rounded-full">
+                  <button 
+                    onClick={openImageUpload}
+                    className="p-2 hover:bg-gray-100 rounded-full"
+                  >
                     <Image size={20} className="text-gray-500" />
                   </button>
-                  <button className="p-2 hover:bg-gray-100 rounded-full">
+                  <button 
+                    onClick={toggleEmoji}
+                    className="p-2 hover:bg-gray-100 rounded-full"
+                  >
                     <Smile size={20} className="text-gray-500" />
                   </button>
                   <input

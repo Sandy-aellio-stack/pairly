@@ -214,138 +214,109 @@ class MessageService:
         try:
             user_oid = validate_object_id(user_id)
             
-            # AGGREGATE: Group by sorted participant pair, keep latest conv per pair
+            # ROBUST QUERY: Fetch all recent conversations and dedupe in Python 
+            # This avoids any MongoDB aggregation/grouping pitfalls with ObjectIds/Arrays
             conv_query_start = time.time()
-            pair_convs = await TBConversation.aggregate([
-                {"$match": {"participants": {"$in": [user_oid]}}},
-                {"$addFields": {
-                    "pair_key": {
-                        "$arrayElemAt": [
-                            {
-                                "$map": {
-                                    "input": {
-                                        "$setDifference": ["$participants", [user_oid]]
-                                    },
-                                    "as": "other",
-                                    "in": "$$other"
-                                }
-                            },
-                            0
-                        ]
-                    }
-                }},
-                {"$group": {
-                    "_id": "$pair_key",
-                    "latest_conv": {"$last": "$$ROOT"},
-                    "count": {"$sum": 1}
-                }},
-                {"$replaceRoot": {"newRoot": "$latest_conv"}},
-                {"$sort": {"last_message_at": -1}},
-                {"$limit": 20}
-            ]).to_list()
+            
+            # 1. Fetch all conversations matching this user (up to a reasonable limit)
+            all_raw_convs = await TBConversation.find(
+                {"participants": {"$in": [user_oid]}}
+            ).sort("-last_message_at", "-updated_at", "-created_at").limit(200).to_list()
+            
+            total_matches = len(all_raw_convs)
+            print(f"[CONV API DEBUG] Raw DB results count: {total_matches} for user {user_id}")
+            
+            if total_matches == 0:
+                print(f"[CONV API DEBUG] No conversations found in DB for {user_id}. Checking for string IDs...")
+                string_matches = await TBConversation.find(
+                    {"participants": {"$in": [str(user_id)]}}
+                ).to_list()
+                print(f"[CONV API DEBUG] found {len(string_matches)} string participant matches")
+                all_raw_convs = string_matches
+                total_matches = len(all_raw_convs)
+
+            # 2. Dedupe by participant pair (using a string-based set for absolute safety)
+            seen_pairs = set()
+            pair_convs = []
+            
+            for conv in all_raw_convs:
+                try:
+                    # Create a deterministic key for the pair (sorted string IDs)
+                    p_ids = sorted([str(p) for p in conv.participants])
+                    pair_key = ":".join(p_ids)
+                    
+                    if pair_key not in seen_pairs:
+                        seen_pairs.add(pair_key)
+                        pair_convs.append(conv)
+                except Exception as e:
+                    print(f"[CONV API DEBUG] Error processing raw conv {getattr(conv, 'id', 'unknown')}: {e}")
             
             conv_query_end = time.time()
-            print(f"[CONV DEBUG] Raw pair_convs count: {len(pair_convs)} in {((conv_query_end - conv_query_start)*1000):.2f}ms")
+            print(f"[CONV API DEBUG] Deduped count: {len(pair_convs)} in {((conv_query_end - conv_query_start)*1000):.2f}ms")
 
             result = []
-            # Collect all other user IDs for batch lookup
+            # Batch fetch all other users
             other_user_ids = []
             for conv in pair_convs:
-                if len(conv.participants) < 2:
-                    continue
-                
-                other_user_oid = [p for p in conv.participants if p != user_oid]
-                if not other_user_oid:
-                    continue
-                
-                other_user_oid = other_user_oid[0]
-                other_user_ids.append(other_user_oid)
+                if not conv or not conv.get('participants'): continue
+                # Explicit string comparison for robustness
+                others = [p for p in conv.get('participants', []) if str(p) != str(user_oid)]
+                if others:
+                    other_user_ids.append(others[0])
             
-            print(f"[CONV DEBUG] Unique other users: {len(set(other_user_ids))}")
-            
-            # [CONV USERS START] Batch lookup
-            print(f"[CONV USERS START] Batch fetching {len(set(other_user_ids))} unique users...")
-            user_query_start = time.time()
+            # Batch lookup users
             users_map = {}
             if other_user_ids:
+                users = await TBUser.find({"_id": {"$in": list(set(other_user_ids))}}).to_list()
+                for u in users:
+                    users_map[str(u.id)] = u
+            
+            # Serialization loop
+            for conv_data in pair_convs:
                 try:
-                    users = await TBUser.find(
-                        {"_id": {"$in": list(set(other_user_ids))}}
-                    ).to_list()
-                    for u in users:
-                        users_map[str(u.id)] = u
-                except Exception as user_err:
-                    print(f"[CONV USERS ERROR] Failed to fetch users: {user_err}")
-            user_query_end = time.time()
-            print(f"[CONV USERS END] Fetched {len(users_map)} user records in {((user_query_end - user_query_start)*1000):.2f}ms")
-            
-            # [CONV SERIALIZE] Build response from deduped convs
-            serialization_start = time.time()
-            for conv in pair_convs:
-                try:
-                    if len(conv.participants) < 2:
-                        continue
+                    # Convert dict to object context if needed or handle as dict
+                    # Since it came from aggregate().to_list(), it's a dict
+                    c_id = conv_data.get('_id')
+                    participants = conv_data.get('participants', [])
+                    others = [p for p in participants if str(p) != str(user_oid)]
+                    if not others: continue
                     
-                    other_user_oid = [p for p in conv.participants if p != user_oid]
-                    if not other_user_oid:
-                        continue
+                    target_oid = others[0]
+                    other_user = users_map.get(str(target_oid))
                     
-                    other_user_oid = other_user_oid[0]
-                    other_user = users_map.get(str(other_user_oid))
-             
-                    if other_user:
-                        u_name = getattr(other_user, 'name', 'Unknown')
-                        u_pics = getattr(other_user, 'profile_pictures', [])
-                        u_online = getattr(other_user, 'is_online', False)
-                        u_suspended = getattr(other_user, 'is_suspended', False)
+                    if not other_user:
+                        print(f"[CONV WARN] Participant {target_oid} not found in DB for conv {c_id}")
+                        continue
                         
-                        last_msg_at = None
-                        if conv.last_message_at:
-                            last_msg_at = conv.last_message_at.isoformat() if hasattr(conv.last_message_at, 'isoformat') else str(conv.last_message_at)
+                    # Build entry
+                    last_msg_at = conv_data.get('last_message_at')
+                    if last_msg_at:
+                        last_msg_at = last_msg_at.isoformat() if hasattr(last_msg_at, 'isoformat') else str(last_msg_at)
+                    
+                    unread = 0
+                    if conv_data.get('unread_count'):
+                        unread = conv_data['unread_count'].get(user_id, 0)
                         
-                        unread = 0
-                        if conv.unread_count and isinstance(conv.unread_count, dict):
-                            unread = int(conv.unread_count.get(user_id, 0))
-                        
-                        result.append({
-                            "conversation_id": str(conv.id),
-                            "user": {
-                                "id": str(other_user_oid),
-                                "name": u_name,
-                                "profile_picture": u_pics[0] if u_pics else None,
-                                "is_online": u_online,
-                                "status": "suspended" if u_suspended else "active"
-                            },
-                            "last_message": str(conv.last_message) if conv.last_message else None,
-                            "last_message_at": last_msg_at,
-                            "unread_count": unread,
-                            "is_my_last_message": conv.last_sender_id == user_oid,
-                            "has_messages": bool(conv.last_message and str(conv.last_message).strip())
-                        })
-                except Exception as conv_err:
-                    print(f"[CONV SERIALIZE ERROR] Error processing conversation {conv.id}: {conv_err}")
-                    continue
-             
-            serialization_end = time.time()
-            print(f"[CONV DEBUG] Deduped result count: {len(result)}")
+                    result.append({
+                        "conversation_id": str(c_id),
+                        "user": {
+                            "id": str(target_oid),
+                            "name": getattr(other_user, 'name', 'Unknown'),
+                            "profile_picture": other_user.profile_pictures[0] if getattr(other_user, 'profile_pictures') else None,
+                            "is_online": getattr(other_user, 'is_online', False),
+                            "status": "active"
+                        },
+                        "last_message": conv_data.get('last_message', ""),
+                        "last_message_at": last_msg_at,
+                        "unread_count": unread,
+                        "is_my_last_message": str(conv_data.get('last_sender_id')) == str(user_oid),
+                        "has_messages": bool(conv_data.get('last_message_at'))
+                    })
+                except Exception as e:
+                    print(f"[CONV ERROR] Failed to serialize conversation {conv_data.get('_id')}: {e}")
             
-            method_end = time.time()
-            # FINAL DE DUPE: Ensure one entry per unique user (latest conv)
-            user_deduped = {}
-            for conv in result:
-                user_id = conv['user']['id']
-                if user_id not in user_deduped or conv.get('last_message_at', '') > user_deduped[user_id].get('last_message_at', ''):
-                    user_deduped[user_id] = conv
-            
-            final_result = list(user_deduped.values())
-            final_result.sort(key=lambda x: x.get('last_message_at', ''), reverse=True)
-            
-            print(f"[LIVE CONV] backend raw count: {len(result)}")
-            print(f"[LIVE CONV] backend return count: {len(final_result)}")
-            for conv in final_result[:3]:  # First 3 for sample
-                print(f"[LIVE CONV] sample - id: {conv.get('conversation_id')}, participant: {conv.get('user', {}).get('id')}, preview: {conv.get('last_message', '')[:30]}, time: {conv.get('last_message_at')}")
-            print(f"[LIVE CONV] backend return count: {len(final_result)}")
-            return final_result
+            print(f"[CONV DEBUG] Final serialized count for {user_id}: {len(result)}")
+            return result
             
         except Exception as e:
             print(f"[CONV FATAL ERROR] get_conversations failed: {e}")

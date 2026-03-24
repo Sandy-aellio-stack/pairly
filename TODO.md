@@ -1,30 +1,25 @@
-# ChatPage.jsx - sendMessage Runtime Error FIXED ✅
+# Pairly/TrueBond Full Audit Implementation TODO
 
-## Root Cause:
-`onClick={sendMessage}` & `onKeyPress=...sendMessage()` called **undefined** function (no `const sendMessage` defined).
+## Phase 1: Create Comprehensive Audit Report ✅ Planned
 
-**Lines:** 186 (input onKeyPress), 190 (button onClick)
+- [ ] Step 1: Create FULL_AUDIT_REPORT.md
+- [ ] Step 2: Update AUDIT_REPORT.md with chat findings  
+- [ ] Step 3: Consolidate TODOs from phases + new issues
+- [ ] Step 4: Optional: Run pip-audit / npm audit
+- [ ] Step 5: attempt_completion
 
-## Fix Applied:
-- `sendMessage()` → `handleSend()`
-- Added `const handleSend = async () => { ... }` using `api.post('/api/messages/send')`
-- **Optimistic UI**: Add pending message to list before API response
-- **Debug logs**: [SEND DEBUG]
-- **fetchMessages useEffect** on effectiveConversation change
-- Fixed SVG in send button
+## Phase 2: Backend Completion (25-32h est from prior audit)
+- [ ] Phase 10: test_calling_v2.py + docs
+- [ ] Phase 11: Presence routes/tests/docs
+- [ ] Phase 12: Analytics model/service/routes/tests
+- [ ] Phase 13: Notification enhancements/triggers
+- [ ] Phase 14: Error handling, validation audit, perf opt
+- [ ] Phase 15: Deploy checklists, healthchecks, E2E tests
 
-## Behavior Restored:
-1. Direct URL `/dashboard/chat/<id>?user=Sanjay&amp;userId=...` → Header shows "Sanjay" + chat UI
-2. Send button/input → Posts to backend + optimistic update
-3. No "ReferenceError: sendMessage is not defined"
-4. Route + sidebar coexistence
+## Chat Debug Fixes (Immediate)
+- [ ] Fix Mongo connectivity (DNS/network)
+- [ ] Resolve TBMessage conversation_id ObjectId validation
+- [ ] Add conversation indexes (participants + last_message_at)
 
-## Test:
-```
-cd frontend && npx yarn dev
-1. /dashboard/chat/abc?user=Sanjay&userId=123 → Sanjay header appears
-2. Type message → Enter/click send → API call + UI update
-3. Console: [ROUTE DEBUG] + [SEND DEBUG]
-
-✅ Direct chat + sendMessage working!
+**Progress: 0/16** | Next: Create audit report.
 
