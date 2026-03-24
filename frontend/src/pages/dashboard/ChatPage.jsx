@@ -82,14 +82,54 @@ const ChatPage = () => {
         }
       }
 
-      setConversations((prev) =>
-        prev.map((c) => {
-          if (c.id === data.sender_id && data.sender_id !== currentUser?.id) {
-            return { ...c, lastMessage: data.content, unread: (c.unread || 0) + 1 };
+      // Update sidebar: update existing conv OR add new one for first-time sender
+      const incomingSenderId = data.sender_id;
+      const isFromOtherUser = incomingSenderId && incomingSenderId !== currentUser?.id;
+
+      setConversations((prev) => {
+        const existingIndex = prev.findIndex((c) => c.id === incomingSenderId);
+        if (existingIndex !== -1) {
+          // Update existing conversation's last message and unread count
+          const updated = [...prev];
+          updated[existingIndex] = {
+            ...updated[existingIndex],
+            lastMessage: data.content,
+            last_message: data.content,
+            time: 'now',
+            unread: isFromOtherUser
+              ? (updated[existingIndex].unread || 0) + 1
+              : updated[existingIndex].unread,
+          };
+          // Move to top
+          const [entry] = updated.splice(existingIndex, 1);
+          return [entry, ...updated];
+        }
+        return prev;
+      });
+
+      // If sender is not in sidebar yet, refresh the full list to pick up new conversation
+      if (isFromOtherUser) {
+        setConversations((prev) => {
+          const exists = prev.some((c) => c.id === incomingSenderId);
+          if (!exists) {
+            // Trigger a background refresh — the fetchConversations callback is stable
+            // We use a small timeout so the DB write has time to commit
+            setTimeout(() => {
+              messagesAPI.getConversations().then((res) => {
+                const list =
+                  res?.data?.conversations ||
+                  res?.data?.data ||
+                  res?.data ||
+                  [];
+                if (Array.isArray(list) && list.length > 0) {
+                  setConversations(list);
+                }
+              }).catch(() => {});
+            }, 500);
           }
-          return c;
-        })
-      );
+          return prev;
+        });
+      }
     };
 
     const handleIncomingCall = (data) => {

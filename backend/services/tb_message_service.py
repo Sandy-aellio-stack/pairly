@@ -255,65 +255,97 @@ class MessageService:
             print(f"[CONV API DEBUG] Deduped count: {len(pair_convs)} in {((conv_query_end - conv_query_start)*1000):.2f}ms")
 
             result = []
-            # Batch fetch all other users
+            # Batch fetch all other users — conv is a Beanie Document, use attribute access
             other_user_ids = []
             for conv in pair_convs:
-                if not conv or not conv.get('participants'): continue
-                # Explicit string comparison for robustness
-                others = [p for p in conv.get('participants', []) if str(p) != str(user_oid)]
+                if not conv:
+                    continue
+                participants = getattr(conv, 'participants', []) or []
+                others = [p for p in participants if str(p) != str(user_oid)]
                 if others:
                     other_user_ids.append(others[0])
-            
+
             # Batch lookup users
             users_map = {}
             if other_user_ids:
-                users = await TBUser.find({"_id": {"$in": list(set(other_user_ids))}}).to_list()
-                for u in users:
+                fetched_users = await TBUser.find({"_id": {"$in": list(set(other_user_ids))}}).to_list()
+                for u in fetched_users:
                     users_map[str(u.id)] = u
-            
-            # Serialization loop
-            for conv_data in pair_convs:
+
+            # Serialization loop — conv is a Beanie Document (NOT a dict)
+            for conv in pair_convs:
                 try:
-                    # Convert dict to object context if needed or handle as dict
-                    # Since it came from aggregate().to_list(), it's a dict
-                    c_id = conv_data.get('_id')
-                    participants = conv_data.get('participants', [])
+                    c_id = conv.id  # Document attribute access, not .get('_id')
+                    participants = getattr(conv, 'participants', []) or []
                     others = [p for p in participants if str(p) != str(user_oid)]
-                    if not others: continue
-                    
+                    if not others:
+                        continue
+
                     target_oid = others[0]
                     other_user = users_map.get(str(target_oid))
-                    
+
                     if not other_user:
                         print(f"[CONV WARN] Participant {target_oid} not found in DB for conv {c_id}")
                         continue
-                        
-                    # Build entry
-                    last_msg_at = conv_data.get('last_message_at')
-                    if last_msg_at:
-                        last_msg_at = last_msg_at.isoformat() if hasattr(last_msg_at, 'isoformat') else str(last_msg_at)
-                    
-                    unread = 0
-                    if conv_data.get('unread_count'):
-                        unread = conv_data['unread_count'].get(user_id, 0)
-                        
+
+                    # Timestamps
+                    last_msg_at_raw = getattr(conv, 'last_message_at', None)
+                    last_msg_at_iso = (
+                        last_msg_at_raw.isoformat()
+                        if last_msg_at_raw and hasattr(last_msg_at_raw, 'isoformat')
+                        else None
+                    )
+
+                    # Human-readable time for sidebar
+                    time_display = ""
+                    if last_msg_at_raw:
+                        from datetime import timezone as _tz
+                        now = datetime.now(timezone.utc)
+                        delta = now - (last_msg_at_raw if last_msg_at_raw.tzinfo else last_msg_at_raw.replace(tzinfo=timezone.utc))
+                        if delta.total_seconds() < 3600:
+                            time_display = f"{int(delta.total_seconds() / 60)}m"
+                        elif delta.total_seconds() < 86400:
+                            time_display = f"{int(delta.total_seconds() / 3600)}h"
+                        else:
+                            time_display = last_msg_at_raw.strftime("%d/%m")
+
+                    unread_count_map = getattr(conv, 'unread_count', {}) or {}
+                    unread = unread_count_map.get(user_id, 0)
+
+                    profile_pic = (
+                        other_user.profile_pictures[0]
+                        if getattr(other_user, 'profile_pictures', None)
+                        else None
+                    )
+
                     result.append({
-                        "conversation_id": str(c_id),
+                        # Flat fields — matched to ChatPage.jsx rendering expectations
+                        "id": str(target_oid),          # used as key + navigation target
+                        "user_id": str(target_oid),     # alias
+                        "conversation_id": str(c_id),   # actual MongoDB conversation ID
+                        "name": getattr(other_user, 'name', 'Unknown'),
+                        "avatar": profile_pic,
+                        "online": getattr(other_user, 'is_online', False),
+                        "lastMessage": getattr(conv, 'last_message', '') or '',
+                        "last_message": getattr(conv, 'last_message', '') or '',
+                        "last_message_at": last_msg_at_iso,
+                        "updated_at": last_msg_at_iso,
+                        "time": time_display,
+                        "unread": unread,
+                        "unread_count": unread,
+                        # Nested user object for API consumers that expect it
                         "user": {
                             "id": str(target_oid),
                             "name": getattr(other_user, 'name', 'Unknown'),
-                            "profile_picture": other_user.profile_pictures[0] if getattr(other_user, 'profile_pictures') else None,
+                            "profile_picture": profile_pic,
                             "is_online": getattr(other_user, 'is_online', False),
-                            "status": "active"
+                            "status": "suspended" if getattr(other_user, 'is_suspended', False) else "active",
                         },
-                        "last_message": conv_data.get('last_message', ""),
-                        "last_message_at": last_msg_at,
-                        "unread_count": unread,
-                        "is_my_last_message": str(conv_data.get('last_sender_id')) == str(user_oid),
-                        "has_messages": bool(conv_data.get('last_message_at'))
+                        "is_my_last_message": str(getattr(conv, 'last_sender_id', '')) == str(user_oid),
+                        "has_messages": bool(last_msg_at_raw),
                     })
                 except Exception as e:
-                    print(f"[CONV ERROR] Failed to serialize conversation {conv_data.get('_id')}: {e}")
+                    print(f"[CONV ERROR] Failed to serialize conversation {getattr(conv, 'id', 'unknown')}: {e}")
             
             print(f"[CONV DEBUG] Final serialized count for {user_id}: {len(result)}")
             return result

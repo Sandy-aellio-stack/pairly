@@ -94,12 +94,13 @@ const ProfileViewerPage = () => {
   const handleBlock = async () => {
     setIsBlocking(true);
     try {
-      await api.post(`/users/block/${userId}`);
-      toast.success('User blocked');
+      await api.post(`/api/users/block/${userId}`);
+      toast.success('User blocked successfully');
       setShowBlockModal(false);
       navigate(-1);
     } catch (err) {
-      toast.error('Failed to block user');
+      const msg = err.response?.data?.detail || 'Failed to block user';
+      toast.error(msg);
     } finally {
       setIsBlocking(false);
     }
@@ -107,21 +108,22 @@ const ProfileViewerPage = () => {
 
   const handleReport = async () => {
     if (reportReason.length < 10) {
-      toast.error('Please provide more details');
+      toast.error('Please provide at least 10 characters describing the issue');
       return;
     }
-    
+
     setIsReporting(true);
     try {
-      await api.post(`/users/report/${userId}`, {
+      await api.post(`/api/users/report/${userId}`, {
         reason: reportReason,
-        report_type: 'profile'
+        report_type: 'profile',
       });
-      toast.success('Report submitted. Thank you for keeping our community safe.');
+      toast.success('Report submitted. Our team will review it shortly.');
       setShowReportModal(false);
       setReportReason('');
     } catch (err) {
-      toast.error('Failed to submit report');
+      const msg = err.response?.data?.detail || 'Failed to submit report';
+      toast.error(msg);
     } finally {
       setIsReporting(false);
     }

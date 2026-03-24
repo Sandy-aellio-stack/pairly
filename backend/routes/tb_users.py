@@ -996,18 +996,27 @@ async def get_user_feed(
 
 
 async def _get_blocked_user_ids(user_id: str) -> set:
-    """Get all user IDs that are blocked (both directions)"""
+    """Get all user IDs that are blocked (both directions).
+    Returns a set of string IDs.
+    """
     try:
         from backend.models.user_block import UserBlock
-        
+        from beanie import PydanticObjectId
+        from bson.errors import InvalidId
+
+        try:
+            user_oid = PydanticObjectId(user_id)
+        except (InvalidId, Exception):
+            return set()
+
         # Get users I blocked
-        my_blocks = await UserBlock.find({"blocker_id": user_id}).to_list()
-        blocked_by_me = {b.blocked_id for b in my_blocks}
-        
+        my_blocks = await UserBlock.find({"blocker_id": user_oid}).to_list()
+        blocked_by_me = {str(b.blocked_id) for b in my_blocks}
+
         # Get users who blocked me
-        their_blocks = await UserBlock.find({"blocked_id": user_id}).to_list()
-        blocked_me = {b.blocker_id for b in their_blocks}
-        
+        their_blocks = await UserBlock.find({"blocked_id": user_oid}).to_list()
+        blocked_me = {str(b.blocker_id) for b in their_blocks}
+
         return blocked_by_me | blocked_me
     except Exception:
         return set()

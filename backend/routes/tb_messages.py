@@ -272,29 +272,14 @@ async def get_conversations(user: TBUser = Depends(get_current_user)):
     
     try:
         conversations = await MessageService.get_conversations(str(user.id))
-        print(f"[GET CONVERSATIONS] raw results count: {len(conversations)}")
-        print(f"[GET CONVERSATIONS] final count: {len(conversations)}")
-        
+        logger.info(f"[GET CONVERSATIONS] Returning {len(conversations)} conversations for user {str(user.id)}")
         return {
             "success": True,
             "conversations": conversations,
             "count": len(conversations)
         }
     except Exception as e:
-        print(f"[CONV API ERROR] Backend failure: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Failed to load conversations: {str(e)}")
-            
-        return {
-            "success": True,
-            "conversations": conversations,
-            "count": len(conversations)
-        }
-    except Exception as e:
-        print(f"[CONV API ERROR] Backend failure: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"[CONV API ERROR] Backend failure: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to load conversations: {str(e)}")
 
 
@@ -447,15 +432,15 @@ async def send_stop_typing_indicator(receiver_id: str, user: TBUser = Depends(ge
 
 
 @router.post("/{other_user_id}/read")
-async def mark_messages_read(other_user_id: str, user: TBUser = Depends(get_current_user)):
+async def mark_messages_read_by_path(other_user_id: str, user: TBUser = Depends(get_current_user)):
     """Mark messages from a specific user as read"""
+    from backend.models.tb_message import TBMessage
+    from datetime import datetime, timezone
     try:
-        # Update messages from other_user to current user as read
-        await TBMessage.find_many(
-            {"sender_id": other_user_id, "receiver_id": user.id, "is_read": False}
-        ).update({"$set": {"is_read": True, "read_at": datetime.now(timezone.utc)}})
-        
-        return {"success": True, "message": "Messages marked as read"}
+        await TBMessage.find(
+            {"sender_id": user.id, "receiver_id": user.id, "is_read": False}
+        ).update_many({"$set": {"is_read": True, "read_at": datetime.now(timezone.utc)}})
+        return await MessageService.mark_messages_read(str(user.id), other_user_id)
     except Exception as e:
         logger.error(f"Error marking messages as read: {e}")
         raise HTTPException(status_code=500, detail="Failed to mark messages as read")

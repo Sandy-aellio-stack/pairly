@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Bell, Lock, Eye, Globe, Shield, Trash2, LogOut, ChevronRight, AlertTriangle, Users, Loader2 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import useAuthStore from '@/store/authStore';
-import { userAPI } from '@/services/api';
+import { userAPI, authAPI } from '@/services/api';
 import { toast } from 'sonner';
 
 const SettingsPage = () => {
@@ -107,6 +107,19 @@ const SettingsPage = () => {
     await logout();
     navigate('/');
     toast.success('Logged out successfully');
+  };
+
+  const handleChangePassword = async () => {
+    if (!user?.email) {
+      toast.error('No email associated with this account');
+      return;
+    }
+    try {
+      await authAPI.forgotPassword(user.email);
+      toast.success(`Password reset link sent to ${user.email}`);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to send reset email. Try again.');
+    }
   };
 
   const handleDeleteAccount = async () => {
@@ -348,12 +361,12 @@ const SettingsPage = () => {
             <ChevronRight size={20} className="text-gray-400" />
           </button>
           <button 
-            onClick={() => toast.info('Password change email sent to your email address')}
+            onClick={handleChangePassword}
             className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
           >
             <div className="text-left">
               <p className="font-medium text-[#0F172A]">Change Password</p>
-              <p className="text-sm text-gray-500">Update your password</p>
+              <p className="text-sm text-gray-500">Send a reset link to your email</p>
             </div>
             <ChevronRight size={20} className="text-gray-400" />
           </button>
