@@ -13,7 +13,7 @@ from backend.models.tb_otp import TBOTP
 from backend.models.app_settings import AppSettings
 from backend.models.tb_report import TBReport
 from backend.models.user_block import UserBlock
-from backend.routes.tb_notifications import TBNotification
+from backend.models.tb_notification import TBNotification
 from backend.models.webhook_event import WebhookEvent, WebhookDLQ
 from backend.models.user import User as LegacyUser
 from backend.models.tb_pending_session import PendingSession

@@ -28,14 +28,16 @@ class MessageService:
     async def send_message(sender_id: str, data: SendMessageRequest) -> dict:
         """Send a message - costs 1 credit - uses transaction for atomicity"""
         from backend.utils.objectid_utils import validate_object_id
+        from backend.services.moderation_service import assert_not_blocked
         sender_oid = validate_object_id(sender_id, "Sender")
         receiver_oid = validate_object_id(data.receiver_id, "Receiver")
 
         if sender_oid == receiver_oid:
             raise HTTPException(status_code=400, detail="Cannot send message to yourself")
 
-        # Start MongoDB transaction
-        # Note: Removed transaction wrapper for single-instance MongoDB compatibility
+        # Enforce block — raises HTTP 403 if either party has blocked the other
+        await assert_not_blocked(str(sender_oid), str(receiver_oid))
+
         # Check receiver exists
         receiver = await TBUser.get(receiver_oid)
         if not receiver:

@@ -1,12 +1,15 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 
+
 class SendOTPRequest(BaseModel):
-    phone: str
+    phone: Optional[str] = None
     email: Optional[EmailStr] = None
 
+
 class VerifyOTPRequest(BaseModel):
-    phone: str
+    phone: Optional[str] = None
+    email: Optional[EmailStr] = None
     otp: str
 
 class SendEmailOTPRequest(BaseModel):
