@@ -49,19 +49,51 @@ const SettingsPage = () => {
   }, [location.state, isLoading, navigate, location.pathname]);
 
   const fetchSettings = async () => {
+    console.log('[SettingsPage] Fetching settings...');
     try {
       const response = await userAPI.getSettings();
-      if (response.data.settings) {
-        setSettings(response.data.settings);
+      console.log('[SettingsPage] Settings response:', response.data);
+      
+      if (response.data && response.data.settings) {
+        // Ensure we have all required fields with defaults
+        const serverSettings = response.data.settings;
+        
+        // Transform server response to frontend format if needed
+        const transformedSettings = {
+          notifications: {
+            messages: serverSettings.notifications?.messages ?? true,
+            matches: serverSettings.notifications?.matches ?? true,
+            nearby: serverSettings.notifications?.nearby ?? false,
+          },
+          privacy: {
+            show_online: serverSettings.privacy?.show_online ?? true,
+            show_last_seen: serverSettings.privacy?.show_last_seen ?? true,
+            show_distance: serverSettings.privacy?.show_distance ?? true,
+          },
+          safety: {
+            block_screenshots: serverSettings.safety?.block_screenshots ?? false,
+            require_verified_matches: serverSettings.safety?.require_verified_matches ?? false,
+            hide_from_search: serverSettings.safety?.hide_from_search ?? false,
+          },
+          dark_mode: serverSettings.dark_mode ?? false,
+          language: serverSettings.language ?? 'en',
+        };
+        
+        console.log('[SettingsPage] Transformed settings:', transformedSettings);
+        setSettings(transformedSettings);
       }
     } catch (error) {
-      console.error('Failed to fetch settings:', error);
+      console.error('[SettingsPage] Failed to fetch settings:', error.response?.data || error.message);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleToggle = async (section, key) => {
+    console.log(`[SettingsPage] Toggling ${section}.${key}`);
+    
+    // Optimistic update
+    const previousSettings = settings;
     const updatedSettings = {
       ...settings,
       [section]: {
@@ -76,37 +108,86 @@ const SettingsPage = () => {
     try {
       // Map to flattened fields for backend compatibility
       const flattenedData = {};
+      
       if (section === 'notifications') {
-        flattenedData[`notifications_${key}`] = updatedSettings[section][key];
+        // Map: messages -> notifications_messages, matches -> notifications_matches, nearby -> notifications_nearby
+        if (key === 'messages') flattenedData.notifications_messages = updatedSettings[section][key];
+        else if (key === 'matches') flattenedData.notifications_matches = updatedSettings[section][key];
+        else if (key === 'nearby') flattenedData.notifications_nearby = updatedSettings[section][key];
+        else flattenedData[`notifications_${key}`] = updatedSettings[section][key];
       } else if (section === 'privacy') {
+        // Map: show_online -> show_online_status, show_last_seen, show_distance
         if (key === 'show_online') flattenedData.show_online_status = updatedSettings[section][key];
         else flattenedData[key] = updatedSettings[section][key];
       } else if (section === 'safety') {
+        // Map: require_verified_matches -> verified_matches_only, block_screenshots, hide_from_search
         if (key === 'require_verified_matches') flattenedData.verified_matches_only = updatedSettings[section][key];
         else flattenedData[key] = updatedSettings[section][key];
       }
 
+      console.log('[SettingsPage] Sending update:', flattenedData);
+      
       const response = await userAPI.updateSettings(flattenedData);
+      console.log('[SettingsPage] Update response:', response.data);
+      
       if (response.data?.settings) {
-        setSettings(response.data.settings);
+        const serverSettings = response.data.settings;
+        
+        // Transform server response back to frontend format
+        const transformedSettings = {
+          notifications: {
+            messages: serverSettings.notifications?.messages ?? true,
+            matches: serverSettings.notifications?.matches ?? true,
+            nearby: serverSettings.notifications?.nearby ?? false,
+          },
+          privacy: {
+            show_online: serverSettings.privacy?.show_online ?? true,
+            show_last_seen: serverSettings.privacy?.show_last_seen ?? true,
+            show_distance: serverSettings.privacy?.show_distance ?? true,
+          },
+          safety: {
+            block_screenshots: serverSettings.safety?.block_screenshots ?? false,
+            require_verified_matches: serverSettings.safety?.require_verified_matches ?? false,
+            hide_from_search: serverSettings.safety?.hide_from_search ?? false,
+          },
+          dark_mode: serverSettings.dark_mode ?? false,
+          language: serverSettings.language ?? 'en',
+        };
+        
+        setSettings(transformedSettings);
+        
         // Sync to global auth store
         const authStore = useAuthStore.getState();
-        authStore.updateSettings(response.data.settings);
+        authStore.updateSettings(serverSettings);
       }
       toast.success('Settings updated');
     } catch (error) {
-      toast.error('Failed to update settings');
+      console.error('[SettingsPage] Failed to update settings:', error.response?.data || error.message);
+      toast.error('Failed to update settings: ' + (error.response?.data?.detail || 'Unknown error'));
       // Rollback on error
-      setSettings(settings);
+      setSettings(previousSettings);
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleLogout = async () => {
-    await logout();
-    navigate('/');
-    toast.success('Logged out successfully');
+    console.log('[SettingsPage] Logging out...');
+    try {
+      await logout();
+      localStorage.removeItem('tb_access_token');
+      localStorage.removeItem('tb_refresh_token');
+      localStorage.removeItem('tb_user');
+      navigate('/');
+      toast.success('Logged out successfully');
+    } catch (error) {
+      console.error('[SettingsPage] Logout error:', error);
+      // Force logout anyway
+      localStorage.removeItem('tb_access_token');
+      localStorage.removeItem('tb_refresh_token');
+      localStorage.removeItem('tb_user');
+      navigate('/');
+    }
   };
 
   const handleChangePassword = async () => {
@@ -115,9 +196,11 @@ const SettingsPage = () => {
       return;
     }
     try {
+      console.log('[SettingsPage] Sending password reset to:', user.email);
       await authAPI.forgotPassword(user.email);
       toast.success(`Password reset link sent to ${user.email}`);
     } catch (error) {
+      console.error('[SettingsPage] Password reset error:', error.response?.data || error.message);
       toast.error(error.response?.data?.detail || 'Failed to send reset email. Try again.');
     }
   };
@@ -127,11 +210,18 @@ const SettingsPage = () => {
       return;
     }
     try {
+      console.log('[SettingsPage] Deleting account...');
       await userAPI.deleteAccount();
+      console.log('[SettingsPage] Account deleted successfully');
       toast.success('Account deleted successfully');
-      await logout();
+      // Clear all local storage and logout
+      localStorage.removeItem('tb_access_token');
+      localStorage.removeItem('tb_refresh_token');
+      localStorage.removeItem('tb_user');
+      useAuthStore.setState({ user: null, isAuthenticated: false, coins: 0 });
       navigate('/');
     } catch (error) {
+      console.error('[SettingsPage] Delete account error:', error.response?.data || error.message);
       toast.error('Failed to delete account. Please try again.');
     }
   };
