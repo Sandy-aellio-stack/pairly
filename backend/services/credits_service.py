@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime, timezone
 from typing import Optional
-from backend.models.user import User
+from backend.models.tb_user import TBUser
 from backend.models.credits_transaction import CreditsTransaction
 from backend.models.profile import Profile
 from beanie import PydanticObjectId
@@ -33,14 +33,14 @@ class CreditsService:
     ) -> bool:
         """Add credits to user account with transaction logging"""
         try:
-            user = await User.get(user_id)
+            user = await TBUser.get(user_id)
             if not user:
                 logger.error(f"User not found: {user_id}")
                 return False
             
             # Update balance
-            old_balance = user.credits_balance
-            user.credits_balance += amount
+            old_balance = user.coins
+            user.coins += amount
             await user.save()
             
             # Log transaction
@@ -48,7 +48,7 @@ class CreditsService:
                 user_id=user_id,
                 amount=amount,
                 transaction_type=transaction_type,
-                balance_after=user.credits_balance,
+                balance_after=user.coins,
                 description=description,
                 metadata=metadata or {},
                 created_at=datetime.now(timezone.utc)
@@ -62,7 +62,7 @@ class CreditsService:
                     "user_id": str(user_id),
                     "amount": amount,
                     "old_balance": old_balance,
-                    "new_balance": user.credits_balance,
+                    "new_balance": user.coins,
                     "transaction_type": transaction_type
                 }
             )
@@ -82,27 +82,27 @@ class CreditsService:
     ) -> bool:
         """Deduct credits from user account with transaction logging"""
         try:
-            user = await User.get(user_id)
+            user = await TBUser.get(user_id)
             if not user:
                 logger.error(f"User not found: {user_id}")
                 return False
             
             # Check sufficient balance
-            if user.credits_balance < amount:
+            if user.coins < amount:
                 logger.warning(
                     "Insufficient credits",
                     extra={
                         "event": "insufficient_credits",
                         "user_id": str(user_id),
                         "required": amount,
-                        "available": user.credits_balance
+                        "available": user.coins
                     }
                 )
                 return False
             
             # Update balance
-            old_balance = user.credits_balance
-            user.credits_balance -= amount
+            old_balance = user.coins
+            user.coins -= amount
             await user.save()
             
             # Log transaction
@@ -110,7 +110,7 @@ class CreditsService:
                 user_id=user_id,
                 amount=-amount,
                 transaction_type=transaction_type,
-                balance_after=user.credits_balance,
+                balance_after=user.coins,
                 description=description,
                 metadata=metadata or {},
                 created_at=datetime.now(timezone.utc)
@@ -118,13 +118,13 @@ class CreditsService:
             await transaction.insert()
             
             logger.info(
-                "Credits deducted",
+                f"Credits deducted",
                 extra={
                     "event": "credits_deducted",
                     "user_id": str(user_id),
                     "amount": amount,
                     "old_balance": old_balance,
-                    "new_balance": user.credits_balance,
+                    "new_balance": user.coins,
                     "transaction_type": transaction_type
                 }
             )

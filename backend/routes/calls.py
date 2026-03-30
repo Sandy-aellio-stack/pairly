@@ -8,9 +8,9 @@ from typing import Optional
 from beanie import PydanticObjectId
 from datetime import datetime, timezone
 
-from backend.models.user import User, Role
+from backend.models.tb_user import TBUser
 from backend.models.call_session import CallSession, CallStatus
-from backend.routes.auth import get_current_user
+from backend.routes.tb_auth import get_current_user
 from backend.services.call_signaling import CallSignalingService
 from backend.services.call_billing_worker import billing_tick_task, finalize_call_task
 import json
@@ -60,7 +60,7 @@ class StartCallRequest(BaseModel):
 async def start_call(
     req: StartCallRequest,
     request: Request,
-    user: User = Depends(get_current_user)
+    user: TBUser = Depends(get_current_user)
 ):
     """
     Initiate a new call to another user.
@@ -73,11 +73,11 @@ async def start_call(
     from backend.models.call_session import CallSession as CS
     min_credits = 5  # Default cost per minute
     
-    if user.credits_balance < min_credits:
+    if user.coins < min_credits:
         raise HTTPException(400, f"Insufficient credits. Need at least {min_credits} credits to start a call.")
     
     # Check receiver exists and is not the caller
-    receiver = await User.get(receiver_oid)
+    receiver = await TBUser.get(receiver_oid)
     if not receiver:
         raise HTTPException(404, "Receiver not found")
     
@@ -114,7 +114,7 @@ class AcceptCallRequest(BaseModel):
 async def accept_call(
     req: AcceptCallRequest,
     request: Request,
-    user: User = Depends(get_current_user)
+    user: TBUser = Depends(get_current_user)
 ):
     """
     Accept an incoming call.

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Zap, Heart, Shield, User, Target, Search, MessageCircle, Sparkles, BookOpen, MessageSquare, Ear } from 'lucide-react';
 
 const demoSteps = [

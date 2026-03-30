@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Users, UserPlus, Activity, AlertTriangle, TrendingUp, TrendingDown, ArrowRight, MessageCircle, Heart, Coins } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { adminAnalyticsAPI } from '@/services/adminApi';

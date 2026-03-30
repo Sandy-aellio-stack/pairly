@@ -36,7 +36,7 @@ const ChatPage = () => {
 
   // Connect socket and set up listeners
   useEffect(() => {
-    const token = localStorage.getItem('tb_access_token');
+    const token = localStorage.getItem('access_token');
     if (token) {
       connectSocket(token);
     }

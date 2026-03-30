@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+﻿import { Link } from 'react-router-dom';
 import { Heart, ArrowLeft, MapPin, Clock, ArrowRight, Briefcase } from 'lucide-react';
 
 const openings = [
@@ -60,7 +60,7 @@ const CareersPage = () => {
             <div className="w-10 h-10 rounded-xl bg-[#0F172A] flex items-center justify-center">
               <Heart size={20} className="text-white" fill="white" />
             </div>
-            <span className="text-xl font-bold text-[#0F172A]">TrueBond</span>
+            <span className="text-xl font-bold text-[#0F172A]">Luveloop</span>
           </Link>
           <Link to="/" className="flex items-center gap-2 text-gray-600 hover:text-[#0F172A]">
             <ArrowLeft size={20} />
@@ -82,7 +82,7 @@ const CareersPage = () => {
       {/* Why Join */}
       <section className="py-16">
         <div className="max-w-6xl mx-auto px-6">
-          <h2 className="text-3xl font-bold text-[#0F172A] mb-8 text-center">Why Join TrueBond?</h2>
+          <h2 className="text-3xl font-bold text-[#0F172A] mb-8 text-center">Why Join Luveloop?</h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
             {benefits.map((benefit, index) => (
               <div key={index} className="bg-white rounded-xl p-4 shadow-md text-center">

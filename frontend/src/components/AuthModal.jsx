@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+﻿import { useState, useRef, useEffect } from 'react';
 import { X, ChevronRight, ChevronLeft, Eye, EyeOff, Plus, Trash2, Check, User, Mail, Lock, Phone, Calendar, Users, MapPin, Heart } from 'lucide-react';
 import gsap from 'gsap';
 import useAuthStore from '@/store/authStore';

@@ -156,8 +156,8 @@ const SignupPage = () => {
 
       // Backend returns: { access_token, refresh_token, user } at root level
       if (data.access_token) {
-        localStorage.setItem('tb_access_token', data.access_token);
-        localStorage.setItem('tb_refresh_token', data.refresh_token);
+        localStorage.setItem('access_token', data.access_token);
+        localStorage.setItem('refresh_token', data.refresh_token);
         toast.success('Welcome to Luveloop! 🎉 Account created successfully!');
         navigate('/dashboard');
         window.location.reload();
@@ -218,7 +218,7 @@ const SignupPage = () => {
         <div className="relative z-10 flex flex-col items-center justify-center w-full p-8">
           {/* Hero Image */}
           <img
-            src="https://customer-assets.emergentagent.com/job_truebond-notify/artifacts/8q937866_Gemini_Generated_Image_c05duoc05duoc05d.png"
+            src="https://customer-assets.emergentagent.com/job_adobeexpress-notify/artifacts/8q937866_Gemini_Generated_Image_c05duoc05duoc05d.png"
             alt="Find your perfect match"
             className="w-full max-w-sm object-contain drop-shadow-2xl rounded-2xl mb-6"
           />
@@ -264,9 +264,7 @@ const SignupPage = () => {
         <div className="w-full max-w-lg">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center shadow-lg">
-              <Heart size={24} className="text-white" fill="white" />
-            </div>
+            <img src="/logo.png" alt="Luveloop" className="w-12 h-12 object-contain" />
             <span className="text-2xl font-bold text-[#0F172A]">Luveloop</span>
           </Link>
 

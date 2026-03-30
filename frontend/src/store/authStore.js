@@ -22,7 +22,7 @@ const useAuthStore = create((set, get) => ({
   coins: 0,
 
   initialize: async () => {
-    const token = localStorage.getItem('tb_access_token');
+    const token = localStorage.getItem('access_token');
     
     // Clear potentially stale cached storage if any (to ensure fresh data)
     if (localStorage.getItem('auth-storage')) {
@@ -30,9 +30,9 @@ const useAuthStore = create((set, get) => ({
     }
 
     // Listen for real-time balance updates from socket
-    if (typeof window !== 'undefined' && !window.__luveloopBalanceListenerAdded) {
-      window.__luveloopBalanceListenerAdded = true;
-      window.addEventListener('luveloop:balance_updated', (e) => {
+    if (typeof window !== 'undefined' && !window.__appBalanceListenerAdded) {
+      window.__appBalanceListenerAdded = true;
+      window.addEventListener('app:balance_updated', (e) => {
         const newBalance = e.detail?.coins;
         if (typeof newBalance === 'number') {
           set((state) => ({
@@ -63,8 +63,8 @@ const useAuthStore = create((set, get) => ({
       }
     } catch (error) {
       console.error('[AuthStore] Initialize error:', error);
-      localStorage.removeItem('tb_access_token');
-      localStorage.removeItem('tb_refresh_token');
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
       set({ user: null, isAuthenticated: false, isLoading: false });
     }
   },
@@ -100,8 +100,8 @@ const useAuthStore = create((set, get) => ({
 
     // Backend returns: { access_token, refresh_token, user, ... } at root level
     const { access_token, refresh_token, user } = response.data;
-    localStorage.setItem('tb_access_token', access_token);
-    localStorage.setItem('tb_refresh_token', refresh_token);
+    localStorage.setItem('access_token', access_token);
+    localStorage.setItem('refresh_token', refresh_token);
 
     // Set initial user data then immediately refresh to be absolutely sure
     set({
@@ -123,8 +123,8 @@ const useAuthStore = create((set, get) => ({
     loginWithOTP: async (payload) => {
     const response = await authAPI.loginWithOTP(payload);
     const { access_token, refresh_token, user } = response.data;
-    localStorage.setItem('tb_access_token', access_token);
-    localStorage.setItem('tb_refresh_token', refresh_token);
+    localStorage.setItem('access_token', access_token);
+    localStorage.setItem('refresh_token', refresh_token);
     set({
       user: user,
       isAuthenticated: true,
@@ -143,8 +143,8 @@ const useAuthStore = create((set, get) => ({
     const response = await authAPI.signup(data);
     // Backend returns: { access_token, refresh_token, user, ... } at root level
     const { access_token, refresh_token, user } = response.data;
-    localStorage.setItem('tb_access_token', access_token);
-    localStorage.setItem('tb_refresh_token', refresh_token);
+    localStorage.setItem('access_token', access_token);
+    localStorage.setItem('refresh_token', refresh_token);
 
     // User data is already in the signup response, use it directly
     set({
@@ -165,8 +165,8 @@ const useAuthStore = create((set, get) => ({
     // Cleanup FCM token (non-blocking)
     cleanupFCM().catch(err => console.warn('[Auth] FCM cleanup failed:', err));
     disconnectSocket();
-    localStorage.removeItem('tb_access_token');
-    localStorage.removeItem('tb_refresh_token');
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
     set({ user: null, isAuthenticated: false, coins: 0 });
   },
 

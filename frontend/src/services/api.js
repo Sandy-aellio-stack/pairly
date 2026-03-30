@@ -40,7 +40,7 @@ const fallbackApi = axios.create({
 const addRequestInterceptor = (axiosInstance) => {
   axiosInstance.interceptors.request.use(
     (config) => {
-      const token = localStorage.getItem('tb_access_token');
+      const token = localStorage.getItem('access_token');
       console.log(`[AXIOS DEBUG] Request: ${config.method?.toUpperCase()} ${config.url} - Auth: ${token ? 'PRESENT' : 'MISSING'}`);
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
@@ -80,7 +80,7 @@ const addResponseInterceptor = (axiosInstance, baseUrl) => {
         const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/signup') || url.includes('/auth/otp');
 
         if (!isAuthEndpoint) {
-          const refreshToken = localStorage.getItem('tb_refresh_token');
+          const refreshToken = localStorage.getItem('refresh_token');
 
           if (refreshToken) {
             try {
@@ -89,24 +89,24 @@ const addResponseInterceptor = (axiosInstance, baseUrl) => {
               });
 
               const { access_token, refresh_token } = response.data;
-              localStorage.setItem('tb_access_token', access_token);
-              localStorage.setItem('tb_refresh_token', refresh_token);
+              localStorage.setItem('access_token', access_token);
+              localStorage.setItem('refresh_token', refresh_token);
 
               // Retry the original request with new token
               originalRequest.headers.Authorization = `Bearer ${access_token}`;
               return axiosInstance(originalRequest);
             } catch (refreshError) {
               // Refresh failed - clear tokens and redirect to login
-              localStorage.removeItem('tb_access_token');
-              localStorage.removeItem('tb_refresh_token');
+              localStorage.removeItem('access_token');
+              localStorage.removeItem('refresh_token');
               localStorage.removeItem('tb_user');
               window.location.href = '/';
               return Promise.reject(refreshError);
             }
           } else {
             // No refresh token - clear and redirect
-            localStorage.removeItem('tb_access_token');
-            localStorage.removeItem('tb_refresh_token');
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
             localStorage.removeItem('tb_user');
             window.location.href = '/';
           }
@@ -160,13 +160,6 @@ export const userAPI = {
   getProfile: (userId) => api.get(`/api/users/profile/${userId}`),
   updateProfile: (data) => api.put('/api/users/profile', data),
   updatePreferences: (data) => api.put('/api/users/preferences', data),
-  getCoins: () => api.get('/api/users/coins'),
-  uploadPhoto: (formData) => api.post('/api/users/upload-photo', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }),
-  getSettings: () => api.get('/api/users/settings'),
-  updateSettings: (data) => api.patch('/api/users/settings', data),
-  deleteAccount: () => api.delete('/api/users/account'),
   // User Search & Feed
   search: (query, page = 1, limit = 20) => api.get(`/api/users/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`),
   getFeed: (page = 1, limit = 20) => api.get(`/api/users/feed?page=${page}&limit=${limit}`),
@@ -183,6 +176,10 @@ export const userAPI = {
   blockUserSimple: (data) => api.post('/api/users/block', data),
   // Conversation Management
   createOrGetConversation: (userId) => api.post('/api/users/create-or-get-conversation', { user_id: userId }),
+  // Settings Management
+  getSettings: () => api.get('/api/settings'),
+  updateSettings: (data) => api.post('/api/settings', data),
+  deleteAccount: () => api.delete('/api/users/account'),
 };
 
 

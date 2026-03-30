@@ -1,4 +1,4 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+﻿import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Users, Shield, BarChart3, Settings, FileText, LogOut, Heart, Bell } from 'lucide-react';
 import useAdminStore from '@/store/adminStore';
 
@@ -31,7 +31,7 @@ const AdminLayout = () => {
               <Heart size={20} className="text-[#0F172A]" fill="currentColor" />
             </div>
             <div>
-              <h1 className="font-bold text-lg">TrueBond</h1>
+              <h1 className="font-bold text-lg">Luveloop</h1>
               <p className="text-xs text-white/60">Admin Panel</p>
             </div>
           </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Search, MessageSquare, Mail, Phone, ChevronDown, ChevronUp, ArrowRight, Headphones, Clock, Users } from 'lucide-react';
 
 const faqs = [
@@ -145,7 +145,7 @@ const SupportSection = () => {
                   </div>
                   <div className="flex-1">
                     <h4 className="font-bold text-[#0F172A]">Email Us</h4>
-                    <p className="text-gray-500 text-sm">support@luveloop.com • We'll respond within 24 hours</p>
+                    <p className="text-gray-500 text-sm">support@Luveloop.com • We'll respond within 24 hours</p>
                   </div>
                   <ArrowRight size={20} className="text-gray-400" />
                 </div>
@@ -158,7 +158,7 @@ const SupportSection = () => {
                   </div>
                   <div className="flex-1">
                     <h4 className="font-bold text-[#0F172A]">Call Us</h4>
-                    <p className="text-gray-500 text-sm">Mon-Fri, 9am-6pm IST • 1-800-TRUEBOND</p>
+                    <p className="text-gray-500 text-sm">Mon-Fri, 9am-6pm IST • 1-800-Luveloop</p>
                   </div>
                   <ArrowRight size={20} className="text-gray-400" />
                 </div>

@@ -2,9 +2,9 @@ from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from beanie import PydanticObjectId
-from backend.models.user import User
+from backend.models.tb_user import TBUser
 from backend.models.profile import Profile, GeoJSONPoint
-from backend.routes.auth import get_current_user
+from backend.routes.tb_auth import get_current_user
 from typing import Optional
 
 router = APIRouter(prefix="/api/profiles")
@@ -44,7 +44,7 @@ async def get_profile(id: PydanticObjectId):
 
 
 @router.post("/")
-async def create_profile(req: CreateProfileRequest, user: User = Depends(get_current_user)):
+async def create_profile(req: CreateProfileRequest, user: TBUser = Depends(get_current_user)):
     existing = await Profile.find_one(Profile.user_id == user.id)
     if existing:
         raise HTTPException(400, "Profile already exists")
@@ -68,7 +68,7 @@ async def create_profile(req: CreateProfileRequest, user: User = Depends(get_cur
 
 
 @router.patch("/me")
-async def update_profile(req: UpdateProfileRequest, user: User = Depends(get_current_user)):
+async def update_profile(req: UpdateProfileRequest, user: TBUser = Depends(get_current_user)):
     profile = await Profile.find_one(Profile.user_id == user.id)
     if not profile:
         raise HTTPException(404, "Profile not found")
@@ -89,7 +89,7 @@ async def update_profile(req: UpdateProfileRequest, user: User = Depends(get_cur
 
 
 @router.post("/status")
-async def update_status(req: StatusRequest, user: User = Depends(get_current_user)):
+async def update_status(req: StatusRequest, user: TBUser = Depends(get_current_user)):
     profile = await Profile.find_one(Profile.user_id == user.id)
     if not profile:
         raise HTTPException(404, "Profile not found")

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+﻿import { useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { Home, MessageCircle, MapPin, User, Coins, LogOut, Heart, Bell, Search, Settings, Phone } from 'lucide-react';
 import { locationAPI } from '@/services/api';
@@ -104,9 +104,7 @@ const DashboardLayout = () => {
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           {/* Logo */}
           <NavLink to="/dashboard" className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-[#0F172A] flex items-center justify-center">
-              <Heart size={18} className="text-white" fill="white" />
-            </div>
+            <img src="/logo.png" alt="Luveloop" className="w-9 h-9 object-contain" />
             <span className="text-xl font-bold text-[#0F172A] hidden sm:block">Luveloop</span>
           </NavLink>
 

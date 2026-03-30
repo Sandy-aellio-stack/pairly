@@ -38,6 +38,7 @@ from backend.routes.tb_payments import router as payments_router
 from backend.routes.tb_notifications import router as notifications_router
 from backend.routes.tb_search import router as search_router
 from backend.routes.calling_v2 import router as calling_v2_router
+from backend.routes.user_settings import router as settings_router
 
 from backend.routes.tb_admin_auth import router as admin_auth_router
 from backend.routes.tb_admin_users import router as admin_users_router
@@ -158,6 +159,7 @@ app.include_router(messages_router)
 app.include_router(credits_router)
 app.include_router(payments_router)
 app.include_router(notifications_router)
+app.include_router(settings_router)
 app.include_router(search_router)
 app.include_router(calling_v2_router)
 app.include_router(webhooks_router)

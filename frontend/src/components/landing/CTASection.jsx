@@ -1,4 +1,4 @@
-import { Heart, ArrowRight, Check, MessageCircle, Phone, Video } from 'lucide-react';
+﻿import { Heart, ArrowRight, Check, MessageCircle, Phone, Video } from 'lucide-react';
 
 const CTASection = ({ onGetStarted }) => {
   return (

@@ -60,8 +60,8 @@ export const connectSocket = (token) => {
   /* ---------- GLOBAL EVENTS ---------- */
 
   socket.on("force_logout", () => {
-    localStorage.removeItem("tb_access_token");
-    localStorage.removeItem("tb_refresh_token");
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
     localStorage.removeItem("tb_user");
 
     socket.disconnect();
@@ -71,14 +71,14 @@ export const connectSocket = (token) => {
   });
 
   socket.on("balance_updated", (data) => {
-    const event = new CustomEvent("luveloop:balance_updated", {
+    const event = new CustomEvent("Luveloop:balance_updated", {
       detail: data,
     });
     window.dispatchEvent(event);
   });
 
   socket.on("new_notification", (data) => {
-    const event = new CustomEvent("luveloop:new_notification", {
+    const event = new CustomEvent("Luveloop:new_notification", {
       detail: data,
     });
     window.dispatchEvent(event);

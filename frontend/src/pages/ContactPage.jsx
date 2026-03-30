@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, ArrowLeft, Mail, Phone, MapPin, MessageSquare, Send } from 'lucide-react';
 import { toast } from 'sonner';
@@ -60,7 +60,7 @@ const ContactPage = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold text-[#0F172A]">Email</h3>
-                  <p className="text-gray-600">support@luveloop.com</p>
+                  <p className="text-gray-600">support@Luveloop.com</p>
                   <p className="text-sm text-gray-500">We respond within 24 hours</p>
                 </div>
               </div>
@@ -71,7 +71,7 @@ const ContactPage = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold text-[#0F172A]">Phone</h3>
-                  <p className="text-gray-600">1-800-TRUEBOND</p>
+                  <p className="text-gray-600">1-800-Luveloop</p>
                   <p className="text-sm text-gray-500">Mon-Fri, 9am-6pm IST</p>
                 </div>
               </div>

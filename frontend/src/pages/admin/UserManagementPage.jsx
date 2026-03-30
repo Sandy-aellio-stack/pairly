@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Search, Eye, UserX, Ban, CheckCircle, XCircle, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { adminUsersAPI } from '@/services/adminApi';
@@ -95,7 +95,7 @@ const UserManagementPage = () => {
     <div>
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-[#0F172A] mb-2">User Management</h1>
-        <p className="text-gray-600">Search, view, and manage all TrueBond users.</p>
+        <p className="text-gray-600">Search, view, and manage all Luveloop users.</p>
       </div>
 
       {/* Filters */}

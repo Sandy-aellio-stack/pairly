@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Heart, Mail, Lock, Eye, EyeOff, ArrowRight, Sparkles, Phone, Shield, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -104,7 +104,7 @@ const LoginPage = () => {
         <div className="absolute bottom-20 right-10 w-80 h-80 bg-orange-200/30 rounded-full blur-3xl" />
         <div className="relative z-10 flex flex-col items-center justify-center w-full p-12">
           <img
-            src="https://customer-assets.emergentagent.com/job_truebond-notify/artifacts/8q937866_Gemini_Generated_Image_c05duoc05duoc05d.png"
+            src="/logo.png"
             alt="Luveloop - Find your match"
             className="w-full max-w-md object-contain mb-8 drop-shadow-2xl rounded-2xl"
           />
@@ -125,9 +125,7 @@ const LoginPage = () => {
       <div className="flex-1 flex items-center justify-center px-6 py-12 bg-white">
         <div className="w-full max-w-md">
           <Link to="/" className="flex items-center gap-3 mb-8">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center shadow-lg">
-              <Heart size={24} className="text-white" fill="white" />
-            </div>
+            <img src="/logo.png" alt="Luveloop" className="w-12 h-12 object-contain" />
             <span className="text-2xl font-bold text-[#0F172A]">Luveloop</span>
           </Link>
 

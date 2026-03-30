@@ -4,11 +4,11 @@ from typing import List, Optional, Dict, Any
 import logging
 import json
 from datetime import datetime, timezone
-from backend.models.user import User
+from backend.models.tb_user import TBUser
 from backend.models.message_v2 import MessageV2, MessageType, MessageStatus
 from backend.services.messaging_v2 import get_messaging_service_v2, MessagingServiceV2
-from backend.services.token_utils import verify_token
-from backend.routes.auth import get_current_user
+from backend.services.tb_auth_service import AuthService
+from backend.routes.tb_auth import get_current_user
 
 logger = logging.getLogger('routes.messaging_v2')
 
@@ -84,7 +84,7 @@ class MessageResponse(BaseModel):
 @router.post("/send", response_model=MessageResponse)
 async def send_message(
     request: SendMessageRequest,
-    user: User = Depends(get_current_user),
+    user: TBUser = Depends(get_current_user),
     service: MessagingServiceV2 = Depends(get_messaging_service_v2)
 ):
     """Send a message to another user"""
@@ -129,7 +129,7 @@ async def get_conversation(
     partner_id: str,
     limit: int = Query(50, le=100),
     skip: int = Query(0, ge=0),
-    user: User = Depends(get_current_user),
+    user: TBUser = Depends(get_current_user),
     service: MessagingServiceV2 = Depends(get_messaging_service_v2)
 ):
     """Get conversation history with a specific user"""
@@ -160,7 +160,7 @@ async def get_conversation(
 
 @router.get("/conversations")
 async def list_conversations(
-    user: User = Depends(get_current_user),
+    user: TBUser = Depends(get_current_user),
     service: MessagingServiceV2 = Depends(get_messaging_service_v2)
 ):
     """List all conversations for current user"""
@@ -206,7 +206,7 @@ async def list_conversations(
 @router.post("/mark-delivered/{message_id}")
 async def mark_delivered(
     message_id: str,
-    user: User = Depends(get_current_user),
+    user: TBUser = Depends(get_current_user),
     service: MessagingServiceV2 = Depends(get_messaging_service_v2)
 ):
     """Mark a message as delivered"""
@@ -229,7 +229,7 @@ async def mark_delivered(
 @router.post("/mark-read")
 async def mark_read(
     request: MarkReadRequest,
-    user: User = Depends(get_current_user),
+    user: TBUser = Depends(get_current_user),
     service: MessagingServiceV2 = Depends(get_messaging_service_v2)
 ):
     """Mark messages as read"""
@@ -251,7 +251,7 @@ async def mark_read(
 @router.get("/unread-count")
 async def get_unread_count(
     sender_id: Optional[str] = None,
-    user: User = Depends(get_current_user),
+    user: TBUser = Depends(get_current_user),
     service: MessagingServiceV2 = Depends(get_messaging_service_v2)
 ):
     """Get unread message count"""
@@ -261,7 +261,7 @@ async def get_unread_count(
 @router.delete("/{message_id}")
 async def delete_message(
     message_id: str,
-    user: User = Depends(get_current_user),
+    user: TBUser = Depends(get_current_user),
     service: MessagingServiceV2 = Depends(get_messaging_service_v2)
 ):
     """Delete a message (soft delete)"""
@@ -272,7 +272,7 @@ async def delete_message(
 
 @router.get("/stats")
 async def get_message_stats(
-    user: User = Depends(get_current_user),
+    user: TBUser = Depends(get_current_user),
     service: MessagingServiceV2 = Depends(get_messaging_service_v2)
 ):
     """Get messaging statistics for current user"""
@@ -281,63 +281,41 @@ async def get_message_stats(
 
 # WebSocket endpoint
 @router.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    """WebSocket endpoint for real-time messaging features"""
-    user_id = None
+async def websocket_endpoint(websocket: WebSocket, token: str = Query(...)):
+    """WebSocket endpoint for real-time messaging"""
     try:
-        # Wait for authentication message
         await websocket.accept()
-        auth_data = await websocket.receive_text()
-        auth_json = json.loads(auth_data)
-        
-        token = auth_json.get("token")
-        if not token:
-            await websocket.send_json({"type": "error", "message": "No token provided"})
-            await websocket.close(code=1008)
-            return
-        
         # Verify token
-        try:
-            payload = verify_token(token, "access")
-            user_id = payload.get("sub")
-        except Exception as e:
-            await websocket.send_json({"type": "error", "message": "Invalid token"})
-            await websocket.close(code=1008)
-            return
+        payload = AuthService.decode_token(token)
+        if payload.get("type") != "access":
+            raise ValueError("Invalid token type")
+        user_id = payload.get("sub")
         
-        # Register connection
         await manager.connect(user_id, websocket)
         await websocket.send_json({"type": "connected", "user_id": user_id})
         
-        # Handle incoming messages
-        while True:
-            data = await websocket.receive_text()
-            message_data = json.loads(data)
-            
-            msg_type = message_data.get("type")
-            
-            if msg_type == "typing":
-                # Broadcast typing indicator
-                receiver_id = message_data.get("receiver_id")
-                is_typing = message_data.get("is_typing", False)
-                if receiver_id:
-                    await manager.broadcast_typing(user_id, receiver_id, is_typing)
-            
-            elif msg_type == "ping":
-                # Heartbeat
-                await websocket.send_json({"type": "pong"})
-            
-            else:
-                logger.warning(f"Unknown WebSocket message type: {msg_type}")
-    
-    except WebSocketDisconnect:
-        if user_id:
-            manager.disconnect(user_id)
-    except Exception as e:
-        logger.error(f"WebSocket error: {e}", exc_info=True)
-        if user_id:
-            manager.disconnect(user_id)
         try:
-            await websocket.close(code=1011)
+            while True:
+                data = await websocket.receive_text()
+                message_data = json.loads(data)
+                
+                # Handle typing indicator
+                if message_data.get("type") == "typing":
+                    receiver_id = message_data.get("receiver_id")
+                    is_typing = message_data.get("is_typing", False)
+                    await manager.broadcast_typing(user_id, receiver_id, is_typing)
+                elif message_data.get("type") == "ping":
+                    await websocket.send_json({"type": "pong"})
+                    
+        except WebSocketDisconnect:
+            manager.disconnect(user_id)
+        except Exception as e:
+            logger.error(f"WebSocket error for {user_id}: {e}")
+            manager.disconnect(user_id)
+            
+    except Exception as e:
+        logger.error(f"WebSocket authentication failed: {e}")
+        try:
+            await websocket.close(code=1008)  # Policy Violation
         except:
             pass

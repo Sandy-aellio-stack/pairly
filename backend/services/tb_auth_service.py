@@ -17,6 +17,7 @@ from backend.models.tb_pending_session import PendingSession
 from backend.models.tb_credit import TBCreditTransaction, TransactionReason
 from backend.models.auth_models import FirebaseLoginRequest
 from backend.services.tb_otp_service import OTPService
+from backend.config import settings
 from passlib.context import CryptContext
 from bson.errors import InvalidId
 from bson import ObjectId
@@ -24,7 +25,7 @@ from bson import ObjectId
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 logger = logging.getLogger(__name__)
 
-JWT_SECRET = os.getenv("JWT_SECRET")
+JWT_SECRET = settings.JWT_SECRET
 if not JWT_SECRET:
     raise RuntimeError("JWT_SECRET environment variable not set")
 
@@ -139,38 +140,61 @@ class AuthService:
             return False
 
     @staticmethod
-    def create_access_token(user_id: str) -> str:
+    def create_access_token(user_id: str, role: str = "user") -> str:
         from uuid import uuid4
+        now = datetime.now(timezone.utc)
         payload = {
             "sub": user_id,
+            "role": role,
             "type": "access",
             "jti": str(uuid4()),
-            "exp": datetime.now(timezone.utc) + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS),
-            "iat": datetime.now(timezone.utc)
+            "iss": "pairly",
+            "aud": "pairly-api",
+            "exp": now + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS),
+            "iat": now
         }
         return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
     @staticmethod
-    def create_refresh_token(user_id: str) -> str:
+    def create_refresh_token(user_id: str, role: str = "user") -> str:
         from uuid import uuid4
+        now = datetime.now(timezone.utc)
         payload = {
             "sub": user_id,
+            "role": role,
             "type": "refresh",
             "jti": str(uuid4()),
-            "exp": datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
-            "iat": datetime.now(timezone.utc)
+            "iss": "pairly",
+            "aud": "pairly-api",
+            "exp": now + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+            "iat": now
         }
         return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
     @staticmethod
     def decode_token(token: str) -> dict:
+        import logging
+        logger = logging.getLogger("auth")
         try:
-            payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+            # Use same secret as other services to ensure consistency
+            payload = jwt.decode(
+                token, 
+                JWT_SECRET, 
+                algorithms=[JWT_ALGORITHM],
+                audience="pairly-api",
+                issuer="pairly"
+            )
+            logger.debug(f"Token decoded successfully for sub: {payload.get('sub')}")
             return payload
         except JoseExpiredSignatureError:
+            logger.warning(f"Token expired for token starting with: {token[:10]}...")
             raise HTTPException(status_code=401, detail="Token expired")
-        except (JoseJWTError, Exception):
-            raise HTTPException(status_code=401, detail="Invalid token")
+        except JoseJWTError as e:
+            logger.error(f"JWT decode error: {str(e)} for token starting with: {token[:10]}...")
+            raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
+        except Exception as e:
+            logger.error(f"Unexpected error decoding token: {str(e)}")
+            raise HTTPException(status_code=401, detail="Invalid token: Unknown error")
 
     @staticmethod
     async def signup(data: SignupRequest) -> Tuple[TBUser, TokenResponse]:
@@ -279,8 +303,8 @@ class AuthService:
 
         # Generate tokens
         tokens = TokenResponse(
-            access_token=AuthService.create_access_token(str(user.id)),
-            refresh_token=AuthService.create_refresh_token(str(user.id)),
+            access_token=AuthService.create_access_token(str(user.id), user.role),
+            refresh_token=AuthService.create_refresh_token(str(user.id), user.role),
             user_id=str(user.id)
         )
 
@@ -388,8 +412,8 @@ class AuthService:
             pass
 
         tokens = TokenResponse(
-            access_token=AuthService.create_access_token(str(user.id)),
-            refresh_token=AuthService.create_refresh_token(str(user.id)),
+            access_token=AuthService.create_access_token(str(user.id), user.role),
+            refresh_token=AuthService.create_refresh_token(str(user.id), user.role),
             user_id=str(user.id)
         )
 
@@ -471,8 +495,8 @@ class AuthService:
             }
 
         # 4. Generate JWT tokens
-        access_token = AuthService.create_access_token(str(user.id))
-        refresh_token = AuthService.create_refresh_token(str(user.id))
+        access_token = AuthService.create_access_token(str(user.id), user.role)
+        refresh_token = AuthService.create_refresh_token(str(user.id), user.role)
         
         # 5. Update last login
         user.last_login_at = datetime.now(timezone.utc)
@@ -505,8 +529,8 @@ class AuthService:
             raise HTTPException(status_code=401, detail="User not found or inactive")
 
         return TokenResponse(
-            access_token=AuthService.create_access_token(user_id),
-            refresh_token=AuthService.create_refresh_token(user_id),
+            access_token=AuthService.create_access_token(user_id, user.role),
+            refresh_token=AuthService.create_refresh_token(user_id, user.role),
             user_id=user_id
         )
 
@@ -695,8 +719,8 @@ class AuthService:
 
         # Generate tokens
         tokens = TokenResponse(
-            access_token=AuthService.create_access_token(str(user.id)),
-            refresh_token=AuthService.create_refresh_token(str(user.id)),
+            access_token=AuthService.create_access_token(str(user.id), user.role),
+            refresh_token=AuthService.create_refresh_token(str(user.id), user.role),
             user_id=str(user.id)
         )
 
@@ -754,8 +778,8 @@ class AuthService:
         await user.save()
 
         tokens = TokenResponse(
-            access_token=AuthService.create_access_token(str(user.id)),
-            refresh_token=AuthService.create_refresh_token(str(user.id)),
+            access_token=AuthService.create_access_token(str(user.id), user.role),
+            refresh_token=AuthService.create_refresh_token(str(user.id), user.role),
             user_id=str(user.id)
         )
 

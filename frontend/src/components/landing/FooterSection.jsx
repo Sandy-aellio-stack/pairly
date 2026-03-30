@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+﻿import { Link } from 'react-router-dom';
 import { Heart, Shield, Lock } from 'lucide-react';
 
 const FooterSection = () => {
@@ -17,9 +17,7 @@ const FooterSection = () => {
         <div className="grid md:grid-cols-4 gap-8 mb-8">
           <div>
             <Link to="/" className="flex items-center space-x-2 mb-4">
-              <div className="w-10 h-10 rounded-lg bg-[#E9D5FF] flex items-center justify-center">
-                <Heart size={20} className="text-[#0F172A]" fill="currentColor" />
-              </div>
+              <img src="/logo.png" alt="Luveloop" className="w-10 h-10 object-contain" />
               <span className="text-xl font-bold">Luveloop</span>
             </Link>
             <p className="text-gray-400 text-sm mb-4">

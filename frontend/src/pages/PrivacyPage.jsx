@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+﻿import { Link } from 'react-router-dom';
 import { Heart, ArrowLeft, Shield, Lock, Eye, Database } from 'lucide-react';
 
 const PrivacyPage = () => {
@@ -8,10 +8,8 @@ const PrivacyPage = () => {
       <header className="bg-white border-b border-gray-100">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#0F172A] flex items-center justify-center">
-              <Heart size={20} className="text-white" fill="white" />
-            </div>
-            <span className="text-xl font-bold text-[#0F172A]">TrueBond</span>
+            <img src="/logo.png" alt="Luveloop" className="w-10 h-10 object-contain" />
+            <span className="text-xl font-bold text-[#0F172A]">Luveloop</span>
           </Link>
           <Link to="/" className="flex items-center gap-2 text-gray-600 hover:text-[#0F172A]">
             <ArrowLeft size={20} />
@@ -34,7 +32,7 @@ const PrivacyPage = () => {
 
         <div className="bg-[#E9D5FF]/30 rounded-2xl p-6 mb-8">
           <p className="text-[#0F172A] font-medium">
-            At TrueBond, your privacy is not optional — it's foundational. We are committed to protecting your personal information and being transparent about how we collect, use, and share it.
+            At Luveloop, your privacy is not optional — it's foundational. We are committed to protecting your personal information and being transparent about how we collect, use, and share it.
           </p>
         </div>
 
@@ -142,8 +140,8 @@ const PrivacyPage = () => {
             <p className="text-gray-700 leading-relaxed">
               For privacy-related inquiries or to exercise your rights:
               <br /><br />
-              <strong>Email:</strong> privacy@truebond.com<br />
-              <strong>Data Protection Officer:</strong> dpo@truebond.com
+              <strong>Email:</strong> privacy@adobeexpress.com<br />
+              <strong>Data Protection Officer:</strong> dpo@adobeexpress.com
             </p>
           </section>
         </div>

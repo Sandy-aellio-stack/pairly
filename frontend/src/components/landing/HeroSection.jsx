@@ -1,4 +1,4 @@
-import { Heart, ArrowRight, Shield, Lock, Sparkles, Users, Star } from 'lucide-react';
+﻿import { Heart, ArrowRight, Shield, Lock, Sparkles, Users, Star } from 'lucide-react';
 
 const HeroSection = ({ onGetStarted, onWaitlist }) => {
   return (
@@ -76,7 +76,7 @@ const HeroSection = ({ onGetStarted, onWaitlist }) => {
                   <div className="bg-gradient-to-r from-rose-500 to-pink-500 p-6 text-white">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <Heart size={24} fill="white" />
+                        <img src="/logo.png" alt="Luveloop" className="w-8 h-8 object-contain" />
                         <span className="font-bold text-lg">Luveloop</span>
                       </div>
                       <div className="w-10 h-10 bg-white/20 rounded-full" />
@@ -109,8 +109,8 @@ const HeroSection = ({ onGetStarted, onWaitlist }) => {
               {/* Floating cards */}
               <div className="absolute -top-4 -right-4 bg-white rounded-2xl p-4 shadow-xl animate-bounce-slow">
                 <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 bg-gradient-to-br from-rose-400 to-pink-500 rounded-full flex items-center justify-center">
-                    <Heart size={16} className="text-white" fill="white" />
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center">
+                    <img src="/logo.png" alt="Luveloop" className="w-6 h-6 object-contain" />
                   </div>
                   <div>
                     <p className="text-sm font-bold text-[#0F172A]">New Match!</p>

@@ -23,8 +23,10 @@ class User(Document):
     twofa_enabled: bool = False
     twofa_method: Optional[TwoFAMethod] = None
     twofa_secret: Optional[str] = None
+    settings_id: Optional[PydanticObjectId] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+
 
     class Settings:
         name = "users"
@@ -35,4 +37,5 @@ class User(Document):
             [("role", 1)],
             [("is_suspended", 1)],
             [("created_at", -1)],
+            [("settings_id", 1)],
         ]

@@ -19,6 +19,7 @@ from backend.models.user import User as LegacyUser
 from backend.models.tb_pending_session import PendingSession
 from backend.models.call_session_v2 import CallSessionV2
 from backend.models.notification import Notification
+from backend.models.user_settings import UserSettings
 
 from backend.config import settings
 
@@ -84,6 +85,7 @@ async def init_db():
                 PendingSession,
                 CallSessionV2,
                 Notification,
+                UserSettings,
             ]
         )
         

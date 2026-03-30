@@ -8,9 +8,9 @@ from typing import Optional
 from beanie import PydanticObjectId
 import os
 
-from backend.models.user import User, Role
+from backend.models.tb_user import TBUser
 from backend.models.credits_transaction import TransactionType
-from backend.routes.auth import get_current_user
+from backend.routes.tb_auth import get_current_user
 from backend.services.credits_service import (
     CreditsService,
     InsufficientCreditsError,
@@ -23,11 +23,11 @@ router = APIRouter(prefix="/api/legacy/credits", tags=["Legacy Credits"])
 # ===== User Endpoints =====
 
 @router.get("/balance")
-async def get_balance(user: User = Depends(get_current_user)):
+async def get_balance(user: TBUser = Depends(get_current_user)):
     """Get current credit balance."""
     return {
         "user_id": str(user.id),
-        "credits_balance": user.credits_balance
+        "credits_balance": user.coins
     }
 
 
@@ -36,7 +36,7 @@ async def get_history(
     limit: int = 50,
     skip: int = 0,
     transaction_type: Optional[TransactionType] = None,
-    user: User = Depends(get_current_user)
+    user: TBUser = Depends(get_current_user)
 ):
     """Get credit transaction history."""
     result = await CreditsService.get_transaction_history(

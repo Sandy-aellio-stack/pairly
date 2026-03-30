@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from backend.models.tb_user import TBUser
 from backend.models.call_session_v2 import CallSessionV2, CallStatus
 from backend.services.calling_service_v2 import get_calling_service_v2, CallingServiceV2
-from backend.services.token_utils import verify_token
+from backend.services.tb_auth_service import AuthService
 from backend.routes.tb_auth import get_current_user
 from backend.services.fcm_service import fcm_service
 
@@ -343,9 +343,13 @@ async def websocket_call_signaling(websocket: WebSocket):
         
         # Verify token
         try:
-            payload = verify_token(token, "access")
+            payload = AuthService.decode_token(token)
+            if payload.get("type") != "access":
+                raise ValueError("Invalid token type")
             user_id = payload.get("sub")
+            logger.debug(f"Call WebSocket authenticated: {user_id}")
         except Exception as e:
+            logger.error(f"Call WebSocket authentication failed: {e}")
             await websocket.send_json({"type": "error", "message": "Invalid token"})
             await websocket.close(code=1008)
             return

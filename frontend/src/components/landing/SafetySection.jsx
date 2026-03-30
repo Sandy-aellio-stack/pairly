@@ -1,4 +1,4 @@
-import { Shield, Eye, Lock, UserCheck, Flag, Check } from 'lucide-react';
+﻿import { Shield, Eye, Lock, UserCheck, Flag, Check } from 'lucide-react';
 
 const safetyFeatures = [
   {

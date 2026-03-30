@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Heart, ArrowRight, Mail, RefreshCw, CheckCircle, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
@@ -134,7 +134,7 @@ const VerifyOTPPage = () => {
         <div className="relative z-10 flex flex-col items-center justify-center w-full p-12">
           {/* Hero Image */}
           <img 
-            src="https://customer-assets.emergentagent.com/job_truebond-notify/artifacts/8q937866_Gemini_Generated_Image_c05duoc05duoc05d.png" 
+            src="https://customer-assets.emergentagent.com/job_adobeexpress-notify/artifacts/8q937866_Gemini_Generated_Image_c05duoc05duoc05d.png" 
             alt="Almost there!" 
             className="w-full max-w-md object-contain mb-8 drop-shadow-2xl rounded-2xl"
           />

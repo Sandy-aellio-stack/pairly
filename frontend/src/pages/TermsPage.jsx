@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+﻿import { Link } from 'react-router-dom';
 import { Heart, ArrowLeft } from 'lucide-react';
 
 const TermsPage = () => {
@@ -118,8 +118,8 @@ const TermsPage = () => {
             <p className="text-gray-700 leading-relaxed">
               If you have questions about these Terms of Service, please contact us at:
               <br /><br />
-              <strong>Email:</strong> legal@luveloop.com<br />
-              <strong>Support:</strong> support@luveloop.com
+              <strong>Email:</strong> legal@Luveloop.com<br />
+              <strong>Support:</strong> support@Luveloop.com
             </p>
           </section>
         </div>

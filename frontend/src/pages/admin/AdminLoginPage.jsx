@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Heart, Mail, Lock, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -48,7 +48,7 @@ const AdminLoginPage = () => {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@luveloop.com"
+                  placeholder="admin@Luveloop.com"
                   className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-[#0F172A] outline-none"
                   required
                 />
@@ -86,8 +86,8 @@ const AdminLoginPage = () => {
           {/* Demo Credentials */}
           <div className="mt-6 p-4 bg-gray-50 rounded-xl">
             <p className="text-sm font-medium text-gray-700 mb-2">Demo Credentials:</p>
-            <p className="text-xs text-gray-500">Super Admin: admin@luveloop.com / admin123</p>
-            <p className="text-xs text-gray-500">Moderator: moderator@luveloop.com / mod123</p>
+            <p className="text-xs text-gray-500">Super Admin: admin@Luveloop.com / admin123</p>
+            <p className="text-xs text-gray-500">Moderator: moderator@Luveloop.com / mod123</p>
           </div>
         </form>
 

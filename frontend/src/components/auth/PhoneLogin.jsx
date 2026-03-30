@@ -88,8 +88,8 @@ const PhoneLogin = ({ onBack }) => {
                 const { access_token, refresh_token, token } = response.data;
                 const finalToken = token || access_token;
 
-                if (finalToken) localStorage.setItem('tb_access_token', finalToken);
-                if (refresh_token) localStorage.setItem('tb_refresh_token', refresh_token);
+                if (finalToken) localStorage.setItem('access_token', finalToken);
+                if (refresh_token) localStorage.setItem('refresh_token', refresh_token);
 
                 toast.success('Login successful! Welcome to Pairly 💕');
                 navigate('/dashboard');

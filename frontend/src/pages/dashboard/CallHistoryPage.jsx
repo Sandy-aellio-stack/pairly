@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Phone, Video, Clock, Calendar, Coins, User, Loader2, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '@/services/api';
 import useAuthStore from '@/store/authStore';
 import { toast } from 'sonner';
 
@@ -19,8 +19,7 @@ const CallHistoryPage = () => {
   const fetchCallHistory = async () => {
     setIsLoading(true);
     try {
-      const response = await axios.get('/api/calls/history', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('tb_access_token')}` },
+      const response = await api.get('/api/calls/history', {
         params: { limit: 50, filter }
       });
       

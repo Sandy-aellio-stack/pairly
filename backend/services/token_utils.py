@@ -5,11 +5,12 @@ import os
 from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException
 from uuid import uuid4
+from backend.config import settings
 
 logger = logging.getLogger('service.token')
 
 # Load configuration from environment
-SECRET_KEY = os.getenv("JWT_SECRET", "R8!kZPSW4q@fE7^xM2T9mC#A&JgH6yLQdS5VnUOpBcaeD9L@$#EWX!F7Q")
+SECRET_KEY = settings.JWT_SECRET
 ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 ISSUER = "pairly"
 AUDIENCE = "pairly-api"

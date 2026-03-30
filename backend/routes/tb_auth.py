@@ -16,13 +16,24 @@ from backend.services.tb_auth_service import (
 from backend.services.tb_otp_service import OTPService
 from backend.services.password_reset_service import password_reset_service
 
+import logging
+
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 security = HTTPBearer()
 
 # Dependency to get current user
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> TBUser:
     token = credentials.credentials
-    return await AuthService.get_current_user(token)
+    import logging
+    logger = logging.getLogger("auth")
+    logger.debug(f"Attempting to authenticate with token starting with: {token[:10]}...")
+    try:
+        user = await AuthService.get_current_user(token)
+        logger.debug(f"Authentication successful for user: {user.id}")
+        return user
+    except Exception as e:
+        logger.error(f"Authentication failed: {str(e)}")
+        raise e
 
 @router.post("/signup", response_model=dict)
 async def signup(data: SignupRequest):

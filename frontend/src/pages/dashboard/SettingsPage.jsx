@@ -61,18 +61,18 @@ const SettingsPage = () => {
         // Transform server response to frontend format if needed
         const transformedSettings = {
           notifications: {
-            messages: serverSettings.notifications?.messages ?? true,
-            matches: serverSettings.notifications?.matches ?? true,
-            nearby: serverSettings.notifications?.nearby ?? false,
+            messages: serverSettings.notifications?.new_messages ?? serverSettings.notifications?.messages ?? true,
+            matches: serverSettings.notifications?.new_matches ?? serverSettings.notifications?.matches ?? true,
+            nearby: serverSettings.notifications?.nearby_users ?? serverSettings.notifications?.nearby ?? false,
           },
           privacy: {
-            show_online: serverSettings.privacy?.show_online ?? true,
+            show_online: serverSettings.privacy?.show_online_status ?? serverSettings.privacy?.show_online ?? true,
             show_last_seen: serverSettings.privacy?.show_last_seen ?? true,
             show_distance: serverSettings.privacy?.show_distance ?? true,
           },
           safety: {
             block_screenshots: serverSettings.safety?.block_screenshots ?? false,
-            require_verified_matches: serverSettings.safety?.require_verified_matches ?? false,
+            require_verified_matches: serverSettings.safety?.verified_matches_only ?? serverSettings.safety?.require_verified_matches ?? false,
             hide_from_search: serverSettings.safety?.hide_from_search ?? false,
           },
           dark_mode: serverSettings.dark_mode ?? false,
@@ -110,19 +110,22 @@ const SettingsPage = () => {
       const flattenedData = {};
       
       if (section === 'notifications') {
-        // Map: messages -> notifications_messages, matches -> notifications_matches, nearby -> notifications_nearby
+        // Map to backend field names:
+        // messages -> notifications_messages
+        // matches -> notifications_matches
+        // nearby -> notifications_nearby_users
         if (key === 'messages') flattenedData.notifications_messages = updatedSettings[section][key];
         else if (key === 'matches') flattenedData.notifications_matches = updatedSettings[section][key];
-        else if (key === 'nearby') flattenedData.notifications_nearby = updatedSettings[section][key];
+        else if (key === 'nearby') flattenedData.notifications_nearby_users = updatedSettings[section][key];
         else flattenedData[`notifications_${key}`] = updatedSettings[section][key];
       } else if (section === 'privacy') {
-        // Map: show_online -> show_online_status, show_last_seen, show_distance
-        if (key === 'show_online') flattenedData.show_online_status = updatedSettings[section][key];
-        else flattenedData[key] = updatedSettings[section][key];
+        // Map: show_online -> privacy_show_online_status, show_last_seen -> privacy_show_last_seen, etc.
+        if (key === 'show_online') flattenedData.privacy_show_online_status = updatedSettings[section][key];
+        else flattenedData[`privacy_${key}`] = updatedSettings[section][key];
       } else if (section === 'safety') {
-        // Map: require_verified_matches -> verified_matches_only, block_screenshots, hide_from_search
-        if (key === 'require_verified_matches') flattenedData.verified_matches_only = updatedSettings[section][key];
-        else flattenedData[key] = updatedSettings[section][key];
+        // Map: require_verified_matches -> safety_verified_matches_only, block_screenshots -> safety_block_screenshots, etc.
+        if (key === 'require_verified_matches') flattenedData.safety_verified_matches_only = updatedSettings[section][key];
+        else flattenedData[`safety_${key}`] = updatedSettings[section][key];
       }
 
       console.log('[SettingsPage] Sending update:', flattenedData);
@@ -136,18 +139,18 @@ const SettingsPage = () => {
         // Transform server response back to frontend format
         const transformedSettings = {
           notifications: {
-            messages: serverSettings.notifications?.messages ?? true,
-            matches: serverSettings.notifications?.matches ?? true,
-            nearby: serverSettings.notifications?.nearby ?? false,
+            messages: serverSettings.notifications?.new_messages ?? serverSettings.notifications?.messages ?? true,
+            matches: serverSettings.notifications?.new_matches ?? serverSettings.notifications?.matches ?? true,
+            nearby: serverSettings.notifications?.nearby_users ?? serverSettings.notifications?.nearby ?? false,
           },
           privacy: {
-            show_online: serverSettings.privacy?.show_online ?? true,
+            show_online: serverSettings.privacy?.show_online_status ?? serverSettings.privacy?.show_online ?? true,
             show_last_seen: serverSettings.privacy?.show_last_seen ?? true,
             show_distance: serverSettings.privacy?.show_distance ?? true,
           },
           safety: {
             block_screenshots: serverSettings.safety?.block_screenshots ?? false,
-            require_verified_matches: serverSettings.safety?.require_verified_matches ?? false,
+            require_verified_matches: serverSettings.safety?.verified_matches_only ?? serverSettings.safety?.require_verified_matches ?? false,
             hide_from_search: serverSettings.safety?.hide_from_search ?? false,
           },
           dark_mode: serverSettings.dark_mode ?? false,
@@ -175,16 +178,16 @@ const SettingsPage = () => {
     console.log('[SettingsPage] Logging out...');
     try {
       await logout();
-      localStorage.removeItem('tb_access_token');
-      localStorage.removeItem('tb_refresh_token');
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
       localStorage.removeItem('tb_user');
       navigate('/');
       toast.success('Logged out successfully');
     } catch (error) {
       console.error('[SettingsPage] Logout error:', error);
       // Force logout anyway
-      localStorage.removeItem('tb_access_token');
-      localStorage.removeItem('tb_refresh_token');
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
       localStorage.removeItem('tb_user');
       navigate('/');
     }
@@ -215,8 +218,8 @@ const SettingsPage = () => {
       console.log('[SettingsPage] Account deleted successfully');
       toast.success('Account deleted successfully');
       // Clear all local storage and logout
-      localStorage.removeItem('tb_access_token');
-      localStorage.removeItem('tb_refresh_token');
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
       localStorage.removeItem('tb_user');
       useAuthStore.setState({ user: null, isAuthenticated: false, coins: 0 });
       navigate('/');

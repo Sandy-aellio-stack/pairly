@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+﻿import { Link } from 'react-router-dom';
 import { Heart, ArrowLeft, Users, Target, Sparkles, Shield } from 'lucide-react';
 
 const AboutPage = () => {
@@ -41,7 +41,7 @@ const AboutPage = () => {
             <div className="w-10 h-10 rounded-xl bg-[#0F172A] flex items-center justify-center">
               <Heart size={20} className="text-white" fill="white" />
             </div>
-            <span className="text-xl font-bold text-[#0F172A]">TrueBond</span>
+            <span className="text-xl font-bold text-[#0F172A]">Luveloop</span>
           </Link>
           <Link to="/" className="flex items-center gap-2 text-gray-600 hover:text-[#0F172A]">
             <ArrowLeft size={20} />
@@ -53,10 +53,10 @@ const AboutPage = () => {
       {/* Hero */}
       <section className="bg-gradient-to-br from-[#E9D5FF] via-[#FCE7F3] to-[#DBEAFE] py-20">
         <div className="max-w-4xl mx-auto px-6 text-center">
-          <h1 className="text-5xl font-bold text-[#0F172A] mb-6">About TrueBond</h1>
+          <h1 className="text-5xl font-bold text-[#0F172A] mb-6">About Luveloop</h1>
           <p className="text-xl text-gray-700 leading-relaxed">
             We're on a mission to bring people closer to love through meaningful, intentional connections. 
-            Founded in 2024, TrueBond was born from the belief that dating should feel human again.
+            Founded in 2024, Luveloop was born from the belief that dating should feel human again.
           </p>
         </div>
       </section>
@@ -67,7 +67,7 @@ const AboutPage = () => {
           <h2 className="text-3xl font-bold text-[#0F172A] mb-6">Our Story</h2>
           <div className="prose prose-lg max-w-none">
             <p className="text-gray-700 leading-relaxed mb-4">
-              TrueBond started with a simple observation: modern dating apps were making people feel more lonely, not less. 
+              Luveloop started with a simple observation: modern dating apps were making people feel more lonely, not less. 
               The endless swiping, the superficial judgments, the ghosting — it all felt like a game where nobody wins.
             </p>
             <p className="text-gray-700 leading-relaxed mb-4">
@@ -75,7 +75,7 @@ const AboutPage = () => {
               What if quality mattered more than quantity?
             </p>
             <p className="text-gray-700 leading-relaxed">
-              That's why we created TrueBond — a platform where conversations come first, where every message matters, 
+              That's why we created Luveloop — a platform where conversations come first, where every message matters, 
               and where real connections can grow at their own pace. No pressure, no noise, just genuine human connection.
             </p>
           </div>
