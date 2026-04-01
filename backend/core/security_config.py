@@ -73,6 +73,18 @@ class SecurityConfig:
         if allowed_origins_env:
             additional = [o.strip() for o in allowed_origins_env.split(",") if o.strip()]
             self.cors_origins.extend(additional)
+            
+        # Ensure our frontend domains are allowed
+        required_origins = [
+            "http://localhost:5173",
+            "https://luveloop.com",
+            "https://www.luveloop.com",
+            "http://localhost:5000"
+        ]
+        
+        for origin in required_origins:
+            if origin not in self.cors_origins:
+                self.cors_origins.append(origin)
         
         if not self.cors_origins:
             logger.critical("PRODUCTION: No CORS origins configured! Set FRONTEND_URL or CORS_ALLOWED_ORIGINS")
@@ -139,6 +151,9 @@ class SecurityConfig:
         self.cors_origins.extend([
             "http://localhost:3000",
             "http://127.0.0.1:3000",
+            "http://localhost:5173",
+            "https://luveloop.com",
+            "https://www.luveloop.com"
         ])
         
         # Remove duplicates

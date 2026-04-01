@@ -10,6 +10,11 @@ import os
 import logging
 import signal
 import sys
+import os
+
+# Ensure the parent directory (project root) is in sys.path
+# This fixes "ModuleNotFoundError: No module named 'backend'" when running in production
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from backend.tb_database import init_db, close_db
 from backend.socket_server import create_socket_app, sio
@@ -106,9 +111,15 @@ app = FastAPI(
     redoc_url="/redoc" if ENVIRONMENT != "production" else None
 )
 
-allowed_origins = ["*"]
-if ENVIRONMENT == "production" and FRONTEND_URL:
-    allowed_origins = [FRONTEND_URL]
+allowed_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:5000",
+    "https://luveloop.com",
+    "https://www.luveloop.com"
+]
+if ENVIRONMENT == "production" and FRONTEND_URL and FRONTEND_URL not in allowed_origins:
+    allowed_origins.append(FRONTEND_URL)
 
 app.add_middleware(
     CORSMiddleware,
@@ -292,3 +303,11 @@ signal.signal(signal.SIGINT, handle_shutdown_signal)
 
 
 socket_app = create_socket_app(app)
+
+if __name__ == "__main__":
+    import uvicorn
+    # Use environment variables for configuration if available
+    port = int(os.getenv("PORT", 8000))
+    
+    # Run the app 
+    uvicorn.run("backend.main_production:socket_app", host="0.0.0.0", port=port, log_level="info")

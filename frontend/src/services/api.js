@@ -15,21 +15,16 @@ const getBaseUrl = () => {
 const FALLBACK_BASE_URL = FALLBACK_API_BASE_URL.replace(/\/+$/, ''); // Remove trailing slashes
 
 const api = axios.create({
-  baseURL: getBaseUrl(),
+  baseURL: import.meta.env.VITE_API_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Debug: log axios configuration
-console.log('[AXIOS DEBUG] baseURL =', getBaseUrl());
-console.log('[AXIOS DEBUG] FALLBACK_BASE_URL =', FALLBACK_BASE_URL);
-console.log('[AXIOS DEBUG] full conversations URL =', `${getBaseUrl()}/api/messages/conversations`);
-
 // Create a fallback axios instance for direct backend connection
 const fallbackApi = axios.create({
-  baseURL: FALLBACK_BASE_URL,
+  baseURL: import.meta.env.VITE_API_URL || FALLBACK_BASE_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -119,8 +114,8 @@ const addResponseInterceptor = (axiosInstance, baseUrl) => {
 
 addRequestInterceptor(api);
 addRequestInterceptor(fallbackApi);
-addResponseInterceptor(api, getBaseUrl());
-addResponseInterceptor(fallbackApi, FALLBACK_BASE_URL);
+addResponseInterceptor(api, import.meta.env.VITE_API_URL || "");
+addResponseInterceptor(fallbackApi, import.meta.env.VITE_API_URL || FALLBACK_BASE_URL);
 
 // Auth APIs
 export const authAPI = {
