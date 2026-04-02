@@ -1,15 +1,15 @@
 import { io } from "socket.io-client";
 
-import { API_BASE_URL } from "../config/api";
-
 let socket = null;
 
 /*
   IMPORTANT:
-  Your backend runs on port 8000
-  Your frontend runs on port 5000
+  Socket connects through the Vite proxy (/socket.io) to the backend on port 8000.
+  Using window.location.origin ensures traffic goes through the correct proxy in
+  both local dev (Vite) and Replit's HTTPS domain, avoiding mixed-content blocks.
 */
-const SOCKET_URL = import.meta.env.VITE_API_URL || API_BASE_URL;
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL ||
+  (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000');
 
 export const connectSocket = (token) => {
   const accessToken = token || localStorage.getItem("access_token");

@@ -329,90 +329,109 @@ const CallPage = () => {
   }, []);
 
   useEffect(() => {
-    console.log('[CALL PAGE DEBUG] Component mounted');
-    console.log('[CALL PAGE DEBUG] userId:', userId, 'type:', callType);
-    console.log('[CALL PAGE DEBUG] onMediaStateChange available:', typeof onMediaStateChange === 'function');
     if ((user?.coins || 0) < currentCostPerMin) {
       toast.error(`You need at least ${currentCostPerMin} coins to start a ${callType} call`);
       navigate('/dashboard/credits');
       return;
     }
-    
-    const socket = getSocket();
-    if (!socket?.connected) {
-      toast.error('Not connected to server');
-      navigate('/dashboard/chat');
-      return;
-    }
 
-    if (isIncoming) {
-      handleIncomingCall();
-    } else {
-      initiateCall();
-    }
+    let connectionTimeoutId = null;
 
-    onCallAnswered(async (data) => {
-      const cid = callIdRef.current;
-      if (data.call_id === cid && peerConnectionRef.current && data.answer) {
-        try {
-          await peerConnectionRef.current.setRemoteDescription(
-            new RTCSessionDescription(data.answer)
-          );
-          setCallStatus('connected');
-          if (!timerStartedRef.current) {
-            timerStartedRef.current = true;
-            startCallTimer();
+    const registerListeners = () => {
+      if (isIncoming) {
+        handleIncomingCall();
+      } else {
+        initiateCall();
+      }
+
+      onCallAnswered(async (data) => {
+        const cid = callIdRef.current;
+        if (data.call_id === cid && peerConnectionRef.current && data.answer) {
+          try {
+            await peerConnectionRef.current.setRemoteDescription(
+              new RTCSessionDescription(data.answer)
+            );
+            setCallStatus('connected');
+            if (!timerStartedRef.current) {
+              timerStartedRef.current = true;
+              startCallTimer();
+            }
+          } catch (error) {
+            console.error('Error setting remote answer:', error);
           }
-        } catch (error) {
-          console.error('Error setting remote answer:', error);
         }
-      }
-    });
+      });
 
-    onCallRejected((data) => {
-      const cid = callIdRef.current;
-      if (data.call_id === cid) {
-        toast.error('Call was rejected');
-        cleanup();
+      onCallRejected((data) => {
+        const cid = callIdRef.current;
+        if (data.call_id === cid) {
+          toast.error('Call was rejected');
+          cleanup();
+          navigate('/dashboard/chat');
+        }
+      });
+
+      onCallEnded((data) => {
+        const cid = callIdRef.current;
+        if (data.call_id === cid) {
+          toast.info('Call ended by other user');
+          cleanup();
+          navigate('/dashboard/chat');
+        }
+      });
+
+      onIceCandidate(async (data) => {
+        const cid = callIdRef.current;
+        if (data.call_id === cid && peerConnectionRef.current && data.candidate) {
+          try {
+            await peerConnectionRef.current.addIceCandidate(
+              new RTCIceCandidate(data.candidate)
+            );
+          } catch (error) {
+            console.error('Error adding ICE candidate:', error);
+          }
+        }
+      });
+
+      onMediaStateChange((data) => {
+        const cid = callIdRef.current;
+        if (data.call_id === cid && data.user_id !== user?.id) {
+          if (data.type === 'video') setRemoteVideoEnabled(data.enabled);
+          else if (data.type === 'audio') setRemoteAudioEnabled(data.enabled);
+        }
+      });
+    };
+
+    const socket = getSocket();
+    let pendingConnectListener = null;
+
+    if (socket?.connected) {
+      registerListeners();
+    } else if (socket) {
+      setCallStatus('connecting');
+      const onConnected = () => {
+        clearTimeout(connectionTimeoutId);
+        pendingConnectListener = null;
+        registerListeners();
+      };
+      pendingConnectListener = onConnected;
+      socket.once('connect', onConnected);
+      connectionTimeoutId = setTimeout(() => {
+        socket.off('connect', onConnected);
+        pendingConnectListener = null;
+        toast.error('Connection timed out — please try again');
         navigate('/dashboard/chat');
-      }
-    });
-
-    onCallEnded((data) => {
-      const cid = callIdRef.current;
-      if (data.call_id === cid) {
-        toast.info('Call ended by other user');
-        cleanup();
-        navigate('/dashboard/chat');
-      }
-    });
-
-    onIceCandidate(async (data) => {
-      const cid = callIdRef.current;
-      if (data.call_id === cid && peerConnectionRef.current && data.candidate) {
-        try {
-          await peerConnectionRef.current.addIceCandidate(
-            new RTCIceCandidate(data.candidate)
-          );
-        } catch (error) {
-          console.error('Error adding ICE candidate:', error);
-        }
-      }
-    });
-
-    onMediaStateChange((data) => {
-      const cid = callIdRef.current;
-      if (data.call_id === cid && data.user_id !== user?.id) {
-        console.log(`[CALL DEBUG] Remote peer changed ${data.type} to ${data.enabled ? 'ON' : 'OFF'}`);
-        if (data.type === 'video') {
-          setRemoteVideoEnabled(data.enabled);
-        } else if (data.type === 'audio') {
-          setRemoteAudioEnabled(data.enabled);
-        }
-      }
-    });
+      }, 6000);
+    } else {
+      toast.error('Not connected to server — please try again');
+      navigate('/dashboard/chat');
+    }
 
     return () => {
+      if (connectionTimeoutId) clearTimeout(connectionTimeoutId);
+      if (pendingConnectListener && socket) {
+        socket.off('connect', pendingConnectListener);
+      }
       cleanup();
     };
   }, []);
