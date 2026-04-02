@@ -1,0 +1,192 @@
+You are a senior full-stack architect fixing a dating app for production.
+
+Project:
+- React frontend (Vite)
+- FastAPI backend
+- MongoDB + Redis
+- Socket.IO for chat + calls
+
+==================================================
+PROBLEM
+==================================================
+
+The app has multiple critical issues:
+
+1. Audio/video calls show "not connected"
+2. Socket signaling not stable
+3. Block user feature not enforced
+4. Screenshot block setting does nothing
+5. OTP login and password reset not working
+6. Settings partially working
+7. Backend and frontend not fully aligned
+
+==================================================
+GOAL
+==================================================
+
+Make the system fully production-ready with:
+
+- Stable socket connection
+- Working WebRTC calling
+- Proper block/report enforcement
+- Functional OTP + password reset
+- Real backend-driven settings
+- Correct feature behavior
+
+==================================================
+TASKS
+==================================================
+
+--------------------------------------------------
+1. FIX SOCKET FOR CALL SIGNALING (CRITICAL)
+--------------------------------------------------
+
+Ensure socket handles events:
+
+- "call:offer"
+- "call:answer"
+- "call:ice-candidate"
+- "call:end"
+
+Store user session:
+
+sio.save_session(sid, { user_id })
+
+Ensure:
+- both users are connected
+- events routed correctly
+
+--------------------------------------------------
+2. FIX WEBRTC CALL FLOW
+--------------------------------------------------
+
+Frontend:
+- create RTCPeerConnection
+- send offer via socket
+- receive answer
+- exchange ICE candidates
+
+Backend:
+- relay events between users
+
+--------------------------------------------------
+3. HANDLE BLOCK USER PROPERLY
+--------------------------------------------------
+
+Before ANY interaction:
+
+if is_blocked(user1, user2):
+    reject action
+
+Apply to:
+- messaging
+- calls
+- profile view
+- search
+
+--------------------------------------------------
+4. HANDLE SCREENSHOT SETTING (IMPORTANT)
+--------------------------------------------------
+
+Explain clearly:
+
+- Screenshot blocking is NOT possible in web apps
+- Replace feature with:
+  - "Screenshot warning UI"
+  - Blur profile for unverified users (optional)
+
+--------------------------------------------------
+5. IMPLEMENT OTP SYSTEM (PROPER WAY)
+--------------------------------------------------
+
+Backend:
+
+- generate OTP (6 digits)
+- store in Redis (expiry 5 min)
+
+Routes:
+POST /auth/send-otp
+POST /auth/verify-otp
+
+Email:
+- use SendGrid or SMTP
+
+SMS:
+- use Twilio (or mock)
+
+Frontend:
+- OTP input UI
+- resend button
+- countdown timer
+
+--------------------------------------------------
+6. PASSWORD RESET FLOW
+--------------------------------------------------
+
+- send reset link via email
+- token-based reset
+- update password securely
+
+--------------------------------------------------
+7. FIX SETTINGS SYSTEM
+--------------------------------------------------
+
+Ensure:
+- toggles persist in DB
+- correct API mapping
+- real-time UI update
+
+--------------------------------------------------
+8. FIX NOTIFICATIONS
+--------------------------------------------------
+
+- trigger on message/call/match
+- store in DB
+- fetch via API
+
+--------------------------------------------------
+9. REMOVE FAKE FEATURES
+--------------------------------------------------
+
+- remove screenshot block as “functional feature”
+- remove dummy/test data
+
+--------------------------------------------------
+10. FINAL SYSTEM CHECK
+--------------------------------------------------
+
+Ensure:
+
+✔ Chat works  
+✔ Calls connect properly  
+✔ Block user enforced  
+✔ OTP works  
+✔ Password reset works  
+✔ Settings persist  
+✔ No fake features  
+
+==================================================
+OUTPUT
+==================================================
+
+Provide:
+
+1. Fixed socket signaling code
+2. WebRTC flow implementation
+3. Block enforcement logic
+4. OTP backend + frontend
+5. Password reset flow
+6. Settings fixes
+7. Final production-ready structure
+
+==================================================
+FINAL RESULT
+==================================================
+
+- Calls connect successfully
+- No "not connected" errors
+- Block feature works everywhere
+- OTP login works
+- Password reset works
+- No fake/non-working features
+- App is production-ready

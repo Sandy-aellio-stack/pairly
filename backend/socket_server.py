@@ -79,6 +79,23 @@ async def verify_token(token: str) -> Optional[dict]:
         print(f"❌ Token verification error: {str(e)}")
         return None
 
+async def _is_blocked(user_id_a: str, user_id_b: str) -> bool:
+    """Return True if either user has blocked the other."""
+    try:
+        from beanie import PydanticObjectId
+        from backend.models.user_block import UserBlock
+        oid_a = PydanticObjectId(user_id_a)
+        oid_b = PydanticObjectId(user_id_b)
+        block = await UserBlock.find_one({
+            "$or": [
+                {"blocker_id": oid_a, "blocked_id": oid_b},
+                {"blocker_id": oid_b, "blocked_id": oid_a},
+            ]
+        })
+        return block is not None
+    except Exception:
+        return False
+
 async def update_user_presence(user_id: str, is_online: bool):
     """
     Update user online status and last_seen_at timestamp.
@@ -318,6 +335,10 @@ async def message_send(sid, data):
     receiver_id = str(receiver_oid)
     sender_oid = PydanticObjectId(sender_id)
 
+    # Block check: reject if either party blocked the other
+    if await _is_blocked(sender_id, receiver_id):
+        return {'error': 'blocked', 'message': 'You cannot message this user'}
+
     # 2. Persist Message
 
     message = TBMessage(
@@ -530,43 +551,66 @@ async def initiate_call_socket(sid, data):
 @sio.on("call_user")
 async def call_user(sid, data):
     print("🔥 CALL EVENT RECEIVED:", data)
-    
+    user_id = connected_users.get(sid, {}).get('user_id')
+    if not user_id:
+        return {'error': 'Unauthorized'}
+
+    target_user = data.get("user_id") or data.get("receiver_id")
+    if not target_user:
+        return {'error': 'Missing target user'}
+
+    call_type_raw = data.get("call_type", "audio")
+    call_type = 'voice' if call_type_raw in ['audio', 'voice'] else 'video'
+    offer = data.get("offer")
+
+    # Enforce block: reject call if either party has blocked the other
+    if await _is_blocked(user_id, target_user):
+        return {'error': 'blocked'}
+
     try:
-        target_user = data.get("user_id")
-        
-        if not target_user:
-            raise Exception("No target user")
-        
-        # Send incoming call event
+        service = await get_calling_service_v2()
+        call_session = await service.initiate_call(
+            caller_id=user_id,
+            receiver_id=target_user,
+            call_type=call_type
+        )
+        call_id = str(call_session.id)
+
+        caller = await TBUser.get(user_id)
         await sio.emit(
             "incoming_call",
             {
-                "from": sid,
-                "type": data.get("call_type", "audio"),
-                "offer": data.get("offer")
+                "caller_id": user_id,
+                "call_id": call_id,
+                "call_type": call_type_raw,
+                "caller_name": caller.name if caller else "Someone",
+                "offer": offer,
             },
             room=f"user:{target_user}"
         )
-        
-        print("✅ Call event sent to:", target_user)
-        
+
+        print(f"✅ Call session {call_id} created, notified {target_user}")
+        return {'success': True, 'call_id': call_id}
+
     except Exception as e:
         print("❌ CALL ERROR:", str(e))
-        
-        await sio.emit(
-            "call_failed",
-            {"error": str(e)},
-            room=sid
-        )
+        await sio.emit("call_failed", {"error": str(e)}, room=sid)
+        return {'error': str(e)}
 
 @sio.on("call:accept")
 async def answer_call(sid, data):
     user_id = connected_users.get(sid, {}).get('user_id')
     call_id = data.get('call_id')
+    answer = data.get('answer')  # WebRTC SDP answer from callee
     try:
         service = await get_calling_service_v2()
         call_session = await service.accept_call(call_id=call_id, receiver_id=user_id)
-        ans_data = {"call_id": call_id, "receiver_id": user_id, "sender_id": call_session.caller_id}
+        ans_data = {
+            "call_id": call_id,
+            "receiver_id": user_id,
+            "sender_id": str(call_session.caller_id),
+            "answer": answer,  # Relay SDP answer to caller so they can setRemoteDescription
+        }
         if redis_pubsub.is_connected:
             await redis_pubsub.publish("calls", "", "call:accept", ans_data)
         await sio.emit('call:accept', ans_data, room=f"user:{call_session.caller_id}")

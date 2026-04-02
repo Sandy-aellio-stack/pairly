@@ -185,21 +185,18 @@ export const markMessageDelivered = (messageId, senderId) => {
 
 /* ---------- CALL EVENTS ---------- */
 
-export const callUser = (receiverId, callType) => {
+export const callUser = (receiverId, callType, offer = null) => {
   return new Promise((resolve, reject) => {
     if (!socket || !socket.connected) {
       reject(new Error("Socket not connected"));
       return;
     }
 
-    console.log("Initiating call", {
-      targetUserId: receiverId,
-      callType: callType
-    });
+    console.log("Initiating call", { targetUserId: receiverId, callType });
 
     socket.emit(
       "call_user",
-      { user_id: receiverId, call_type: callType },
+      { user_id: receiverId, call_type: callType, offer },
       (response) => {
         if (response?.error) reject(new Error(response.error));
         else resolve(response);

@@ -362,16 +362,12 @@ const SettingsPage = () => {
           </div>
         </div>
         <div className="divide-y divide-gray-100">
-          <div className="flex items-center justify-between p-4">
+          <div className="flex items-start gap-3 p-4 bg-amber-50">
+            <AlertTriangle size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="font-medium text-[#0F172A]">Block Screenshots</p>
-              <p className="text-sm text-gray-500">Prevent others from taking screenshots of your profile</p>
+              <p className="font-medium text-amber-900">Screenshot Notice</p>
+              <p className="text-sm text-amber-700">Web browsers cannot technically block screenshots. We display a warning overlay on your profile and media to discourage misuse.</p>
             </div>
-            <ToggleSwitch 
-              enabled={settings.safety.block_screenshots} 
-              onChange={() => handleToggle('safety', 'block_screenshots')}
-              disabled={isSaving}
-            />
           </div>
           <div className="flex items-center justify-between p-4">
             <div>

@@ -157,15 +157,12 @@ const CallPage = () => {
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
       
-      const response = await callUser(userId, callType);
-      if (response && response.success) {
-        setCurrentCallId(response.call_id);
-        callIdRef.current = response.call_id;
-        setCallStatus('ringing');
-      } else {
-        // For simplified test, just set ringing
-        setCallStatus('ringing');
-      }
+      // Send call request WITH offer SDP so callee can set remote description
+      const response = await callUser(userId, callType, offer);
+      const cid = response?.call_id || null;
+      setCurrentCallId(cid);
+      callIdRef.current = cid;
+      setCallStatus('ringing');
     } catch (error) {
       console.error('Error initiating call:', error);
       toast.error('Failed to initiate call');

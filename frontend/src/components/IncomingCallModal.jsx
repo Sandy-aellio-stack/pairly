@@ -27,10 +27,10 @@ const IncomingCallModal = () => {
 
   const handleAccept = () => {
     if (!incomingCall) return;
-    
-    const offer = encodeURIComponent(JSON.stringify(incomingCall.offer));
+    // Pass offer SDP via location state (not URL param — SDP can exceed URL length limits)
     navigate(
-      `/call/${incomingCall.caller_id}?type=${incomingCall.call_type}&incoming=true&callId=${incomingCall.call_id}&offer=${offer}`
+      `/call/${incomingCall.caller_id}?type=${incomingCall.call_type}&incoming=true&callId=${incomingCall.call_id}`,
+      { state: { offer: incomingCall.offer } }
     );
     setIncomingCall(null);
   };
@@ -63,7 +63,7 @@ const IncomingCallModal = () => {
         
         <h3 className="text-xl font-bold text-[#0F172A] mb-2">Incoming Call</h3>
         <p className="text-gray-600 mb-6">
-          Someone is calling you ({incomingCall.call_type})
+          {incomingCall.caller_name || 'Someone'} is calling you ({incomingCall.call_type})
         </p>
         
         <div className="flex justify-center gap-6">
