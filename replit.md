@@ -94,6 +94,13 @@ All configuration is stored in `backend/.env` and `frontend/.env`.
 - `ice_candidate`: ICE candidate from peer
 
 ## Recent Changes
+- 2026-04-02: Production alignment pass
+  - Fixed `authStore.js` DOM event name (`app:balance_updated` → `Luveloop:balance_updated`) to match what socket.js dispatches
+  - Fixed `end_call` socket handler to emit `balance_updated` to caller after call ends
+  - Fixed `call_billing_worker.py` to emit `balance_updated` to caller after each 60s billing tick
+  - Added `firebase-admin` package (required by `fcm_service.py`)
+  - Added `socket_app = app` alias in `main.py` so uvicorn workflow command resolves correctly
+  - All env vars confirmed set: MONGO_URL, JWT_SECRET, MAPBOX_PUBLIC_KEY, ADMIN_EMAIL/PASSWORD, PAYMENTS_ENABLED=true/MOCK_MODE=true
 - 2026-03-13: Migrated to Replit environment
   - Installed frontend dependencies via npm --legacy-peer-deps
   - Updated Frontend workflow to use local vite binary

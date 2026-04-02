@@ -32,7 +32,7 @@ const useAuthStore = create((set, get) => ({
     // Listen for real-time balance updates from socket
     if (typeof window !== 'undefined' && !window.__appBalanceListenerAdded) {
       window.__appBalanceListenerAdded = true;
-      window.addEventListener('app:balance_updated', (e) => {
+      window.addEventListener('Luveloop:balance_updated', (e) => {
         const newBalance = e.detail?.coins;
         if (typeof newBalance === 'number') {
           set((state) => ({

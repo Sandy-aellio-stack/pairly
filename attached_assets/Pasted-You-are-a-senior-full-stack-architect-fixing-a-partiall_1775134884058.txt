@@ -1,0 +1,240 @@
+You are a senior full-stack architect fixing a partially completed production app.
+
+Project:
+- React (Vite) frontend
+- FastAPI backend
+- MongoDB (Beanie)
+- Redis + Socket.IO
+- Dating app (Pairly)
+
+==================================================
+PROBLEM
+==================================================
+
+The app is UI-complete but backend-inconsistent:
+
+- Settings page UI exists but backend not aligned
+- Admin pages partially working
+- Socket auth inconsistent
+- API response shapes mismatch frontend
+- Some features exist only visually but not functionally
+
+==================================================
+GOAL
+==================================================
+
+Make the system FULLY production-ready by:
+
+- Aligning frontend and backend contracts
+- Completing missing backend logic
+- Ensuring all UI actions persist data
+- Standardizing APIs and socket events
+
+==================================================
+TASKS
+==================================================
+
+--------------------------------------------------
+1. STANDARDIZE API CONTRACTS
+--------------------------------------------------
+
+Define consistent response format:
+
+{
+  success: true,
+  data: {},
+  message: ""
+}
+
+Fix ALL endpoints:
+- settings
+- admin
+- messages
+- calls
+- notifications
+
+Ensure frontend expects SAME shape.
+
+--------------------------------------------------
+2. FIX SETTINGS SYSTEM (CRITICAL)
+--------------------------------------------------
+
+Backend:
+
+Create schema:
+
+UserSettings {
+  user_id,
+  notifications: {
+    messages: boolean,
+    matches: boolean,
+    nearby: boolean
+  },
+  privacy: {
+    show_online: boolean,
+    show_last_seen: boolean,
+    show_distance: boolean
+  },
+  safety: {
+    block_screenshots: boolean,
+    verified_only: boolean,
+    hide_from_search: boolean
+  }
+}
+
+Routes:
+
+GET /settings
+PUT /settings
+
+Ensure:
+- token required
+- values saved in DB
+- response matches frontend
+
+Frontend:
+- map toggle names EXACTLY to backend fields
+- persist changes instantly
+
+--------------------------------------------------
+3. FIX ADMIN DASHBOARD
+--------------------------------------------------
+
+Ensure:
+
+- role-based auth (admin only)
+- routes:
+  GET /admin/users
+  GET /admin/reports
+  POST /admin/block
+  GET /admin/analytics
+
+Fix:
+- missing endpoints
+- incorrect payloads
+- empty responses
+
+--------------------------------------------------
+4. UNIFY SOCKET + REST AUTH
+--------------------------------------------------
+
+- Use SAME JWT decode logic
+- Store user in socket session:
+
+sio.save_session(sid, { user_id })
+
+- Reject only if token invalid
+
+--------------------------------------------------
+5. FIX FEATURE COMPLETENESS
+--------------------------------------------------
+
+For EVERY feature:
+
+UI action → API call → DB update → UI refresh
+
+Check:
+
+- Settings toggles → save
+- Report user → stored
+- Block user → enforced
+- Call history → fetched
+- Notifications → triggered
+
+--------------------------------------------------
+6. REMOVE FAKE DATA
+--------------------------------------------------
+
+Delete:
+
+- Test users
+- Dummy conversations
+- Static JSON mocks
+
+Ensure all data is real DB-driven.
+
+--------------------------------------------------
+7. FIX CALL HISTORY
+--------------------------------------------------
+
+Ensure:
+
+GET /calls/history returns:
+
+[
+  {
+    user,
+    type,
+    duration,
+    timestamp,
+    status
+  }
+]
+
+--------------------------------------------------
+8. FIX NOTIFICATIONS
+--------------------------------------------------
+
+- Create Notification model
+- Trigger on:
+  - message
+  - match
+  - call
+
+- Store + fetch via API
+
+--------------------------------------------------
+9. ENV + CONFIG CLEANUP
+--------------------------------------------------
+
+- Use .env everywhere
+- Remove hardcoded localhost
+- Configure:
+
+API_URL
+SOCKET_URL
+JWT_SECRET
+
+--------------------------------------------------
+10. ERROR HANDLING
+--------------------------------------------------
+
+Standardize:
+
+try/catch everywhere
+
+Return proper errors:
+
+401 → invalid token  
+403 → blocked  
+500 → server error  
+
+--------------------------------------------------
+11. RESPONSIVE FIX
+--------------------------------------------------
+
+- Mobile chat layout
+- Sidebar collapse
+- Touch-friendly UI
+
+--------------------------------------------------
+OUTPUT
+--------------------------------------------------
+
+Provide:
+
+1. Missing backend endpoints
+2. Fixed API contracts
+3. Updated frontend integration
+4. Final production-ready structure
+
+==================================================
+FINAL RESULT
+==================================================
+
+- Settings fully working
+- Admin dashboard functional
+- No dummy data
+- All APIs aligned
+- Socket + REST unified
+- Fully production-ready app

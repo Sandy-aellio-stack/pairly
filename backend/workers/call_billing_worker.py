@@ -102,7 +102,7 @@ async def _bill_one_call(call, CreditService, TransactionReason, emit_notificati
                     pass
             return
 
-        await CreditService.deduct_credits(
+        tx = await CreditService.deduct_credits(
             user_id=call.caller_id,
             amount=credits_needed,
             reason=tx_reason,
@@ -114,6 +114,16 @@ async def _bill_one_call(call, CreditService, TransactionReason, emit_notificati
             "Billed %d credits for call %s (caller=%s, type=%s)",
             credits_needed, call.id, call.caller_id, call_type
         )
+
+        # Notify caller of updated balance in real-time
+        try:
+            await emit_notification_to_user(
+                str(call.caller_id),
+                "balance_updated",
+                {"coins": tx.balance_after},
+            )
+        except Exception:
+            pass
 
     except Exception as exc:
         logger.error("Failed to bill call %s: %s", call.id, exc, exc_info=True)

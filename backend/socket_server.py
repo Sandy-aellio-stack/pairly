@@ -597,11 +597,18 @@ async def end_call(sid, data):
     try:
         service = await get_calling_service_v2()
         call_session = await service.end_call(call_id=call_id, user_id=user_id)
-        other_id = call_session.receiver_id if user_id == str(call_session.caller_id) else call_session.caller_id
+        caller_id = str(call_session.caller_id)
+        other_id = call_session.receiver_id if user_id == caller_id else call_session.caller_id
         end_data = {"call_id": call_id, "ended_by": user_id, "receiver_id": str(other_id)}
         if redis_pubsub.is_connected:
             await redis_pubsub.publish("calls", "", "call:end", end_data)
         await sio.emit('call:end', end_data, room=f"user:{other_id}")
+        # Emit updated balance to caller after call ends
+        try:
+            balance = await CreditService.get_balance(caller_id)
+            await sio.emit('balance_updated', {'coins': balance}, room=f"user:{caller_id}")
+        except Exception:
+            pass
         return {'success': True}
     except Exception as e:
         return {'error': str(e)}

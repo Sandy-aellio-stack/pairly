@@ -251,3 +251,4 @@ async def root():
 # ============================================
 import socketio
 app = socketio.ASGIApp(sio, other_asgi_app=fastapi_app)
+socket_app = app  # Alias expected by the workflow runner
