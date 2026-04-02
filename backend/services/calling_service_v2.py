@@ -23,6 +23,11 @@ class CallingServiceV2:
         sdp_offer: Optional[Dict[str, Any]] = None
     ) -> CallSessionV2:
         """Initiate a new call"""
+        from backend.services.moderation_service import assert_not_blocked
+        
+        # Enforce block — raises HTTP 403 if either party has blocked the other
+        await assert_not_blocked(caller_id, receiver_id)
+        
         try:
             # Set rate based on call type
             rate = 5 if call_type in ["voice", "audio"] else 10
@@ -44,6 +49,23 @@ class CallingServiceV2:
             call_session.metadata["call_type"] = call_type
             await call_session.insert()
             
+            # Create TBNotification (Database record)
+            try:
+                from backend.models.tb_notification import TBNotification
+                from backend.models.tb_user import TBUser
+                caller = await TBUser.get(caller_id)
+                caller_name = caller.name if caller else "Someone"
+                
+                notification = TBNotification(
+                    user_id=str(receiver_id),
+                    title=f"Incoming {call_type} call",
+                    body=f"{caller_name} is calling you...",
+                    notification_type="call"
+                )
+                await notification.insert()
+            except Exception as e:
+                logger.warning(f"Failed to create call notification: {e}")
+
             logger.info(
                 f"Call initiated",
                 extra={
@@ -268,7 +290,9 @@ class CallingServiceV2:
         limit: int = 50,
         skip: int = 0
     ) -> list:
-        """Get call history for a user"""
+        """Get enriched call history for a user with profile details"""
+        from backend.models.tb_user import TBUser
+        
         calls = await CallSessionV2.find(
             {
                 "$or": [
@@ -278,7 +302,42 @@ class CallingServiceV2:
             }
         ).sort("-created_at").skip(skip).limit(limit).to_list()
         
-        return calls
+        # Batch fetch user profiles to avoid N+1 queries
+        other_user_ids = set()
+        for call in calls:
+            other_id = call.receiver_id if call.caller_id == user_id else call.caller_id
+            other_user_ids.add(other_id)
+            
+        users_map = {}
+        if other_user_ids:
+            # Note: We use str(id) for mapping
+            from beanie import PydanticObjectId
+            try:
+                oids = [PydanticObjectId(oid) for oid in other_user_ids]
+                users = await TBUser.find({"_id": {"$in": oids}}).to_list()
+                for u in users:
+                    users_map[str(u.id)] = {
+                        "name": u.name,
+                        "profile_picture": u.profile_pictures[0] if u.profile_pictures else None,
+                        "is_online": u.is_online
+                    }
+            except Exception as e:
+                logger.error(f"Error fetching users for call history: {e}")
+
+        # Enrich call objects
+        enriched_calls = []
+        for call in calls:
+            other_id = call.receiver_id if call.caller_id == user_id else call.caller_id
+            other_profile = users_map.get(other_id, {"name": "Unknown", "profile_picture": None})
+            
+            call_data = call.dict()
+            call_data["other_user"] = {
+                "id": other_id,
+                **other_profile
+            }
+            enriched_calls.append(call_data)
+            
+        return enriched_calls
     
     async def get_call_stats(self, user_id: str) -> Dict[str, Any]:
         """Get calling statistics for a user"""

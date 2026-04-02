@@ -273,14 +273,15 @@ async def get_call_history(
     return {
         "calls": [
             {
-                "id": call.id,
-                "caller_id": call.caller_id,
-                "receiver_id": call.receiver_id,
-                "status": call.status.value,
-                "initiated_at": call.initiated_at.isoformat(),
-                "duration_seconds": call.duration_seconds,
-                "credits_spent": call.credits_spent,
-                "disconnect_reason": call.disconnect_reason
+                "id": call.get("id"),
+                "caller_id": call.get("caller_id"),
+                "receiver_id": call.get("receiver_id"),
+                "status": call.get("status"),
+                "initiated_at": call.get("initiated_at").isoformat() if hasattr(call.get("initiated_at"), "isoformat") else call.get("initiated_at"),
+                "duration_seconds": call.get("duration_seconds"),
+                "credits_spent": call.get("credits_spent"),
+                "disconnect_reason": call.get("disconnect_reason"),
+                "other_user": call.get("other_user")
             }
             for call in calls
         ],

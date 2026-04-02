@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, Send, MoreVertical, Phone, Video, ArrowLeft, Image, Smile, Coins, Loader2, X, CheckCircle } from 'lucide-react';
+import { Search, Send, MoreVertical, Phone, Video, ArrowLeft, Image, Smile, Coins, Loader2, X, Check, CheckCheck, CheckCircle } from 'lucide-react';
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import api from '../../services/api';
 import { messagesAPI, userAPI } from '../../services/api';
-import { connectSocket, getSocket, joinChat, onNewMessage, offNewMessage, onIncomingCall, offIncomingCall, sendTyping, sendStopTyping } from '../../services/socket';
+import { connectSocket, getSocket, joinChat, onNewMessage, offNewMessage, onMessageDelivered, offMessageDelivered, onMessageRead, offMessageRead, markMessageDelivered, markMessageRead, onIncomingCall, offIncomingCall, sendTyping, sendStopTyping } from '../../services/socket';
 import useAuthStore from '../../store/authStore';
 import { toast } from 'sonner';
 
@@ -27,6 +27,7 @@ const ChatPage = () => {
   const [isSending, setIsSending] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
   const [incomingCall, setIncomingCall] = useState(null);
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -41,7 +42,15 @@ const ChatPage = () => {
       connectSocket(token);
     }
 
+    const socket = getSocket();
+    if (socket) {
+      socket.on('connect', () => setIsConnected(true));
+      socket.on('disconnect', () => setIsConnected(false));
+    }
+
     const handleNewMessage = (data) => {
+      // Update connection status on any message
+      setIsConnected(true);
       const currentUser = useAuthStore.getState().user;
       const current = selectedChatRef.current;
 
@@ -85,6 +94,14 @@ const ChatPage = () => {
       // Update sidebar: update existing conv OR add new one for first-time sender
       const incomingSenderId = data.sender_id;
       const isFromOtherUser = incomingSenderId && incomingSenderId !== currentUser?.id;
+
+      if (isFromOtherUser) {
+        if (current && (current.id === incomingSenderId || current.user_id === incomingSenderId)) {
+          markMessageRead(incomingSenderId);
+        } else {
+          markMessageDelivered(data.id, incomingSenderId);
+        }
+      }
 
       setConversations((prev) => {
         const existingIndex = prev.findIndex((c) => c.id === incomingSenderId);
@@ -136,14 +153,30 @@ const ChatPage = () => {
       setIncomingCall(data);
     };
 
+    const handleMessageDelivered = (data) => {
+      setMessages((prev) => prev.map((m) => m.id === data.id && m.status !== 'read' ? { ...m, status: 'delivered' } : m));
+    };
+
+    const handleMessageRead = (data) => {
+      setMessages((prev) => prev.map((m) => m.sender_id === currentUserId && m.status !== 'read' ? { ...m, status: 'read' } : m));
+    };
+
     onNewMessage(handleNewMessage);
     onIncomingCall(handleIncomingCall);
+    onMessageDelivered(handleMessageDelivered);
+    onMessageRead(handleMessageRead);
 
     return () => {
+      if (socket) {
+        socket.off('connect');
+        socket.off('disconnect');
+      }
       offNewMessage(handleNewMessage);
       offIncomingCall(handleIncomingCall);
+      offMessageDelivered(handleMessageDelivered);
+      offMessageRead(handleMessageRead);
     };
-  }, []);
+  }, [currentUserId]);
 
   // Handle route hydration and direct chat startup
   useEffect(() => {
@@ -298,6 +331,12 @@ const ChatPage = () => {
     if (selectedChat) {
       console.log('[MSG PAGE DEBUG] Fetching messages for:', selectedChat.id);
       fetchMessages(selectedChat.id);
+      
+      // Auto mark as read when opening chat (WhatsApp-style)
+      const socket = getSocket();
+      if (socket?.connected && selectedChat.id !== user?.id) {
+        markMessageRead(selectedChat.id);
+      }
     }
   }, [selectedChat]);
 
@@ -618,6 +657,13 @@ const ChatPage = () => {
         <div className={`flex-1 flex flex-col ${selectedChat ? 'flex' : 'hidden md:flex'}`}>
           {selectedConversation ? (
             <>
+              {/* Connection Status */}
+              {(!isConnected || getSocket()?.connected === false) && (
+                <div className="p-2 bg-yellow-100 border-b border-yellow-200">
+                  <p className="text-xs text-yellow-800 text-center">🔌 Reconnecting... Messages will sync when connected</p>
+                </div>
+              )}
+              
               {/* Chat Header */}
               <div className="flex items-center justify-between p-4 border-b border-gray-100">
                 <div className="flex items-center gap-3">
@@ -705,10 +751,11 @@ const ChatPage = () => {
                                 {msg.time || (msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '')}
                               </p>
                               {isMine && (
-                                <CheckCircle 
-                                  size={12}
-                                  className={`ml-1 ${isSeen ? 'text-pink-400' : 'text-white/60'}`}
-                                />
+                                <>
+                                  {(!msg.status || msg.status === 'sent') && <Check size={14} className="text-gray-400 ml-1" />}
+                                  {msg.status === 'delivered' && <CheckCheck size={14} className="text-gray-400 ml-1" />}
+                                  {msg.status === 'read' && <CheckCheck size={14} className="text-pink-400 ml-1" />}
+                                </>
                               )}
                             </div>
                           </div>

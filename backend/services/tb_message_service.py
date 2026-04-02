@@ -119,6 +119,7 @@ class MessageService:
                 # Use getattr to safely check if method exists if needed, 
                 # but we've added it to FCMService now.
                 if hasattr(fcm_service, 'notify_new_message'):
+                    # Send FCM
                     await fcm_service.notify_new_message(
                         receiver_id=str(receiver_oid),
                         sender_name=sender_name,
@@ -126,10 +127,21 @@ class MessageService:
                         message_id=str(message.id),
                         sender_id=str(sender_oid)
                     )
+                    
+                    # Create TBNotification (Database record)
+                    from backend.models.tb_notification import TBNotification
+                    notification = TBNotification(
+                        user_id=str(receiver_oid),
+                        title=f"New message from {sender_name}",
+                        body=data.content[:100],
+                        notification_type="message"
+                    )
+                    await notification.insert()
+                    
                 else:
                     logger.warning("[FCM WARN] notify_new_message missing in FCMService")
             except Exception as e:
-                logger.warning("[FCM WARN] Push notification failed: %s", e)
+                logger.warning("[FCM WARN] Notification creation failed: %s", e)
 
         asyncio.create_task(_safe_notify())
 
@@ -432,4 +444,16 @@ class MessageService:
             await conversation.save()
 
         return {"marked_read": result.modified_count if result else 0}
+
+    @staticmethod
+    async def mark_message_delivered(message_id: str) -> dict:
+        """Mark a specific message as delivered"""
+        from backend.utils.objectid_utils import validate_object_id
+        message_oid = validate_object_id(message_id, "Message")
+        message = await TBMessage.get(message_oid)
+        if message and message.status == "sent":
+            message.status = "delivered"
+            await message.save()
+            return {"success": True, "sender_id": str(message.sender_id)}
+        return {"success": False}
 

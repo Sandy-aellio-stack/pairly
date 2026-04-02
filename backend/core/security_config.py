@@ -76,10 +76,8 @@ class SecurityConfig:
             
         # Ensure our frontend domains are allowed
         required_origins = [
-            "http://localhost:5173",
             "https://luveloop.com",
-            "https://www.luveloop.com",
-            "http://localhost:5000"
+            "https://www.luveloop.com"
         ]
         
         for origin in required_origins:

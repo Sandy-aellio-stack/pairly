@@ -33,7 +33,23 @@ class OTPService:
 
     @staticmethod
     async def check_rate_limit(identifier: str) -> bool:
-        """Bypassed for development"""
+        """
+        Production rate limiting: 3 OTPs per 10 minutes per identifier.
+        """
+        from backend.services.rate_limiter_redis import rate_limiter
+        
+        # Initial check/init if needed (usually handled in app lifecycle)
+        if not rate_limiter.redis:
+            await rate_limiter.init()
+            
+        key = f"otp_limit:{identifier}"
+        # Limit to 3 requests per 600 seconds (10 minutes)
+        is_allowed = await rate_limiter.allow(key, limit=3, window=600)
+        
+        if not is_allowed:
+            # Check if we should block the user or suggest waiting
+            logger.warning(f"[OTP LIMIT] Rate limit exceeded for {identifier}")
+            return False
         return True
 
     @staticmethod
@@ -43,6 +59,10 @@ class OTPService:
         """
         if not mobile_number:
             raise HTTPException(status_code=400, detail="Phone number missing")
+
+        # Check rate limit first
+        if not await OTPService.check_rate_limit(mobile_number):
+            raise HTTPException(status_code=429, detail="Too many OTP requests. Please wait 10 minutes.")
 
         # Generate new OTP
         otp_code = OTPService.generate_otp()
@@ -57,25 +77,29 @@ class OTPService:
         )
         await otp_record.insert()
 
-        # Detailed terminal logging
+        # Detailed terminal logging (Development only)
         import logging
         logger = logging.getLogger("otp")
-        print("\n================================")
-        print(f"OTP GENERATED FOR {purpose.upper()}")
-        print(f"Phone: {mobile_number}")
-        print(f"OTP: {otp_code} (Hashed: {hashed_otp[:15]}...)")
-        print("================================\n")
+        
+        is_prod = os.getenv("ENVIRONMENT", "development") == "production"
+        
+        if not is_prod:
+            print("\n================================")
+            print(f"OTP GENERATED FOR {purpose.upper()}")
+            print(f"Phone: {mobile_number}")
+            print(f"OTP: {otp_code}")
+            print("================================\n")
         
         logger.info(f"OTP generated for {mobile_number}, purpose={purpose}")
 
         response = {
             "success": True,
-            "message": "OTP generated",
+            "message": "OTP sent successfully",
             "expires_in_minutes": 5
         }
 
-        # Return dev_otp in response when in development mode
-        if os.getenv("ENVIRONMENT", "development") != "production":
+        # Return dev_otp in response ONLY when NOT in production
+        if not is_prod:
             response["dev_otp"] = otp_code
 
         return response
@@ -87,6 +111,10 @@ class OTPService:
         """
         if not email:
             raise HTTPException(status_code=400, detail="Email address missing")
+
+        # Check rate limit first
+        if not await OTPService.check_rate_limit(email):
+            raise HTTPException(status_code=429, detail="Too many OTP requests. Please wait 10 minutes.")
 
         # Generate new OTP
         otp_code = OTPService.generate_otp()
@@ -102,14 +130,18 @@ class OTPService:
         )
         await otp_record.insert()
 
-        # Detailed terminal logging
+        # Detailed terminal logging (Development only)
         import logging
         logger = logging.getLogger("otp")
-        print("\n================================")
-        print(f"EMAIL OTP GENERATED FOR {purpose.upper()}")
-        print(f"Email: {email}")
-        print(f"OTP: {otp_code} (Hashed: {hashed_otp[:15]}...)")
-        print("================================\n")
+        
+        is_prod = os.getenv("ENVIRONMENT", "development") == "production"
+        
+        if not is_prod:
+            print("\n================================")
+            print(f"EMAIL OTP GENERATED FOR {purpose.upper()}")
+            print(f"Email: {email}")
+            print(f"OTP: {otp_code}")
+            print("================================\n")
         
         logger.info(f"Email OTP generated for {email}, purpose={purpose}")
 
@@ -118,7 +150,8 @@ class OTPService:
             from backend.services.email_service import email_service
             await email_service.send_otp_email(to_email=email, otp_code=otp_code)
         except Exception as e:
-            print(f"Email sending failed (but OTP logged to terminal): {e}")
+            if not is_prod:
+                print(f"Email sending failed (but OTP logged to terminal): {e}")
 
         email_response = {
             "success": True,
@@ -127,7 +160,7 @@ class OTPService:
             "expires_in_minutes": 5
         }
 
-        if os.getenv("ENVIRONMENT", "development") != "production":
+        if not is_prod:
             email_response["dev_otp"] = otp_code
 
         return email_response

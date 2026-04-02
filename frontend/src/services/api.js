@@ -1,30 +1,10 @@
 import axios from 'axios';
 
-import { API_BASE_URL, FALLBACK_API_BASE_URL } from '../config/api';
+import { API_BASE_URL } from '../config/api';
 
-// Determine the base URL - try proxy first, fallback to direct connection
-const getBaseUrl = () => {
-  // If VITE_API_URL is set, use it
-  if (API_BASE_URL) {
-    return API_BASE_URL;
-  }
-  // In development, try proxy first, but have fallback ready
-  return ''; // Use proxy by default
-};
-
-const FALLBACK_BASE_URL = FALLBACK_API_BASE_URL.replace(/\/+$/, ''); // Remove trailing slashes
-
+// Create a single production-ready axios instance
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Create a fallback axios instance for direct backend connection
-const fallbackApi = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || FALLBACK_BASE_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -49,7 +29,7 @@ const addRequestInterceptor = (axiosInstance) => {
   );
 };
 
-const addResponseInterceptor = (axiosInstance, baseUrl) => {
+const addResponseInterceptor = (axiosInstance) => {
   axiosInstance.interceptors.response.use(
     (response) => {
       console.log(`[AXIOS DEBUG] Response: ${response.status} ${response.config.url}`);
@@ -58,13 +38,6 @@ const addResponseInterceptor = (axiosInstance, baseUrl) => {
     async (error) => {
       console.log(`[AXIOS DEBUG] Response Error: ${error.response?.status || error.code} for ${error.config?.url}`);
       const originalRequest = error.config;
-
-      // If this is a network error and we're using the proxy, try fallback
-      if (error.code === 'ERR_NETWORK' && baseUrl === '' && !originalRequest._fallbackTried) {
-        console.log('Proxy failed, trying direct backend connection...');
-        originalRequest._fallbackTried = true;
-        return fallbackApi(originalRequest);
-      }
 
       // Handle 401 errors - try to refresh token
       if (error.response?.status === 401 && !originalRequest._retry) {
@@ -79,7 +52,7 @@ const addResponseInterceptor = (axiosInstance, baseUrl) => {
 
           if (refreshToken) {
             try {
-              const response = await axios.post(`${baseUrl || FALLBACK_BASE_URL}/auth/refresh`, {
+              const response = await axios.post(`${api.defaults.baseURL}/auth/refresh`, {
                 refresh_token: refreshToken
               });
 
@@ -113,9 +86,7 @@ const addResponseInterceptor = (axiosInstance, baseUrl) => {
 };
 
 addRequestInterceptor(api);
-addRequestInterceptor(fallbackApi);
-addResponseInterceptor(api, import.meta.env.VITE_API_URL || "");
-addResponseInterceptor(fallbackApi, import.meta.env.VITE_API_URL || FALLBACK_BASE_URL);
+addResponseInterceptor(api);
 
 // Auth APIs
 export const authAPI = {

@@ -1,5 +1,7 @@
 import { io } from "socket.io-client";
 
+import { API_BASE_URL } from "../config/api";
+
 let socket = null;
 
 /*
@@ -7,12 +9,14 @@ let socket = null;
   Your backend runs on port 8000
   Your frontend runs on port 5000
 */
-const SOCKET_URL = window.location.origin;
+const SOCKET_URL = import.meta.env.VITE_API_URL || API_BASE_URL;
 
 export const connectSocket = (token) => {
+  const accessToken = token || localStorage.getItem("access_token");
+  console.log("Socket token:", accessToken);
   console.log('[SOCKET DEBUG] connectSocket invoked');
   console.log('[SOCKET DEBUG] SOCKET_URL:', SOCKET_URL);
-  console.log('[SOCKET DEBUG] Token present:', !!token);
+  console.log('[SOCKET DEBUG] Token present:', !!accessToken);
 
   if (socket && socket.connected) {
     console.log('[SOCKET DEBUG] Reusing existing connected socket');
@@ -20,8 +24,10 @@ export const connectSocket = (token) => {
   }
 
   socket = io(SOCKET_URL, {
-    auth: { token },
-    transports: ["polling", "websocket"],
+    transports: ["websocket"],
+    auth: {
+      token: accessToken,
+    },
     reconnection: true,
     reconnectionAttempts: 10,
     reconnectionDelay: 1000,
@@ -171,6 +177,12 @@ export const markMessageRead = (senderId) => {
   }
 };
 
+export const markMessageDelivered = (messageId, senderId) => {
+  if (socket?.connected) {
+    socket.emit("message:delivered", { message_id: messageId, sender_id: senderId });
+  }
+};
+
 /* ---------- CALL EVENTS ---------- */
 
 export const callUser = (receiverId, callType) => {
@@ -285,6 +297,9 @@ export const onTyping = (callback) => socket?.on("message:typing", callback);
 export const onStopTyping = (callback) =>
   socket?.on("message:stop-typing", callback);
 
+export const onMessageDelivered = (callback) => socket?.on("message:delivered", callback);
+export const offMessageDelivered = (callback) => socket?.off("message:delivered", callback);
+
 export const onMessageRead = (callback) => socket?.on("message:read", callback);
 export const offMessageRead = (callback) => socket?.off("message:read", callback);
 
@@ -318,6 +333,7 @@ export const removeAllListeners = () => {
   if (!socket) return;
 
   socket.removeAllListeners("message:new");
+  socket.removeAllListeners("message:delivered");
   socket.removeAllListeners("message:read");
   socket.removeAllListeners("message:typing");
   socket.removeAllListeners("message:stop-typing");
@@ -350,6 +366,8 @@ export default {
   sendMediaState,
   onNewMessage,
   offNewMessage,
+  onMessageDelivered,
+  offMessageDelivered,
   onMessageRead,
   offMessageRead,
   onTyping,

@@ -6,11 +6,11 @@ import socketio
 import asyncio
 from datetime import datetime, timezone
 import os
-import jwt
 import json
 import logging
 from typing import Optional, Dict, Set, Any
 
+from backend.services.tb_auth_service import AuthService
 from backend.models.tb_user import TBUser
 from backend.models.tb_message import TBMessage, TBConversation
 from backend.models.tb_credit import TransactionReason
@@ -20,16 +20,26 @@ from backend.services.calling_service_v2 import get_calling_service_v2
 from backend.utils.token_blacklist import token_blacklist
 from backend.core.redis_client import redis_client
 from backend.core.redis_pubsub import redis_pubsub
+from backend.config import settings
 
 logger = logging.getLogger("websocket")
 
-JWT_SECRET = os.getenv("JWT_SECRET", "truebond-secret-key")
-JWT_ALGORITHM = "HS256"
+# Use the same JWT config as REST APIs
+JWT_SECRET = settings.JWT_SECRET
+JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+ISSUER = "pairly"
+AUDIENCE = "pairly-api"
 
 # Socket.IO server configuration
+def get_cors_origins():
+    origins = settings.CORS_ORIGINS if hasattr(settings, "CORS_ORIGINS") else "*"
+    if isinstance(origins, str) and origins != "*":
+        return [o.strip() for o in origins.split(",") if o.strip()]
+    return origins
+
 sio = socketio.AsyncServer(
     async_mode='asgi',
-    cors_allowed_origins='*',
+    cors_allowed_origins=get_cors_origins(),
     logger=False,
     engineio_logger=False
 )
@@ -39,21 +49,34 @@ connected_users: Dict[str, dict] = {}
 user_sockets: Dict[str, Set[str]] = {}
 
 async def verify_token(token: str) -> Optional[dict]:
+    """
+    Verify JWT token using AuthService.decode_token for consistency.
+    """
     try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        if payload.get("type") != "access":
+        # Use centralized decoding logic
+        payload = AuthService.decode_token(token)
+        
+        # Check token type - must be "access"
+        if payload.get("type") != "access" and payload.get("token_type") != "access":
+            print(f"❌ Invalid token type: {payload.get('type')}")
             return None
         
+        # Check if token is blacklisted
         jti = payload.get("jti")
         if jti and await token_blacklist.is_blacklisted(jti):
+            print(f"❌ Token blacklisted (jti: {jti})")
             return None
             
         user_id = payload.get("sub")
         if user_id and await token_blacklist.is_user_blacklisted(user_id):
+            print(f"❌ User blacklisted (user_id: {user_id})")
             return None
             
+        print(f"✅ Token verified successfully for user: {user_id}")
         return payload
-    except Exception:
+        
+    except Exception as e:
+        print(f"❌ Token verification error: {str(e)}")
         return None
 
 async def update_user_presence(user_id: str, is_online: bool):
@@ -102,62 +125,64 @@ async def handle_pubsub_message(channel: str, event: str, data: dict):
     except Exception as e:
         logger.error(f"Error handling pubsub message from Redis: {e}")
 
+def decode_access_token(token):
+    """
+    Decode JWT using SAME logic as REST.
+    Note: SECRET_KEY is JWT_SECRET in this file.
+    """
+    return jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+
 @sio.event
 async def connect(sid, environ, auth):
+    """
+    Production-safe connection handler with mandatory JWT authentication.
+    """
+    if not auth:
+        logger.warning(f"[SOCKET AUTH] Rejected: no auth provided (sid={sid})")
+        return False
+
+    token = auth.get("token")
+    if not token:
+        logger.warning(f"[SOCKET AUTH] Rejected: no token provided (sid={sid})")
+        return False
+
     try:
-        # Auth token can be in auth dict (Socket.IO v4) or query params
-        token = None
-        if auth and isinstance(auth, dict):
-            token = auth.get('token')
+        # REMOVE "Bearer " if present
+        if token.startswith("Bearer "):
+            token = token.split(" ")[1]
+
+        # Decode JWT using standardized logic
+        payload = decode_access_token(token)
         
-        # [BACKEND SOCKET DEBUG]
-        logger.info(f"[BACKEND SOCKET] Connect Attempt - SID={sid}, Auth={bool(auth)}, Token={bool(token)}")
-
-        if not token:
-            # Fallback to query string
-            from urllib.parse import parse_qs
-            query_string = environ.get('QUERY_STRING', '')
-            query_params = parse_qs(query_string)
-            token = query_params.get('token', [None])[0]
-
-        if not token:
-            logger.warning(f"[BACKEND SOCKET] Auth Failed - SID={sid} (No token provided)")
+        # Verify user ID existence in payload
+        user_id = payload.get("sub") or payload.get("id")
+        if not user_id:
+            logger.error(f"[SOCKET AUTH] Rejected: invalid token payload (sid={sid})")
             return False
 
-        payload = await verify_token(token)
-        if not payload:
-            logger.warning(f"[BACKEND SOCKET] Auth Failed - SID={sid} (Invalid token)")
-            return False
-
-        user_id = payload.get('sub')
-        logger.info(f"[BACKEND SOCKET] Auth Success - SID={sid}, UserID={user_id}")
-        connected_users[sid] = {'user_id': user_id, 'connected_at': datetime.now(timezone.utc).isoformat()}
+        # Store session data securely
+        await sio.save_session(sid, {"user_id": str(user_id)})
         
-        if user_id not in user_sockets:
-            user_sockets[user_id] = set()
-        user_sockets[user_id].add(sid)
+        # Global connection tracking
+        connected_users[sid] = {'user_id': str(user_id), 'connected_at': datetime.now(timezone.utc).isoformat()}
+        
+        if str(user_id) not in user_sockets:
+            user_sockets[str(user_id)] = set()
+        user_sockets[str(user_id)].add(sid)
 
+        # Join personal room for targeted events
         await sio.enter_room(sid, f"user:{user_id}")
         
+        # Update presence service and broadcast
         if redis_pubsub.is_connected:
-            await redis_pubsub.publish_presence(user_id, is_online=True)
-        
-        await update_user_presence(user_id, True)
+            await redis_pubsub.publish_presence(str(user_id), is_online=True)
+        await update_user_presence(str(user_id), True)
 
-        # Notify others only if show_online_status is enabled
-        try:
-            user_doc = await TBUser.get(user_id)
-            show_online = True
-            if user_doc and user_doc.settings and user_doc.settings.privacy:
-                show_online = user_doc.settings.privacy.show_online
-            if show_online:
-                await sio.emit('user:online', {'user_id': user_id}, skip_sid=sid)
-        except Exception:
-            pass
-        logger.info(f"[BACKEND SOCKET] User {user_id} fully connected (sid: {sid})")
+        logger.info(f"✅ [SOCKET AUTH] Connected: {user_id} (sid={sid})")
         return True
+
     except Exception as e:
-        logger.error(f"[BACKEND SOCKET] Connect error for sid {sid}: {e}")
+        logger.error(f"❌ [SOCKET AUTH] Connection error for sid {sid}: {str(e)}")
         return False
 
 @sio.event
@@ -336,7 +361,7 @@ async def message_send(sid, data):
         'content': content, 
         'type': msg_type, 
         'created_at': message.created_at.isoformat(),
-        'status': "delivered",  # Delivered to recipient socket
+'status': "sent",  # Initial sent status for sender
         'conversation_id': str(conversation.id)
     }
     
@@ -351,8 +376,12 @@ async def message_send(sid, data):
             await redis_pubsub.publish_new_message(receiver_id, delivered_data)
         
         # Local emit
+        # Send to receiver (triggers delivery receipt)
         await sio.emit('message:new', delivered_data, room=f"user:{receiver_id}")
-        await sio.emit('message:new', message_data, room=f"user:{sender_id}")  # sender sees 'delivered'
+        
+        # Sender initially sees 'sent' status
+        sent_data = {**message_data, 'status': 'sent'}
+        await sio.emit('message:sent', sent_data, room=f"user:{sender_id}")
     except Exception as broadcast_err:
         logger.warning(f"Broadcast failed: {broadcast_err}")
         pass  # Non-fatal
@@ -405,7 +434,7 @@ async def message_read(sid, data):
             'sender_id': sender_id,
             'count': result['marked_read'],
             'read_at': datetime.now(timezone.utc).isoformat(),
-            'status': 'seen'  # Frontend expects this for pink ticks
+            'status': 'read'  # Standard read status
         }
         try:
             if redis_pubsub.is_connected:
@@ -421,6 +450,25 @@ async def message_read(sid, data):
         logger.info(f"[{user_id}] marked {result['marked_read']} msgs from {sender_id} as read")
         return {'success': True, 'count': result['marked_read']}
 
+@sio.on('message:delivered')
+async def message_delivered(sid, data):
+    """Mark a specific message as delivered via Socket -> emit 'delivered' status"""
+    user_id = connected_users.get(sid, {}).get('user_id')
+    message_id = data.get('message_id')
+    sender_id = data.get('sender_id')
+    if user_id and message_id and sender_id:
+        from backend.services.tb_message_service import MessageService
+        result = await MessageService.mark_message_delivered(message_id)
+        if result.get("success"):
+            delivered_data = {
+                'id': message_id,
+                'status': 'delivered',
+                'delivered_at': datetime.now(timezone.utc).isoformat()
+            }
+            # Emit to sender natively
+            await sio.emit('message:delivered', delivered_data, room=f"user:{sender_id}")
+            return {'success': True}
+    return {'error': 'Invalid payload'}
 
 # ============================================
 # CALLING EVENTS (Aligned with socket.js)

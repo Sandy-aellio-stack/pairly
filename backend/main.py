@@ -17,7 +17,7 @@ import os
 import logging
 
 from backend.tb_database import init_db, close_db
-from backend.socket_server import create_socket_app, sio
+from backend.socket_server import sio
 from backend.core.redis_client import redis_client
 from backend.core.redis_pubsub import redis_pubsub
 from backend.core.security_config import security_config, validate_security_config
@@ -28,6 +28,7 @@ from backend.middleware.security import (
 )
 
 from backend.routes.tb_auth import router as auth_router
+from backend.routes.health import router as health_router
 # Removed legacy_auth_router
 from backend.routes.tb_users import router as users_router
 from backend.routes.tb_location import router as location_router
@@ -122,7 +123,7 @@ async def lifespan(app: FastAPI):
     await redis_client.disconnect()
 
 
-app = FastAPI(
+fastapi_app = FastAPI(
     title="Luveloop API",
     description="Dating App Backend - Credit-based messaging with live location",
     version="1.0.0",
@@ -135,7 +136,7 @@ app = FastAPI(
 # Uses security_config which automatically configures based on ENVIRONMENT
 logger.info(f"CORS configuration: origins={security_config.cors_origins}, env={ENVIRONMENT}")
 
-app.add_middleware(
+fastapi_app.add_middleware(
     CORSMiddleware,
     allow_origins=security_config.cors_origins,
     allow_credentials=security_config.cors_allow_credentials,
@@ -144,45 +145,43 @@ app.add_middleware(
     max_age=security_config.cors_max_age,
 )
 
-app.add_middleware(SecurityHeadersMiddleware)
-app.add_middleware(RequestLoggingMiddleware)
-app.add_middleware(RateLimitMiddleware)
+fastapi_app.add_middleware(SecurityHeadersMiddleware)
+fastapi_app.add_middleware(RequestLoggingMiddleware)
+fastapi_app.add_middleware(RateLimitMiddleware)
 
 # Setup comprehensive exception handlers
-setup_exception_handlers(app)
+setup_exception_handlers(fastapi_app)
 
 
-app.include_router(auth_router)
-app.include_router(users_router)
-app.include_router(location_router)
-app.include_router(messages_router)
-app.include_router(credits_router)
-app.include_router(payments_router)
-app.include_router(notifications_router)
-app.include_router(settings_router)
-app.include_router(search_router)
-app.include_router(calling_v2_router)
-app.include_router(webhooks_router)
+fastapi_app.include_router(health_router)
+fastapi_app.include_router(auth_router)
+fastapi_app.include_router(users_router)
+fastapi_app.include_router(location_router)
+fastapi_app.include_router(messages_router)
+fastapi_app.include_router(credits_router)
+fastapi_app.include_router(payments_router)
+fastapi_app.include_router(notifications_router)
+fastapi_app.include_router(settings_router)
+fastapi_app.include_router(search_router)
+fastapi_app.include_router(calling_v2_router)
+fastapi_app.include_router(webhooks_router)
 
 # Standardize Admin Routers
-app.include_router(admin_auth_router)
-app.include_router(admin_users_router)
-app.include_router(admin_analytics_router)
-app.include_router(admin_settings_router)
-app.include_router(admin_moderation_router)
+fastapi_app.include_router(admin_auth_router)
+fastapi_app.include_router(admin_users_router)
+fastapi_app.include_router(admin_analytics_router)
+fastapi_app.include_router(admin_settings_router)
+fastapi_app.include_router(admin_moderation_router)
 
 # Mock auth for development/testing only
 if ENVIRONMENT == "development":
-    app.include_router(mock_auth_router)
+    fastapi_app.include_router(mock_auth_router)
     logger.info("Mock auth enabled (development mode)")
 
 
-@app.get("/api/health")
-async def health():
-    return {"status": "ok"}
 
 
-@app.get("/api/health/redis")
+@fastapi_app.get("/api/health/redis")
 async def health_check_redis():
     """Check Redis connection and operations"""
     health = await redis_client.health_check()
@@ -199,7 +198,7 @@ async def health_check_redis():
     )
 
 
-@app.get("/api/health/detailed")
+@fastapi_app.get("/api/health/detailed")
 async def health_check_detailed():
     """Detailed health check for all services"""
     redis_health = await redis_client.health_check()
@@ -238,7 +237,7 @@ async def health_check_detailed():
     }
 
 
-@app.get("/")
+@fastapi_app.get("/")
 async def root():
     return {
         "app": "Luveloop",
@@ -247,5 +246,8 @@ async def root():
         "health": "/api/health"
     }
 
-
-socket_app = create_socket_app(app)
+# ============================================
+# SOCKET.IO INTEGRATION
+# ============================================
+import socketio
+app = socketio.ASGIApp(sio, other_asgi_app=fastapi_app)

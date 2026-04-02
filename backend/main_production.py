@@ -112,14 +112,19 @@ app = FastAPI(
 )
 
 allowed_origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:5000",
     "https://luveloop.com",
     "https://www.luveloop.com"
 ]
-if ENVIRONMENT == "production" and FRONTEND_URL and FRONTEND_URL not in allowed_origins:
+
+if FRONTEND_URL and FRONTEND_URL not in allowed_origins:
     allowed_origins.append(FRONTEND_URL)
+
+if ENVIRONMENT != "production":
+    allowed_origins.extend([
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:5000"
+    ])
 
 app.add_middleware(
     CORSMiddleware,

@@ -174,8 +174,56 @@ async def submit_feedback(
         prefs.last_active_at = datetime.now(timezone.utc)
         await prefs.save()
     
+    # Check for Mutual Match
+    is_match = False
+    if req.feedback_type == FeedbackType.LIKE:
+        mutual_like = await MatchFeedback.find_one({
+            "user_id": target_oid,
+            "target_user_id": user.id,
+            "feedback_type": FeedbackType.LIKE
+        })
+        
+        if mutual_like:
+            is_match = True
+            # Trigger notifications for both users
+            async def notify_match():
+                try:
+                    from backend.models.tb_notification import TBNotification
+                    from backend.services.fcm_service import fcm_service
+                    
+                    # Notify target user
+                    await TBNotification(
+                        user_id=str(target_oid),
+                        title="You have a new match!",
+                        body=f"You and {user.name} liked each other!",
+                        notification_type="match"
+                    ).insert()
+                    
+                    # Notify current user
+                    await TBNotification(
+                        user_id=str(user.id),
+                        title="You have a new match!",
+                        body=f"You matched with someone new!",
+                        notification_type="match"
+                    ).insert()
+                    
+                    # FCM Notifications
+                    target_user = await User.get(target_oid)
+                    if target_user:
+                        await fcm_service.notify_new_match(
+                            user_id=str(target_oid),
+                            match_name=user.name,
+                            match_id=str(user.id)
+                        )
+                except Exception as e:
+                    print(f"Error triggering match notifications: {e}")
+
+            import asyncio
+            asyncio.create_task(notify_match())
+
     return {
         "success": True,
+        "is_match": is_match,
         "feedback_id": str(feedback.id),
         "feedback_type": req.feedback_type
     }
