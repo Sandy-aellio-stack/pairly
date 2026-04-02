@@ -18,13 +18,12 @@ export const connectSocket = (token) => {
   console.log('[SOCKET DEBUG] SOCKET_URL:', SOCKET_URL);
   console.log('[SOCKET DEBUG] Token present:', !!accessToken);
 
-  if (socket && socket.connected) {
-    console.log('[SOCKET DEBUG] Reusing existing connected socket');
+  if (socket) {
+    console.log('[SOCKET DEBUG] Reusing existing socket instance (connected:', socket.connected, ')');
     return socket;
   }
 
   socket = io(SOCKET_URL, {
-    transports: ["websocket"],
     auth: {
       token: accessToken,
     },

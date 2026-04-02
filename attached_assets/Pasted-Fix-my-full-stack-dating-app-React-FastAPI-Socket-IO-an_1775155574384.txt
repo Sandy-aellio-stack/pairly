@@ -1,0 +1,193 @@
+Fix my full-stack dating app (React + FastAPI + Socket.IO) and make it production-ready.
+
+---
+
+🚨 CURRENT ISSUES:
+
+1. Socket instability:
+
+   * "Reconnecting..."
+   * "Connection timed out"
+   * Calls not working
+
+2. OTP system:
+
+   * Shows "OTP sent"
+   * But no email/SMS received
+
+3. Login validation:
+
+   * "Mobile number or email is required"
+
+4. Features broken:
+
+   * Calls (WebRTC)
+   * Emoji sending
+   * Image upload
+
+---
+
+🎯 STEP 1: FIX SOCKET CONNECTION (CRITICAL)
+
+Frontend:
+
+REMOVE:
+transports: ["websocket"]
+
+USE:
+
+const socket = io("http://localhost:8000", {
+reconnection: true,
+reconnectionAttempts: 5,
+reconnectionDelay: 1000,
+timeout: 20000
+});
+
+---
+
+Ensure SINGLE socket instance:
+
+let socket;
+
+export const getSocket = () => {
+if (!socket) {
+socket = io("http://localhost:8000");
+}
+return socket;
+};
+
+---
+
+Backend:
+
+@sio.event
+async def connect(sid, environ, auth):
+print("Socket connected:", sid)
+return True
+
+---
+
+🎯 STEP 2: FIX CALL SYSTEM
+
+Only start call if:
+
+if (!socket.connected) return alert("No connection");
+
+Add signaling events:
+
+* call_user
+* answer_call
+* ice_candidate
+
+Use STUN:
+
+iceServers: [
+{ urls: "stun:stun.l.google.com:19302" }
+]
+
+---
+
+🎯 STEP 3: FIX OTP SYSTEM (REAL EMAIL)
+
+Install:
+
+pip install sendgrid
+
+Backend:
+
+import random
+otp = str(random.randint(100000, 999999))
+
+Store OTP in Redis or DB
+
+Send email:
+
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
+
+message = Mail(
+from_email="[your@email.com](mailto:your@email.com)",
+to_emails=user_email,
+subject="Your OTP",
+html_content=f"Your OTP is {otp}"
+)
+
+sg = SendGridAPIClient(API_KEY)
+sg.send(message)
+
+---
+
+IMPORTANT:
+Remove DEV OTP logs.
+
+---
+
+🎯 STEP 4: FIX LOGIN VALIDATION
+
+Frontend must send:
+
+{
+"identifier": "email_or_phone"
+}
+
+Backend:
+
+if not identifier:
+raise HTTPException(400, "Email or phone required")
+
+---
+
+🎯 STEP 5: FIX IMAGE UPLOAD
+
+Backend:
+
+@router.post("/upload")
+async def upload(file: UploadFile):
+path = f"uploads/{file.filename}"
+with open(path, "wb") as f:
+f.write(await file.read())
+return {"url": path}
+
+Frontend:
+
+Use FormData
+
+---
+
+🎯 STEP 6: FIX EMOJI
+
+Install:
+
+npm install emoji-picker-react
+
+Append emoji to message text
+
+---
+
+🎯 STEP 7: FIX RECONNECT UI
+
+Hide reconnect banner when:
+
+socket.connected === true
+
+---
+
+🎯 STEP 8: FINAL CLEANUP
+
+* Remove test users
+* Remove dev OTP
+* Normalize API responses
+* Ensure token stored as "access_token"
+
+---
+
+🎯 FINAL RESULT:
+
+✅ Stable socket
+✅ No reconnect loop
+✅ Calls working
+✅ OTP delivered via email
+✅ Login validation fixed
+✅ Image + emoji working
+
+---

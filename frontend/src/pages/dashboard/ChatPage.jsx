@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import EmojiPicker from 'emoji-picker-react';
 import { Search, Send, MoreVertical, Phone, Video, ArrowLeft, Image, Smile, Coins, Loader2, X, Check, CheckCheck, CheckCircle } from 'lucide-react';
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import api from '../../services/api';
@@ -27,11 +28,13 @@ const ChatPage = () => {
   const [isSending, setIsSending] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected, setIsConnected] = useState(() => getSocket()?.connected === true);
+  const [showEmoji, setShowEmoji] = useState(false);
   const [incomingCall, setIncomingCall] = useState(null);
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const selectedChatRef = useRef(null);
+  const emojiPickerRef = useRef(null);
 
   selectedChatRef.current = selectedChat;
 
@@ -345,6 +348,18 @@ const ChatPage = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Close emoji picker on outside click
+  useEffect(() => {
+    if (!showEmoji) return;
+    const handleOutsideClick = (e) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target)) {
+        setShowEmoji(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [showEmoji]);
+
 
   const fetchMessages = async (userId) => {
     if (!userId) return;
@@ -457,27 +472,33 @@ const ChatPage = () => {
     }
 
     setIsSending(true);
+    const tempId = `temp_image_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const localUrl = URL.createObjectURL(file);
+    const tempMessage = {
+      id: tempId,
+      sender_id: user?.id,
+      image_url: localUrl,
+      created_at: new Date().toISOString(),
+      _temp: true,
+    };
+    setMessages(prev => [...prev, tempMessage]);
+
     const formData = new FormData();
     formData.append('image', file);
     formData.append('receiver_id', selectedChat.id);
 
     try {
       const response = await messagesAPI.uploadImage(formData);
-      
-      const tempId = `temp_image_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-      const tempMessage = {
-        id: tempId,
-        sender_id: user?.id,
-        image_url: URL.createObjectURL(file),
-        created_at: new Date().toISOString(),
-        _temp: true,
-      };
-      setMessages(prev => [...prev, tempMessage]);
-      
-      if (refreshUser) {
-        refreshUser();
-      }
+      const serverMsg = response?.data;
+      setMessages(prev => prev.map(m =>
+        m.id === tempId
+          ? { ...m, id: serverMsg?.message_id || tempId, image_url: serverMsg?.image_url || localUrl, _temp: false }
+          : m
+      ));
+      if (refreshUser) refreshUser();
     } catch (error) {
+      setMessages(prev => prev.filter(m => m.id !== tempId));
+      URL.revokeObjectURL(localUrl);
       toast.error('Failed to send image');
     } finally {
       setIsSending(false);
@@ -537,9 +558,11 @@ const ChatPage = () => {
 
   // Step 3: Handler aliases
   const sendMessage = handleSend;
-  const toggleEmoji = () => {
-    toast.info('Emoji picker coming soon!');
-  }; 
+  const toggleEmoji = () => setShowEmoji(prev => !prev);
+  const onEmojiClick = (emojiData) => {
+    setMessage(prev => prev + emojiData.emoji);
+    setShowEmoji(false);
+  };
   const openImageUpload = () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -658,7 +681,7 @@ const ChatPage = () => {
           {selectedConversation ? (
             <>
               {/* Connection Status */}
-              {(!isConnected || getSocket()?.connected === false) && (
+              {!isConnected && (
                 <div className="p-2 bg-yellow-100 border-b border-yellow-200">
                   <p className="text-xs text-yellow-800 text-center">🔌 Reconnecting... Messages will sync when connected</p>
                 </div>
@@ -768,7 +791,19 @@ const ChatPage = () => {
               </div>
 
               {/* Message Input */}
-              <div className="p-4 border-t border-gray-100 bg-white">
+              <div className="p-4 border-t border-gray-100 bg-white relative">
+                {showEmoji && (
+                  <div ref={emojiPickerRef} className="absolute bottom-full left-4 mb-2 z-50 shadow-xl rounded-xl overflow-hidden">
+                    <EmojiPicker
+                      onEmojiClick={onEmojiClick}
+                      height={350}
+                      width={300}
+                      searchDisabled={false}
+                      skinTonesDisabled
+                      previewConfig={{ showPreview: false }}
+                    />
+                  </div>
+                )}
                 <div className="flex items-center gap-3">
                   <button 
                     onClick={openImageUpload}
@@ -778,9 +813,9 @@ const ChatPage = () => {
                   </button>
                   <button 
                     onClick={toggleEmoji}
-                    className="p-2 hover:bg-gray-100 rounded-full"
+                    className={`p-2 hover:bg-gray-100 rounded-full ${showEmoji ? 'bg-gray-100' : ''}`}
                   >
-                    <Smile size={20} className="text-gray-500" />
+                    <Smile size={20} className={showEmoji ? 'text-[#0F172A]' : 'text-gray-500'} />
                   </button>
                   <input
                     type="text"

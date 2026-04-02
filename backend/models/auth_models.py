@@ -1,16 +1,33 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, model_validator
 from typing import Optional
 
 
 class SendOTPRequest(BaseModel):
     phone: Optional[str] = None
+    mobile_number: Optional[str] = None
     email: Optional[EmailStr] = None
+
+    @model_validator(mode='after')
+    def normalize_phone(self):
+        if not self.phone and self.mobile_number:
+            self.phone = self.mobile_number
+        return self
 
 
 class VerifyOTPRequest(BaseModel):
     phone: Optional[str] = None
+    mobile_number: Optional[str] = None
     email: Optional[EmailStr] = None
-    otp: str
+    otp: Optional[str] = None
+    otp_code: Optional[str] = None
+
+    @model_validator(mode='after')
+    def normalize_fields(self):
+        if not self.phone and self.mobile_number:
+            self.phone = self.mobile_number
+        if not self.otp and self.otp_code:
+            self.otp = self.otp_code
+        return self
 
 class SendEmailOTPRequest(BaseModel):
     email: EmailStr

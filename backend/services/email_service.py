@@ -52,38 +52,40 @@ class EmailService:
             return True
 
         try:
-            # TODO: Implement actual email sending
-            # For production, use services like:
-            # - SendGrid: https://sendgrid.com/
-            # - AWS SES: https://aws.amazon.com/ses/
-            # - Mailgun: https://www.mailgun.com/
-            # - Postmark: https://postmarkapp.com/
+            import smtplib
+            import asyncio
+            from email.mime.text import MIMEText
+            from email.mime.multipart import MIMEMultipart
 
-            logger.info(f"📧 Sending email to {to}: {subject}")
+            if not self.smtp_host or not self.smtp_user or not self.smtp_password:
+                logger.error("SMTP credentials not configured. Set SMTP_HOST, SMTP_USER, SMTP_PASSWORD env vars.")
+                return False
 
-            # Example with SMTP (basic implementation)
-            # import smtplib
-            # from email.mime.text import MIMEText
-            # from email.mime.multipart import MIMEMultipart
-            #
-            # msg = MIMEMultipart('alternative')
-            # msg['Subject'] = subject
-            # msg['From'] = self.from_email
-            # msg['To'] = to
-            #
-            # if text:
-            #     msg.attach(MIMEText(text, 'plain'))
-            # msg.attach(MIMEText(html, 'html'))
-            #
-            # with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
-            #     server.starttls()
-            #     server.login(self.smtp_user, self.smtp_password)
-            #     server.send_message(msg)
+            port = int(self.smtp_port or 587)
 
+            msg = MIMEMultipart('alternative')
+            msg['Subject'] = subject
+            msg['From'] = self.from_email
+            msg['To'] = to
+
+            if text:
+                msg.attach(MIMEText(text, 'plain'))
+            msg.attach(MIMEText(html, 'html'))
+
+            def _send():
+                with smtplib.SMTP(self.smtp_host, port) as server:
+                    server.ehlo()
+                    server.starttls()
+                    server.login(self.smtp_user, self.smtp_password)
+                    server.send_message(msg)
+
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, _send)
+            logger.info(f"📧 Email sent to {to}: {subject}")
             return True
 
         except Exception as e:
-            logger.error(f"Failed to send email: {e}")
+            logger.error(f"Failed to send email to {to}: {e}")
             return False
 
     async def send_password_reset_email(
