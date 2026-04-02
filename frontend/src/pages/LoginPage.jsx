@@ -17,7 +17,6 @@ const LoginPage = () => {
   const [otpIdentifier, setOtpIdentifier] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [otpSent, setOtpSent] = useState(false);
-  const [devOtp, setDevOtp] = useState('');
   const [isSendingOtp, setIsSendingOtp] = useState(false);
 
   const handleChange = (e) => {
@@ -47,20 +46,13 @@ const LoginPage = () => {
     setIsSendingOtp(true);
     try {
       const isEmail = otpIdentifier.includes('@');
-      let response;
       if (isEmail) {
-        response = await authAPI.sendOTPForLogin({ email: otpIdentifier.trim() });
+        await authAPI.sendOTPForLogin({ email: otpIdentifier.trim() });
       } else {
-        response = await authAPI.sendOTPForLogin({ mobile_number: otpIdentifier.trim() });
+        await authAPI.sendOTPForLogin({ mobile_number: otpIdentifier.trim() });
       }
       setOtpSent(true);
-      if (response.data?.dev_otp) {
-        setDevOtp(response.data.dev_otp);
-        setOtpCode(response.data.dev_otp);
-        toast.info(`Dev OTP: ${response.data.dev_otp}`, { duration: 10000 });
-      } else {
-        toast.success('OTP sent! Check your email or phone.');
-      }
+      toast.success('OTP sent! Check your email or phone.');
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to send OTP');
     } finally {
@@ -149,7 +141,7 @@ const LoginPage = () => {
               Password
             </button>
             <button
-              onClick={() => { setActiveTab('otp'); setOtpSent(false); setDevOtp(''); setOtpCode(''); }}
+              onClick={() => { setActiveTab('otp'); setOtpSent(false); setOtpCode(''); }}
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 activeTab === 'otp'
                   ? 'bg-white shadow-sm text-[#0F172A]'
@@ -266,7 +258,6 @@ const LoginPage = () => {
                 <form onSubmit={handleOtpLogin} className="space-y-4">
                   <div className="p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">
                     OTP sent to <strong>{otpIdentifier}</strong>
-                    {devOtp && <span className="ml-1">(Dev mode: <strong>{devOtp}</strong>)</span>}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-[#0F172A] mb-2">
@@ -301,7 +292,7 @@ const LoginPage = () => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setOtpSent(false); setDevOtp(''); setOtpCode(''); }}
+                    onClick={() => { setOtpSent(false); setOtpCode(''); }}
                     className="w-full py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
                   >
                     Change email/phone

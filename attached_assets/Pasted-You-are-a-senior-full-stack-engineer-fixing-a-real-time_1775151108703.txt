@@ -1,0 +1,167 @@
+You are a senior full-stack engineer fixing a real-time dating app.
+
+Project:
+- React frontend (Vite)
+- FastAPI backend
+- MongoDB + Redis
+- Socket.IO + WebRTC
+
+==================================================
+PROBLEM
+==================================================
+
+1. Calls show "Not connected to server"
+2. Socket connection rejected for signaling
+3. OTP system is in dev mode (fake OTP shown)
+4. No real email/SMS delivery
+5. Authentication and socket sessions not unified
+
+==================================================
+GOAL
+==================================================
+
+Make system production-ready with:
+
+- Working WebRTC calls
+- Stable socket signaling
+- Real OTP email + phone verification
+- Proper authentication linkage
+
+==================================================
+TASKS
+==================================================
+
+--------------------------------------------------
+1. FIX SOCKET CONNECTION (CRITICAL)
+--------------------------------------------------
+
+Backend:
+
+@sio.event
+async def connect(sid, environ, auth):
+    token = auth.get("token")
+
+    if not token:
+        return False
+
+    user = decode_access_token(token)
+
+    sio.save_session(sid, {
+        "user_id": str(user.id)
+    })
+
+    await sio.emit("user:online", {"user_id": str(user.id)})
+
+    return True
+
+--------------------------------------------------
+2. REGISTER USERS IN ROOMS
+--------------------------------------------------
+
+When user connects:
+
+await sio.enter_room(sid, user_id)
+
+--------------------------------------------------
+3. FIX CALL SIGNALING EVENTS
+--------------------------------------------------
+
+Backend:
+
+@sio.on("call:offer")
+async def handle_offer(sid, data):
+    target = data["to"]
+    await sio.emit("call:offer", data, room=target)
+
+@sio.on("call:answer")
+async def handle_answer(sid, data):
+    target = data["to"]
+    await sio.emit("call:answer", data, room=target)
+
+@sio.on("call:ice")
+async def handle_ice(sid, data):
+    target = data["to"]
+    await sio.emit("call:ice", data, room=target)
+
+--------------------------------------------------
+4. FRONTEND SOCKET FIX
+--------------------------------------------------
+
+const socket = io("http://localhost:8000", {
+  transports: ["websocket"],
+  auth: {
+    token: localStorage.getItem("access_token")
+  }
+})
+
+--------------------------------------------------
+5. REMOVE DEV OTP (IMPORTANT)
+--------------------------------------------------
+
+Delete:
+- Dev OTP display
+- Hardcoded OTP logic
+
+--------------------------------------------------
+6. IMPLEMENT REAL EMAIL OTP
+--------------------------------------------------
+
+Backend:
+
+import random
+
+otp = str(random.randint(100000, 999999))
+
+Store in Redis:
+redis.set(email, otp, ex=300)
+
+Send email using SMTP:
+
+import smtplib
+
+--------------------------------------------------
+7. VERIFY OTP FLOW
+--------------------------------------------------
+
+POST /auth/send-otp
+POST /auth/verify-otp
+
+Ensure:
+- Email exists in DB
+- OTP matches
+- Then issue JWT
+
+--------------------------------------------------
+8. ENFORCE SAME EMAIL
+--------------------------------------------------
+
+When sending OTP:
+
+- Check user exists
+- Only send OTP to registered email
+
+--------------------------------------------------
+9. MOBILE OTP (OPTIONAL)
+--------------------------------------------------
+
+Use Twilio:
+
+client.messages.create()
+
+--------------------------------------------------
+10. REMOVE FAKE UI BEHAVIOR
+--------------------------------------------------
+
+- No "Dev OTP"
+- No auto-fill OTP
+- Real verification only
+
+--------------------------------------------------
+FINAL RESULT
+--------------------------------------------------
+
+- Calls connect successfully
+- No "Not connected"
+- OTP sent to real email
+- Login secure
+- Socket stable

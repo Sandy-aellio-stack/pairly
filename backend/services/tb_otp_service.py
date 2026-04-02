@@ -98,10 +98,6 @@ class OTPService:
             "expires_in_minutes": 5
         }
 
-        # Return dev_otp in response ONLY when NOT in production
-        if not is_prod:
-            response["dev_otp"] = otp_code
-
         return response
 
     @staticmethod
@@ -159,9 +155,6 @@ class OTPService:
             "email": email,
             "expires_in_minutes": 5
         }
-
-        if not is_prod:
-            email_response["dev_otp"] = otp_code
 
         return email_response
 
