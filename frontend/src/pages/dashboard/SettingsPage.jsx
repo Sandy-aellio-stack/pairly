@@ -106,26 +106,13 @@ const SettingsPage = () => {
     setIsSaving(true);
     
     try {
-      // Map to flattened fields for backend compatibility
       const flattenedData = {};
-      
       if (section === 'notifications') {
-        // Map to backend field names:
-        // messages -> notifications_messages
-        // matches -> notifications_matches
-        // nearby -> notifications_nearby_users
-        if (key === 'messages') flattenedData.notifications_messages = updatedSettings[section][key];
-        else if (key === 'matches') flattenedData.notifications_matches = updatedSettings[section][key];
-        else if (key === 'nearby') flattenedData.notifications_nearby_users = updatedSettings[section][key];
-        else flattenedData[`notifications_${key}`] = updatedSettings[section][key];
+        flattenedData.notifications = { [key]: updatedSettings[section][key] };
       } else if (section === 'privacy') {
-        // Map: show_online -> privacy_show_online_status, show_last_seen -> privacy_show_last_seen, etc.
-        if (key === 'show_online') flattenedData.privacy_show_online_status = updatedSettings[section][key];
-        else flattenedData[`privacy_${key}`] = updatedSettings[section][key];
+        flattenedData.privacy = { [key]: updatedSettings[section][key] };
       } else if (section === 'safety') {
-        // Map: require_verified_matches -> safety_verified_matches_only, block_screenshots -> safety_block_screenshots, etc.
-        if (key === 'require_verified_matches') flattenedData.safety_verified_matches_only = updatedSettings[section][key];
-        else flattenedData[`safety_${key}`] = updatedSettings[section][key];
+        flattenedData.safety = { [key]: updatedSettings[section][key] };
       }
 
       console.log('[SettingsPage] Sending update:', flattenedData);

@@ -391,6 +391,22 @@ async def message_send(sid, data):
         message_data['temp_id'] = temp_id
 
     try:
+        # 5a. Create persistent notification for receiver
+        from backend.models.tb_notification import TBNotification
+        sender_user = await TBUser.get(sender_oid)
+        sender_name = sender_user.name if sender_user else "Someone"
+        preview = content[:60] + ("…" if len(content) > 60 else "")
+        notif = TBNotification(
+            user_id=receiver_id,
+            notification_type="message",
+            title=f"New message from {sender_name}",
+            body=preview,
+        )
+        await notif.insert()
+    except Exception:
+        pass  # Non-fatal — don't block message delivery
+
+    try:
         # 5. Broadcast via Pub/Sub and local emit with delivered status
         delivered_data = {**message_data, 'status': 'delivered'}
         if redis_pubsub.is_connected:
@@ -588,6 +604,20 @@ async def call_user(sid, data):
             },
             room=f"user:{target_user}"
         )
+
+        try:
+            from backend.models.tb_notification import TBNotification
+            caller_name = caller.name if caller else "Someone"
+            call_label = "video" if call_type_raw == "video" else "audio"
+            call_notif = TBNotification(
+                user_id=target_user,
+                notification_type="call",
+                title=f"Incoming {call_label} call",
+                body=f"{caller_name} is calling you",
+            )
+            await call_notif.insert()
+        except Exception:
+            pass
 
         print(f"✅ Call session {call_id} created, notified {target_user}")
         return {'success': True, 'call_id': call_id}

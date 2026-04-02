@@ -1,0 +1,319 @@
+Fix and complete my full-stack dating app (Pairly/Luveloop) built with React (Vite) + FastAPI + Socket.IO + MongoDB + Redis.
+
+CURRENT CRITICAL ISSUES:
+
+1. Socket.IO shows:
+
+   * "Not connected to server"
+   * "Reconnecting..."
+   * "Connection rejected by server"
+     → This breaks chat, audio calls, video calls, notifications
+
+2. WebRTC calling not working (audio/video never connects)
+
+3. Settings page:
+
+   * "Invalid token" error
+   * Toggles not saving to backend
+
+4. OTP system:
+
+   * Shows "Dev OTP"
+   * Not sending real email/SMS
+   * Not validating against actual user account
+
+5. Admin pages partially broken
+
+6. Backend + frontend mismatch:
+
+   * Different API response shapes
+   * Inconsistent ObjectId handling
+   * Missing endpoints
+
+7. Some features UI exists but backend not implemented:
+
+   * Block user enforcement
+   * Report user
+   * Notifications
+   * Call history
+
+---
+
+🎯 GOAL:
+Make the app FULLY PRODUCTION READY (100%) with:
+
+* Working sockets
+* Working calls
+* Real OTP system
+* Persistent settings
+* Fully connected frontend + backend
+* Clean architecture
+
+---
+
+🧠 STEP 1: FIX SOCKET.IO (CRITICAL)
+
+Backend (FastAPI):
+
+* Ensure Socket.IO is mounted correctly:
+
+import socketio
+from fastapi import FastAPI
+
+sio = socketio.AsyncServer(
+async_mode="asgi",
+cors_allowed_origins="*"
+)
+
+fastapi_app = FastAPI()
+
+@sio.event
+async def connect(sid, environ, auth):
+token = auth.get("token") if auth else None
+if not token:
+return False
+print("✅ SOCKET CONNECTED:", sid)
+
+@sio.event
+async def disconnect(sid):
+print("❌ SOCKET DISCONNECTED:", sid)
+
+app = socketio.ASGIApp(sio, other_asgi_app=fastapi_app)
+
+---
+
+Run backend CORRECTLY:
+
+uvicorn main:app --host 0.0.0.0 --port 8000
+
+(NOT fastapi_app)
+
+---
+
+Frontend (socket.js):
+
+import { io } from "socket.io-client";
+
+const socket = io("http://localhost:8000", {
+transports: ["websocket"],
+auth: {
+token: localStorage.getItem("access_token")
+}
+});
+
+socket.on("connect", () => {
+console.log("✅ Connected:", socket.id);
+});
+
+socket.on("connect_error", (err) => {
+console.log("❌ Socket error:", err.message);
+});
+
+---
+
+🧠 STEP 2: FIX WEBRTC CALLING
+
+Problem: signaling missing via socket
+
+Implement events:
+
+socket.emit("call_user", { to, offer });
+socket.on("incoming_call", ...)
+socket.emit("answer_call", { answer })
+socket.on("call_answered", ...)
+socket.emit("ice_candidate", ...)
+socket.on("ice_candidate", ...)
+
+Use STUN server:
+
+iceServers: [
+{ urls: "stun:stun.l.google.com:19302" }
+]
+
+Ensure:
+
+* Permissions for mic/camera
+* Socket connected BEFORE calling
+
+---
+
+🧠 STEP 3: FIX SETTINGS (INVALID TOKEN)
+
+Backend:
+
+* Protect route with JWT
+
+@router.put("/settings")
+async def update_settings(data, current_user=Depends(get_current_user)):
+current_user.settings = data
+await current_user.save()
+return {"success": True}
+
+Frontend:
+
+axios.put("/api/settings", data, {
+headers: {
+Authorization: `Bearer ${token}`
+}
+})
+
+Fix:
+
+* Token must NOT be null
+* Use same key: "access_token"
+
+---
+
+🧠 STEP 4: FIX OTP SYSTEM (REAL IMPLEMENTATION)
+
+Remove DEV OTP
+
+Backend:
+
+* Generate OTP
+* Store in Redis (expiry 5 min)
+* Send via email/SMS
+
+Email (SendGrid):
+
+import sendgrid
+
+SMS (Twilio):
+
+from twilio.rest import Client
+
+Flow:
+
+1. POST /auth/send-otp
+
+2. Store OTP in Redis
+
+3. Send to email/phone
+
+4. POST /auth/verify-otp
+
+5. Validate OTP
+
+6. Issue JWT
+
+---
+
+🧠 STEP 5: FIX BLOCK + REPORT
+
+Block enforcement:
+
+Before sending message:
+
+if is_blocked(sender, receiver):
+raise HTTPException(403, "User blocked")
+
+Also block:
+
+* Calls
+* Discovery
+* Notifications
+
+---
+
+🧠 STEP 6: FIX NOTIFICATIONS
+
+Create Notification model:
+
+class Notification:
+user_id
+type
+message
+read
+created_at
+
+Trigger on:
+
+* message
+* like
+* call
+
+---
+
+🧠 STEP 7: FIX CALL HISTORY
+
+Backend:
+
+GET /calls/history
+
+Return:
+
+[
+{
+"user": {},
+"type": "video",
+"status": "missed",
+"duration": 120,
+"created_at": ...
+}
+]
+
+---
+
+🧠 STEP 8: FIX FRONTEND/BACKEND SYNC
+
+Standardize:
+
+* Always return _id as string
+* Use consistent response:
+
+{
+success: true,
+data: ...
+}
+
+---
+
+🧠 STEP 9: REMOVE TEST USERS
+
+Delete:
+
+* Dummy users
+* Dev OTP messages
+
+---
+
+🧠 STEP 10: PRODUCTION HARDENING
+
+Add:
+
+* CORS config
+* Rate limiting
+* JWT expiry + refresh
+* Environment variables
+
+.env:
+
+MONGO_URI=
+REDIS_URL=
+JWT_SECRET=
+SENDGRID_API_KEY=
+TWILIO_SID=
+TWILIO_AUTH=
+
+---
+
+🎯 FINAL EXPECTED RESULT:
+
+✅ Socket connects instantly
+✅ "Not connected to server" gone
+✅ Chat real-time works
+✅ Audio/video calls work
+✅ Settings save correctly
+✅ OTP works via email/SMS
+✅ Admin pages functional
+✅ No dummy data
+✅ Fully production ready
+
+---
+
+If anything still fails:
+Log everything and ensure:
+
+* Backend running on correct port
+* Token is valid
+* Socket auth is passed correctly

@@ -270,14 +270,21 @@ async def get_call_history(
         skip=skip
     )
     
+    def _fmt_dt(val):
+        if val is None:
+            return None
+        return val.isoformat() if hasattr(val, "isoformat") else val
+
     return {
         "calls": [
             {
                 "id": call.get("id"),
                 "caller_id": call.get("caller_id"),
                 "receiver_id": call.get("receiver_id"),
+                "call_type": call.get("call_type", "voice"),
                 "status": call.get("status"),
-                "initiated_at": call.get("initiated_at").isoformat() if hasattr(call.get("initiated_at"), "isoformat") else call.get("initiated_at"),
+                "initiated_at": _fmt_dt(call.get("initiated_at")),
+                "created_at": _fmt_dt(call.get("created_at") or call.get("initiated_at")),
                 "duration_seconds": call.get("duration_seconds"),
                 "credits_spent": call.get("credits_spent"),
                 "disconnect_reason": call.get("disconnect_reason"),
