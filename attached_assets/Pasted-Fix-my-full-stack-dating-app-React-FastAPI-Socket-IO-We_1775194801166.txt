@@ -1,0 +1,149 @@
+Fix my full-stack dating app (React + FastAPI + Socket.IO + WebRTC) and make it fully production-ready and stable.
+
+---
+
+🚨 CURRENT ISSUES:
+
+1. Replit preview not loading
+2. Socket reconnect loop
+3. Call disconnecting after few seconds
+4. OTP not reaching user (only terminal)
+5. Notifications not syncing correctly
+6. Image upload failing
+7. Emoji send not working
+8. Call history not always storing
+9. Multiple socket connections possible
+
+---
+
+🎯 STEP 1: FIX REPLIT SERVER
+
+Ensure app runs on:
+
+HOST = 0.0.0.0
+PORT = 5000
+
+FastAPI:
+uvicorn main:app --host 0.0.0.0 --port 5000
+
+Vite config:
+server: { host: "0.0.0.0", port: 5000 }
+
+---
+
+🎯 STEP 2: SINGLE SOCKET INSTANCE
+
+Create global socket:
+
+let socket;
+
+export const getSocket = () => {
+if (!socket) {
+socket = io(import.meta.env.VITE_BACKEND_URL || "http://localhost:5000", {
+autoConnect: true,
+reconnection: true,
+reconnectionAttempts: Infinity,
+reconnectionDelay: 1000
+});
+}
+return socket;
+};
+
+REMOVE all duplicate io() calls
+
+---
+
+🎯 STEP 3: FIX WEBRTC CALL DROPS
+
+Use STUN + TURN:
+
+const pc = new RTCPeerConnection({
+iceServers: [
+{ urls: "stun:stun.l.google.com:19302" },
+{
+urls: import.meta.env.VITE_TURN_URL,
+username: import.meta.env.VITE_TURN_USERNAME,
+credential: import.meta.env.VITE_TURN_CREDENTIAL
+}
+]
+});
+
+Wait for ICE gathering before sending offer
+
+---
+
+🎯 STEP 4: ADD TURN SERVER (MANDATORY)
+
+Use:
+
+VITE_TURN_URL=turn:openrelay.metered.ca:80
+VITE_TURN_USERNAME=openrelayproject
+VITE_TURN_CREDENTIAL=openrelayproject
+
+---
+
+🎯 STEP 5: FIX OTP SYSTEM
+
+Integrate:
+
+* Twilio (SMS)
+* SendGrid (Email)
+
+Remove console-only OTP
+
+---
+
+🎯 STEP 6: FIX IMAGE UPLOAD
+
+Frontend → use FormData
+Backend → accept UploadFile
+
+Return proper URL
+
+---
+
+🎯 STEP 7: FIX NOTIFICATIONS
+
+Socket emit:
+
+socket.emit("new_notification")
+
+Frontend:
+
+socket.on("new_notification", update UI)
+
+Clear badge on open
+
+---
+
+🎯 STEP 8: FIX CALL HISTORY
+
+Store call start + end + duration in DB
+
+---
+
+🎯 STEP 9: FIX RECONNECT UI
+
+Only show reconnect banner when:
+
+!socket.connected
+
+---
+
+🎯 FINAL EXPECTED RESULT:
+
+✅ Replit preview loads
+✅ Stable socket connection
+✅ No reconnect loop
+✅ Calls stay connected
+✅ OTP works (real SMS/email)
+✅ Notifications real-time
+✅ Image upload works
+✅ Emoji works
+✅ Call history stored
+
+---
+
+Make all fixes production-ready with clean architecture and no dev hacks.
+
+---

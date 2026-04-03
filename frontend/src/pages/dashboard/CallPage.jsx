@@ -19,6 +19,11 @@ import {
   onMediaStateChange
 } from '../../services/socket';
 
+// Custom TURN overrides from env; fall back to OpenRelay public TURN servers
+const TURN_URL = import.meta.env.VITE_TURN_URL || 'turn:openrelay.metered.ca:80';
+const TURN_USERNAME = import.meta.env.VITE_TURN_USERNAME || 'openrelayproject';
+const TURN_CREDENTIAL = import.meta.env.VITE_TURN_CREDENTIAL || 'openrelayproject';
+
 const ICE_SERVERS = {
   iceServers: [
     // Google STUN servers (free, reliable)
@@ -27,15 +32,18 @@ const ICE_SERVERS = {
     { urls: 'stun:stun2.l.google.com:19302' },
     { urls: 'stun:stun3.l.google.com:19302' },
     { urls: 'stun:stun4.l.google.com:19302' },
-    // Additional public STUN servers
+    // Additional public STUN
     { urls: 'stun:stun.stunprotocol.org:3478' },
-    { urls: 'stun:stun.voip.blackberry.com:3478' },
-    // TURN servers — set VITE_TURN_URL, VITE_TURN_USERNAME, VITE_TURN_CREDENTIAL to enable
-    ...(import.meta.env.VITE_TURN_URL ? [{
-      urls: import.meta.env.VITE_TURN_URL,
-      username: import.meta.env.VITE_TURN_USERNAME || '',
-      credential: import.meta.env.VITE_TURN_CREDENTIAL || ''
-    }] : [])
+    // TURN: allows calls through strict NATs/firewalls (required for production)
+    { urls: TURN_URL, username: TURN_USERNAME, credential: TURN_CREDENTIAL },
+    // Secondary TURN endpoint (TLS, bypasses port-blocking firewalls)
+    {
+      urls: import.meta.env.VITE_TURN_URL
+        ? TURN_URL.replace(':80', ':443')
+        : 'turn:openrelay.metered.ca:443',
+      username: TURN_USERNAME,
+      credential: TURN_CREDENTIAL
+    }
   ],
   iceCandidatePoolSize: 10,
   iceTransportPolicy: 'all'
