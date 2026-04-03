@@ -7,6 +7,7 @@ from backend.models.tb_user import TBUser
 from backend.models.tb_credit import TBCreditTransaction
 from backend.routes.tb_admin_auth import get_current_admin, check_super_admin
 from backend.utils.objectid_utils import validate_object_id
+from backend.socket_server import sio
 
 router = APIRouter(prefix="/api/admin/users", tags=["Luveloop Admin Users"])
 
@@ -124,7 +125,9 @@ async def suspend_user(
     user.is_active = False
     user.updated_at = datetime.now(timezone.utc)
     await user.save()
-    
+
+    await sio.emit("admin_update", {"action": "user_suspended", "user_id": user_id, "user_name": user.name})
+
     return {"success": True, "message": f"User {user.name} has been suspended"}
 
 
@@ -143,7 +146,9 @@ async def reactivate_user(
     user.is_active = True
     user.updated_at = datetime.now(timezone.utc)
     await user.save()
-    
+
+    await sio.emit("admin_update", {"action": "user_reactivated", "user_id": user_id, "user_name": user.name})
+
     return {"success": True, "message": f"User {user.name} has been reactivated"}
 
 

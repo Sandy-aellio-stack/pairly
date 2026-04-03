@@ -9,6 +9,7 @@ from backend.models.tb_user import TBUser
 from backend.models.tb_message import TBMessage
 from backend.routes.tb_admin_auth import get_current_admin, check_super_admin
 from backend.utils.objectid_utils import validate_object_id
+from backend.socket_server import sio
 
 router = APIRouter(prefix="/api/admin/moderation", tags=["Luveloop Admin Moderation"])
 logger = logging.getLogger("moderation")
@@ -104,7 +105,9 @@ async def approve_content(
     report.reviewed_by = admin["email"]
     report.reviewed_at = datetime.now(timezone.utc)
     await report.save()
-    
+
+    await sio.emit("admin_update", {"action": "report_approved", "report_id": report_id})
+
     return {"success": True, "message": "Content approved - no action taken"}
 
 
@@ -152,7 +155,9 @@ async def remove_content(
     report.reviewed_by = admin["email"]
     report.reviewed_at = datetime.now(timezone.utc)
     await report.save()
-    
+
+    await sio.emit("admin_update", {"action": "content_removed", "report_id": report_id})
+
     return {"success": True, "message": "Content removed and violation recorded"}
 
 
@@ -178,5 +183,7 @@ async def ban_user_from_report(
     report.reviewed_by = admin["email"]
     report.reviewed_at = datetime.now(timezone.utc)
     await report.save()
-    
+
+    await sio.emit("admin_update", {"action": "user_banned", "report_id": report_id, "user_id": str(report.reported_user_id) if report.reported_user_id else None})
+
     return {"success": True, "message": "User has been banned"}

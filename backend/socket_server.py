@@ -58,25 +58,25 @@ async def verify_token(token: str) -> Optional[dict]:
         
         # Check token type - must be "access"
         if payload.get("type") != "access" and payload.get("token_type") != "access":
-            print(f"❌ Invalid token type: {payload.get('type')}")
+            logger.warning(f"[SOCKET AUTH] Invalid token type: {payload.get('type')}")
             return None
         
         # Check if token is blacklisted
         jti = payload.get("jti")
         if jti and await token_blacklist.is_blacklisted(jti):
-            print(f"❌ Token blacklisted (jti: {jti})")
+            logger.warning(f"[SOCKET AUTH] Token blacklisted (jti: {jti})")
             return None
             
         user_id = payload.get("sub")
         if user_id and await token_blacklist.is_user_blacklisted(user_id):
-            print(f"❌ User blacklisted (user_id: {user_id})")
+            logger.warning(f"[SOCKET AUTH] User blacklisted: {user_id}")
             return None
             
-        print(f"✅ Token verified successfully for user: {user_id}")
+        logger.debug(f"[SOCKET AUTH] Token verified for user: {user_id}")
         return payload
         
     except Exception as e:
-        print(f"❌ Token verification error: {str(e)}")
+        logger.warning(f"[SOCKET AUTH] Token verification error: {e}")
         return None
 
 async def _is_blocked(user_id_a: str, user_id_b: str) -> bool:
@@ -514,7 +514,7 @@ async def message_delivered(sid, data):
 @sio.on("call:initiate")
 async def initiate_call_socket(sid, data):
     """Handle frontend socket.emit('call:initiate', { targetUserId, type })"""
-    print("🔥 CALL INITIATE RECEIVED:", data)
+    logger.debug(f"[SOCKET] call:initiate received")
     
     user_id = connected_users.get(sid, {}).get('user_id')
     if not user_id:
@@ -527,7 +527,7 @@ async def initiate_call_socket(sid, data):
     call_type = 'voice' if raw_call_type in ['audio', 'voice'] else 'video'
     
     if not target_user_id:
-        print("[ERROR] No target_user_id found in data:", data)
+        logger.error("[SOCKET] call:initiate missing target_user_id")
         return {'error': 'Missing target user ID (targetUserId)'}
     
     try:
@@ -539,7 +539,7 @@ async def initiate_call_socket(sid, data):
             call_type=call_type
         )
         
-        print(f"✅ Call session created: {call_session.id}")
+        logger.info(f"[SOCKET] Call session created: {call_session.id}")
         
         # Notify caller (ack)
         await sio.emit('call:created', {
@@ -560,13 +560,13 @@ async def initiate_call_socket(sid, data):
         return {'success': True, 'call_id': call_session.id}
         
     except Exception as e:
-        print(f"❌ CALL INITIATE ERROR: {e}")
+
         logger.error(f"Call initiate failed: {e}")
         return {'error': str(e)}
 
 @sio.on("call_user")
 async def call_user(sid, data):
-    print("🔥 CALL EVENT RECEIVED:", data)
+    logger.debug("[SOCKET] call_user event received")
     user_id = connected_users.get(sid, {}).get('user_id')
     if not user_id:
         return {'error': 'Unauthorized'}
@@ -619,11 +619,11 @@ async def call_user(sid, data):
         except Exception:
             pass
 
-        print(f"✅ Call session {call_id} created, notified {target_user}")
+        logger.info(f"[SOCKET] Call session {call_id} created, notified {target_user}")
         return {'success': True, 'call_id': call_id}
 
     except Exception as e:
-        print("❌ CALL ERROR:", str(e))
+        logger.error(f"[SOCKET] call_user error: {e}")
         await sio.emit("call_failed", {"error": str(e)}, room=sid)
         return {'error': str(e)}
 

@@ -13,13 +13,8 @@ const SOCKET_URL = import.meta.env.VITE_SOCKET_URL ||
 
 export const connectSocket = (token) => {
   const accessToken = token || localStorage.getItem("access_token");
-  console.log("Socket token:", accessToken);
-  console.log('[SOCKET DEBUG] connectSocket invoked');
-  console.log('[SOCKET DEBUG] SOCKET_URL:', SOCKET_URL);
-  console.log('[SOCKET DEBUG] Token present:', !!accessToken);
 
   if (socket) {
-    console.log('[SOCKET DEBUG] Reusing existing socket instance (connected:', socket.connected, ')');
     return socket;
   }
 
@@ -28,8 +23,9 @@ export const connectSocket = (token) => {
       token: accessToken,
     },
     reconnection: true,
-    reconnectionAttempts: 10,
+    reconnectionAttempts: Infinity,
     reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
     timeout: 20000,
     withCredentials: true,
     path: "/socket.io",
@@ -37,29 +33,12 @@ export const connectSocket = (token) => {
 
   /* ---------- CONNECTION EVENTS ---------- */
 
-  socket.on("connect", () => {
-    console.log("✅ [SOCKET DEBUG] connected:", socket.id);
-  });
-
-  socket.on("disconnect", (reason) => {
-    console.log("❌ [SOCKET DEBUG] disconnected, reason:", reason);
-  });
-
   socket.on("connect_error", (error) => {
-    console.error("❌ [SOCKET DEBUG] connect_error:", error.message);
-    console.error("[SOCKET DEBUG] Full error object:", error);
-  });
-
-  socket.io.on("reconnect_attempt", (attempt) => {
-    console.log("🔄 Reconnect attempt:", attempt);
-  });
-
-  socket.io.on("reconnect", (attempt) => {
-    console.log("🔌 Reconnected after", attempt, "attempts");
+    console.error("[Socket] Connection error:", error.message);
   });
 
   socket.on("call_failed", (err) => {
-    console.error("Call failed:", err);
+    console.error("[Socket] Call failed:", err);
   });
 
   /* ---------- GLOBAL EVENTS ---------- */
@@ -148,7 +127,6 @@ export const sendMessage = (receiverId, content, type = "text", conversationId =
       (response) => {
         // Ack handled by caller
         if (response?.error) {
-          console.error("[SOCKET DEBUG] Ack error:", response.error);
           reject(new Error(response.error));
         } else {
           resolve(response);
@@ -190,8 +168,6 @@ export const callUser = (receiverId, callType, offer = null) => {
       reject(new Error("Socket not connected"));
       return;
     }
-
-    console.log("Initiating call", { targetUserId: receiverId, callType });
 
     socket.emit(
       "call_user",

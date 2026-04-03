@@ -150,12 +150,6 @@ async def verify_otp_unified(data: VerifyOTPRequest):
         user_id=str(user.id)
     )
     
-    # Developer account bypass
-    DEV_USER_ID = "69a18167be16ddc2a28e19aa"
-    DEV_EMAIL = "indiranigopi677@gmail.com"
-    is_dev = str(user.id) == DEV_USER_ID or user.email.lower() == DEV_EMAIL.lower()
-    coins_to_show = 999999 if is_dev else user.coins
-
     return {
         "success": True,
         "message": "OTP verified and logged in",
@@ -167,7 +161,7 @@ async def verify_otp_unified(data: VerifyOTPRequest):
             "name": user.name,
             "email": user.email,
             "role": user.role,
-            "coins": coins_to_show,
+            "coins": user.coins,
             "is_verified": user.is_verified
         }
     }

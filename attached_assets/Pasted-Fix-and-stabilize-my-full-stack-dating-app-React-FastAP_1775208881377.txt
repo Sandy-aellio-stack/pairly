@@ -1,0 +1,220 @@
+Fix and stabilize my full-stack dating app (React + FastAPI + Socket.IO + WebRTC + Firebase) and make it fully production-ready.
+
+---
+
+🚨 CURRENT ISSUES:
+
+* Socket shows "🔌 Reconnecting..." continuously
+* Audio/video calls connect briefly then disconnect
+* OTP still partially using dev mode
+* Admin panel not syncing with user actions
+* Notifications not updating in real-time
+
+---
+
+🎯 STEP 1: FIX AUTH (REMOVE DEV MODE COMPLETELY)
+
+Frontend:
+
+* Use Firebase ONLY for authentication
+* After OTP verification:
+
+const token = await user.getIdToken();
+localStorage.setItem("firebase_token", token);
+
+* Send token in all API calls:
+
+Authorization: Bearer ${token}
+
+---
+
+Backend (FastAPI):
+
+* Install Firebase Admin SDK
+* Verify token:
+
+from firebase_admin import auth
+
+def verify_firebase_token(token):
+return auth.verify_id_token(token)
+
+* Use UID everywhere as user identity
+
+---
+
+🎯 STEP 2: FIX SOCKET CONNECTION (CRITICAL)
+
+Frontend:
+
+* Create SINGLE socket instance:
+
+let socket;
+
+export const getSocket = () => {
+if (!socket) {
+socket = io("http://localhost:8000", {
+auth: {
+token: localStorage.getItem("firebase_token")
+},
+reconnection: true,
+reconnectionAttempts: Infinity,
+reconnectionDelay: 1000
+});
+}
+return socket;
+};
+
+* NEVER create socket multiple times
+
+---
+
+Backend:
+
+@sio.event
+async def connect(sid, environ, auth):
+token = auth.get("token")
+
+```
+try:
+    user = verify_firebase_token(token)
+    connected_users[sid] = user["uid"]
+    print("Connected:", user["uid"])
+except:
+    print("Socket rejected")
+    return False
+```
+
+---
+
+🎯 STEP 3: FIX "RECONNECTING..." ISSUE
+
+Frontend:
+
+socket.on("connect", () => setConnected(true));
+socket.on("disconnect", () => setConnected(false));
+
+* Show reconnect banner ONLY if:
+  !socket.connected
+
+---
+
+🎯 STEP 4: FIX CALL SYSTEM (WEBRTC + TURN)
+
+Problem: Calls disconnect due to NAT failure
+
+Use proper ICE config:
+
+const pc = new RTCPeerConnection({
+iceServers: [
+{ urls: "stun:stun.l.google.com:19302" },
+{
+urls: "turn:openrelay.metered.ca:80",
+username: "openrelayproject",
+credential: "openrelayproject"
+}
+]
+});
+
+---
+
+Add signaling via socket:
+
+socket.emit("call_user", { to, offer });
+socket.on("incoming_call", ...)
+socket.emit("answer_call", { answer });
+socket.on("call_answered", ...)
+socket.emit("ice_candidate", candidate);
+socket.on("ice_candidate", ...)
+
+---
+
+IMPORTANT:
+
+* Do NOT start call if socket is not connected
+* Wait until socket.connected === true
+
+---
+
+🎯 STEP 5: FIX ADMIN PANEL
+
+Backend:
+
+* Admin must use same authentication system
+* Add role field in user model:
+
+role: "user" | "admin"
+
+* Protect admin routes:
+
+if user.role != "admin":
+raise HTTPException(403)
+
+---
+
+Real-time sync:
+
+sio.emit("admin_update", data)
+
+Frontend:
+
+socket.on("admin_update", updateUI);
+
+---
+
+🎯 STEP 6: FIX NOTIFICATIONS
+
+Backend:
+
+await Notification.insert(...)
+
+sio.emit("new_notification", {
+type: "message",
+text: "New message"
+}, to=user_socket)
+
+---
+
+Frontend:
+
+socket.on("new_notification", () => {
+setUnread(prev => prev + 1);
+});
+
+---
+
+🎯 STEP 7: REMOVE ALL CONFLICTING LOGIC
+
+❌ Remove completely:
+
+* Dev OTP system
+* Backend OTP routes
+* Console OTP logs
+* Multiple socket instances
+* Hardcoded reconnect UI
+* Fake notification counters
+
+---
+
+🎯 STEP 8: FINAL VALIDATION
+
+Ensure:
+
+* Firebase OTP fully working
+* Socket connects once (no loop)
+* Calls stay connected
+* Admin updates reflect instantly
+* Notifications update live
+
+---
+
+🎯 FINAL RESULT:
+
+✅ Stable socket connection (no reconnect loop)
+✅ Working audio/video calls (no auto disconnect)
+✅ Clean Firebase OTP login (no dev mode)
+✅ Admin panel fully synced with users
+✅ Real-time notifications working
+
+---
+
+Make sure all components are modular, production-safe, and no duplicate logic exists.

@@ -59,8 +59,6 @@ async def send_email_otp(user_id: PydanticObjectId, email: str) -> str:
     )
     await otp.insert()
     
-    print(f"EMAIL OTP for {email}: {code}")
-    
     return code
 
 

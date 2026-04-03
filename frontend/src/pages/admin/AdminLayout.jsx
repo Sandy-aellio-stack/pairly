@@ -1,6 +1,9 @@
-﻿import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { useEffect, useCallback } from 'react';
+import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Users, Shield, BarChart3, Settings, FileText, LogOut, Heart, Bell } from 'lucide-react';
+import { toast } from 'sonner';
 import useAdminStore from '@/store/adminStore';
+import { getSocket } from '@/services/socket';
 
 const AdminLayout = () => {
   const navigate = useNavigate();
@@ -10,6 +13,29 @@ const AdminLayout = () => {
     logout();
     navigate('/admin/login');
   };
+
+  const handleAdminUpdate = useCallback((data) => {
+    const messages = {
+      user_suspended: `User "${data.user_name}" has been suspended`,
+      user_reactivated: `User "${data.user_name}" has been reactivated`,
+      user_banned: 'A user has been banned',
+      report_approved: 'A report has been approved',
+      content_removed: 'Reported content has been removed',
+    };
+    const msg = messages[data.action] || 'Admin panel updated';
+    toast.info(msg, { duration: 4000 });
+  }, []);
+
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    socket.on('admin_update', handleAdminUpdate);
+
+    return () => {
+      socket.off('admin_update', handleAdminUpdate);
+    };
+  }, [handleAdminUpdate]);
 
   const navItems = [
     { path: '/admin', icon: LayoutDashboard, label: 'Dashboard', end: true },
@@ -88,7 +114,6 @@ const AdminLayout = () => {
             <div className="flex items-center gap-4">
               <button className="p-2 hover:bg-gray-100 rounded-full relative">
                 <Bell size={20} className="text-gray-600" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full"></span>
               </button>
               <NavLink to="/dashboard" className="text-sm text-[#0F172A] hover:underline">
                 Back to App →
