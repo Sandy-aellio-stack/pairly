@@ -1,0 +1,218 @@
+Fix my full-stack dating app (React + FastAPI + Socket.IO + WebRTC) and make it fully production-ready.
+
+---
+
+🚨 CURRENT CRITICAL ISSUES:
+
+1. Socket unstable:
+
+   * "Reconnecting..." always showing
+   * Calls disconnect after few seconds
+
+2. WebRTC broken:
+
+   * Call connects briefly then cuts
+   * ICE candidates not handled properly
+
+3. OTP system:
+
+   * OTP only prints in terminal
+   * No real email/SMS delivery
+
+4. Notifications:
+
+   * Red dot always visible
+   * No real-time updates
+
+5. Call history:
+
+   * Not storing call sessions
+
+---
+
+🎯 STEP 1: FIX SOCKET (MOST IMPORTANT)
+
+Frontend:
+
+Create SINGLE instance:
+
+let socket;
+
+export const getSocket = () => {
+if (!socket) {
+socket = io("http://localhost:8000", {
+reconnection: true,
+reconnectionAttempts: Infinity,
+reconnectionDelay: 1000,
+timeout: 20000,
+autoConnect: true
+});
+}
+return socket;
+};
+
+REMOVE:
+❌ multiple io() calls
+❌ transports: ["websocket"]
+
+---
+
+Backend:
+
+@sio.event
+async def connect(sid, environ, auth):
+print("Connected:", sid)
+return True
+
+@sio.event
+async def disconnect(sid):
+print("Disconnected:", sid)
+
+---
+
+🎯 STEP 2: FIX WEBRTC (CALL DROPPING)
+
+Ensure signaling events:
+
+socket.on("offer")
+socket.on("answer")
+socket.on("ice-candidate")
+
+Use STUN:
+
+const pc = new RTCPeerConnection({
+iceServers: [
+{ urls: "stun:stun.l.google.com:19302" }
+]
+});
+
+---
+
+IMPORTANT:
+Wait for ICE gathering:
+
+await new Promise(resolve => {
+pc.onicegatheringstatechange = () => {
+if (pc.iceGatheringState === "complete") resolve();
+};
+});
+
+---
+
+🎯 STEP 3: STORE CALL HISTORY
+
+Backend:
+
+@router.post("/call/log")
+async def log_call(data):
+call = {
+"caller": data["caller"],
+"receiver": data["receiver"],
+"type": data["type"],
+"status": data["status"],
+"duration": data["duration"]
+}
+await db.calls.insert_one(call)
+return {"success": True}
+
+---
+
+🎯 STEP 4: REAL OTP SYSTEM
+
+❌ REMOVE dev OTP
+
+Use:
+
+EMAIL → SendGrid
+SMS → Twilio
+
+---
+
+Send email:
+
+pip install sendgrid
+
+---
+
+Send SMS:
+
+pip install twilio
+
+from twilio.rest import Client
+
+client = Client(ACCOUNT_SID, AUTH_TOKEN)
+
+client.messages.create(
+body=f"Your OTP is {otp}",
+from_="+1XXXX",
+to=user_phone
+)
+
+---
+
+🎯 STEP 5: RESET PASSWORD FLOW
+
+1. User enters email/phone
+2. Send OTP
+3. Verify OTP
+4. Allow password reset
+
+---
+
+🎯 STEP 6: FIX NOTIFICATIONS
+
+Backend:
+
+socket.emit("new_notification", data)
+
+Frontend:
+
+socket.on("new_notification", (data) => {
+setNotifications(prev => [data, ...prev]);
+setUnreadCount(prev => prev + 1);
+});
+
+---
+
+Mark as read:
+
+await axios.post("/notifications/read")
+
+---
+
+🎯 STEP 7: REMOVE "RECONNECTING" BUG
+
+Only show reconnect UI when:
+
+!socket.connected
+
+Hide when:
+
+socket.connected === true
+
+---
+
+🎯 STEP 8: IMAGE UPLOAD FIX
+
+Ensure backend returns URL
+
+Frontend must use FormData
+
+---
+
+🎯 FINAL EXPECTED RESULT:
+
+✅ Stable socket connection
+✅ No reconnect loop
+✅ Calls stay connected
+✅ Call history saved
+✅ OTP works (email + SMS)
+✅ Notifications real-time
+✅ Red dot accurate
+✅ Image upload works
+
+---
+
+This must be implemented cleanly and production-ready with no dev hacks.
+
+---
