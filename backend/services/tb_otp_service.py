@@ -3,12 +3,14 @@ import random
 import os
 import json
 import time
+import logging
 from datetime import datetime, timezone, timedelta
 from fastapi import HTTPException
 from backend.models.tb_otp import TBOTP
 from passlib.context import CryptContext
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+logger = logging.getLogger("otp")
 
 class OTPService:
     """OTP Service with database persistence and hashing"""
@@ -78,8 +80,6 @@ class OTPService:
         await otp_record.insert()
 
         # Detailed terminal logging (Development only)
-        import logging
-        logger = logging.getLogger("otp")
         
         is_prod = os.getenv("ENVIRONMENT", "development") == "production"
         
@@ -92,13 +92,31 @@ class OTPService:
         
         logger.info(f"OTP generated for {mobile_number}, purpose={purpose}")
 
-        response = {
+        # Try sending real SMS via Twilio if configured
+        twilio_sid = os.getenv("TWILIO_ACCOUNT_SID")
+        twilio_token = os.getenv("TWILIO_AUTH_TOKEN")
+        twilio_from = os.getenv("TWILIO_PHONE_NUMBER")
+
+        if twilio_sid and twilio_token and twilio_from:
+            try:
+                from twilio.rest import Client as TwilioClient
+                twilio_client = TwilioClient(twilio_sid, twilio_token)
+                twilio_client.messages.create(
+                    body=f"Your Luveloop OTP is {otp_code}. Valid for 5 minutes. Do not share this code.",
+                    from_=twilio_from,
+                    to=mobile_number
+                )
+                logger.info(f"SMS OTP sent via Twilio to {mobile_number}")
+            except Exception as sms_err:
+                logger.error(f"Twilio SMS failed for {mobile_number}: {sms_err}")
+        else:
+            logger.info("Twilio not configured — OTP available in server logs only")
+
+        return {
             "success": True,
             "message": "OTP sent successfully",
             "expires_in_minutes": 5
         }
-
-        return response
 
     @staticmethod
     async def send_email_otp(email: str, purpose: str = "email_verification") -> dict:
@@ -127,8 +145,6 @@ class OTPService:
         await otp_record.insert()
 
         # Detailed terminal logging (Development only)
-        import logging
-        logger = logging.getLogger("otp")
         
         is_prod = os.getenv("ENVIRONMENT", "development") == "production"
         
@@ -202,8 +218,6 @@ class OTPService:
         otp_record.mark_used()
         await otp_record.save()
         
-        import logging
-        logger = logging.getLogger("otp")
         logger.info(f"OTP verified for {identifier}, purpose={purpose}")
         
         return True

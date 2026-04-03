@@ -50,10 +50,12 @@ All configuration is stored in `backend/.env` and `frontend/.env`.
 - `ADMIN_EMAIL` / `ADMIN_PASSWORD`: Admin panel credentials
 - `PAYMENTS_ENABLED` / `PAYMENTS_MOCK_MODE`: Payment system config
 - `EMAIL_ENABLED`: Email service toggle
+- `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_PHONE_NUMBER`: Twilio SMS credentials (optional; OTP falls back to terminal logging if not set)
 
 ### Frontend (`frontend/.env`)
 - `VITE_API_URL`: Backend API URL (points to port 8000 of the Replit domain)
 - `VITE_MAPBOX_PUBLIC_KEY`: Mapbox public key for maps
+- `VITE_TURN_URL` / `VITE_TURN_USERNAME` / `VITE_TURN_CREDENTIAL`: Optional TURN server for WebRTC calls across strict NATs (omit to use STUN-only)
 
 ## API Endpoints
 - `/api/auth/*`: Authentication (signup, login, OTP)

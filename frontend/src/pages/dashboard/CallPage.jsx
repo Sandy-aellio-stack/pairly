@@ -27,30 +27,36 @@ const ICE_SERVERS = {
     { urls: 'stun:stun2.l.google.com:19302' },
     { urls: 'stun:stun3.l.google.com:19302' },
     { urls: 'stun:stun4.l.google.com:19302' },
-    
-    // Production TURN servers (replace with your own)
-    // These are example TURN servers - replace with your own credentials
-    {
-      urls: 'turn:turn.your-server.com:3478',
-      username: import.meta.env.VITE_TURN_USERNAME || 'turnuser',
-      credential: import.meta.env.VITE_TURN_CREDENTIAL || 'turnpass'
-    },
-    
-    // Fallback TURN servers (for testing)
-    {
-      urls: 'turn:openrelay.metered.ca:80',
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443',
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
-    }
+    // Additional public STUN servers
+    { urls: 'stun:stun.stunprotocol.org:3478' },
+    { urls: 'stun:stun.voip.blackberry.com:3478' },
+    // TURN servers — set VITE_TURN_URL, VITE_TURN_USERNAME, VITE_TURN_CREDENTIAL to enable
+    ...(import.meta.env.VITE_TURN_URL ? [{
+      urls: import.meta.env.VITE_TURN_URL,
+      username: import.meta.env.VITE_TURN_USERNAME || '',
+      credential: import.meta.env.VITE_TURN_CREDENTIAL || ''
+    }] : [])
   ],
   iceCandidatePoolSize: 10,
   iceTransportPolicy: 'all'
 };
+
+/** Wait for ICE gathering to finish or timeout (ms). Returns final local SDP. */
+const waitForIceGathering = (pc, timeoutMs = 5000) =>
+  new Promise(resolve => {
+    if (pc.iceGatheringState === 'complete') { resolve(pc.localDescription); return; }
+    const onStateChange = () => {
+      if (pc.iceGatheringState === 'complete') {
+        pc.removeEventListener('icegatheringstatechange', onStateChange);
+        resolve(pc.localDescription);
+      }
+    };
+    pc.addEventListener('icegatheringstatechange', onStateChange);
+    setTimeout(() => {
+      pc.removeEventListener('icegatheringstatechange', onStateChange);
+      resolve(pc.localDescription); // proceed with whatever we have
+    }, timeoutMs);
+  });
 
 const CallPage = () => {
   const navigate = useNavigate();
@@ -156,9 +162,12 @@ const CallPage = () => {
     try {
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
-      
+
+      // Wait up to 5s for ICE gathering so SDP contains local candidates
+      const completeOffer = await waitForIceGathering(pc, 5000);
+
       // Send call request WITH offer SDP so callee can set remote description
-      const response = await callUser(userId, callType, offer);
+      const response = await callUser(userId, callType, completeOffer || offer);
       const cid = response?.call_id || null;
       setCurrentCallId(cid);
       callIdRef.current = cid;

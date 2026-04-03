@@ -1,7 +1,7 @@
-﻿import { useEffect } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { useEffect, useState, useCallback } from 'react';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { Home, MessageCircle, MapPin, User, Coins, LogOut, Heart, Bell, Search, Settings, Phone } from 'lucide-react';
-import { locationAPI } from '@/services/api';
+import { locationAPI, notificationsAPI } from '@/services/api';
 import useAuthStore from '@/store/authStore';
 import IncomingCallModal from '@/components/IncomingCallModal';
 import { toast } from 'sonner';
@@ -9,7 +9,9 @@ import { getSocket } from '@/services/socket';
 
 const DashboardLayout = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout, refreshUser } = useAuthStore();
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Sync user data with backend on load
   useEffect(() => {
@@ -20,7 +22,29 @@ const DashboardLayout = () => {
     }
   }, []);
 
-  // Global socket events: new_match and nearby_user
+  // Fetch unread notification count on mount
+  const fetchUnreadCount = useCallback(async () => {
+    if (!user) return;
+    try {
+      const res = await notificationsAPI.getUnreadCount();
+      setUnreadCount(res.data?.count ?? res.data?.unread_count ?? 0);
+    } catch {
+      // Fail silently — don't block the UI
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchUnreadCount();
+  }, [fetchUnreadCount]);
+
+  // Clear badge when on notifications page
+  useEffect(() => {
+    if (location.pathname === '/dashboard/notifications') {
+      setUnreadCount(0);
+    }
+  }, [location.pathname]);
+
+  // Global socket events
   useEffect(() => {
     if (!user) return;
 
@@ -32,18 +56,28 @@ const DashboardLayout = () => {
       toast.info(`${data.name || 'Someone'} is nearby!`, { duration: 4000 });
     };
 
+    const handleNewNotification = () => {
+      setUnreadCount(prev => prev + 1);
+    };
+
     const s = getSocket();
     if (s) {
       s.on('new_match', handleNewMatch);
       s.on('nearby_user', handleNearbyUser);
+      s.on('new_notification', handleNewNotification);
     }
+
+    // Also listen for the custom DOM event dispatched by socket.js
+    window.addEventListener('Luveloop:new_notification', handleNewNotification);
 
     return () => {
       const s2 = getSocket();
       if (s2) {
         s2.off('new_match', handleNewMatch);
         s2.off('nearby_user', handleNearbyUser);
+        s2.off('new_notification', handleNewNotification);
       }
+      window.removeEventListener('Luveloop:new_notification', handleNewNotification);
     };
   }, [user]);
 
@@ -53,13 +87,11 @@ const DashboardLayout = () => {
 
     const updateLocation = async () => {
       if (!navigator.geolocation) return;
-      
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           try {
             const { latitude, longitude } = position.coords;
             await locationAPI.update(latitude, longitude);
-            console.log('Location auto-updated');
           } catch (error) {
             console.error('Failed to auto-update location:', error);
           }
@@ -71,12 +103,8 @@ const DashboardLayout = () => {
       );
     };
 
-    // Update immediately on mount
     updateLocation();
-
-    // Set interval for every 30 seconds
     const interval = setInterval(updateLocation, 30000);
-
     return () => clearInterval(interval);
   }, [user]);
 
@@ -99,7 +127,7 @@ const DashboardLayout = () => {
     <div className="min-h-screen bg-[#F8FAFC]">
       <IncomingCallModal />
       
-      {/* Top Navigation Bar - Instagram Style */}
+      {/* Top Navigation Bar */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           {/* Logo */}
@@ -130,13 +158,19 @@ const DashboardLayout = () => {
               </span>
             </div>
 
-            {/* Notifications */}
+            {/* Notifications Bell with real unread count */}
             <NavLink
               to="/dashboard/notifications"
               className="p-2 hover:bg-gray-100 rounded-full transition-colors relative"
             >
               <Bell size={22} className="text-gray-600" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full"></span>
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 min-w-[8px] h-[8px] bg-rose-500 rounded-full flex items-center justify-center">
+                  {unreadCount > 9 && (
+                    <span className="text-[8px] text-white font-bold px-0.5">{unreadCount > 99 ? '99+' : unreadCount}</span>
+                  )}
+                </span>
+              )}
             </NavLink>
 
             {/* Profile Menu */}
