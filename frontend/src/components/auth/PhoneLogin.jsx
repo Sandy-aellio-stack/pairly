@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
-import { auth } from '@/firebase/firebaseConfig';
+import { auth, firebaseConfigured } from '@/firebase/firebaseConfig';
 import { Phone, Shield, ArrowLeft, Loader2, Sparkles, Heart } from 'lucide-react';
 import { toast } from 'sonner';
 import { authAPI } from '@/services/api';
@@ -26,18 +26,22 @@ const PhoneLogin = ({ onBack }) => {
     }, [timer]);
 
     const setupRecaptcha = () => {
+        if (!firebaseConfigured || !auth) return null;
         if (!window.recaptchaVerifier) {
             window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
                 'size': 'invisible',
-                'callback': (response) => {
-                    // reCAPTCHA solved, allow signInWithPhoneNumber.
-                }
+                'callback': () => {}
             });
         }
+        return window.recaptchaVerifier;
     };
 
     const handleSendOTP = async (e) => {
         e.preventDefault();
+        if (!firebaseConfigured || !auth) {
+            toast.error('Phone login is not configured. Please contact support.');
+            return;
+        }
         if (!phoneNumber || phoneNumber.length < 10) {
             toast.error('Please enter a valid phone number');
             return;
@@ -47,8 +51,8 @@ const PhoneLogin = ({ onBack }) => {
 
         setIsLoading(true);
         try {
-            setupRecaptcha();
-            const appVerifier = window.recaptchaVerifier;
+            const appVerifier = setupRecaptcha();
+            if (!appVerifier) { toast.error('reCAPTCHA setup failed. Please refresh.'); return; }
             const confirmation = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
             setConfirmationResult(confirmation);
             setStep('otp');

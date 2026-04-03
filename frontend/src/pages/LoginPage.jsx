@@ -1,9 +1,11 @@
-﻿import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Heart, Mail, Lock, Eye, EyeOff, ArrowRight, Sparkles, Phone, Shield, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import useAuthStore from '@/store/authStore';
 import { authAPI } from '@/services/api';
+import { auth, firebaseConfigured } from '@/firebase/firebaseConfig';
+import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -18,12 +20,118 @@ const LoginPage = () => {
   const [otpCode, setOtpCode] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0);
+  const [firebaseConfirmation, setFirebaseConfirmation] = useState(null);
+  const recaptchaContainerRef = useRef(null);
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  // Countdown for resend button
+  useEffect(() => {
+    if (resendTimer <= 0) return;
+    const t = setInterval(() => setResendTimer(s => s - 1), 1000);
+    return () => clearInterval(t);
+  }, [resendTimer]);
+
+  const isEmailInput = (val) => val.includes('@');
+
+  const setupRecaptcha = () => {
+    if (!auth || !RecaptchaVerifier) return null;
+    if (!window.recaptchaVerifier) {
+      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        size: 'invisible',
+        callback: () => {}
+      });
+    }
+    return window.recaptchaVerifier;
   };
 
-  const handleSubmit = async (e) => {
+  const clearRecaptcha = () => {
+    if (window.recaptchaVerifier) {
+      try { window.recaptchaVerifier.clear(); } catch (_) {}
+      window.recaptchaVerifier = null;
+    }
+  };
+
+  const handleSendOtp = async (e) => {
+    e.preventDefault();
+    const id = otpIdentifier.trim();
+    if (!id) { toast.error('Please enter your email or phone number'); return; }
+
+    setIsSendingOtp(true);
+    try {
+      if (isEmailInput(id)) {
+        // Email → backend API
+        await authAPI.sendOTPForLogin({ email: id });
+        setOtpSent(true);
+        setResendTimer(60);
+        toast.success('OTP sent to your email!');
+      } else {
+        // Phone → Firebase
+        if (!firebaseConfigured || !auth) {
+          toast.error('Phone login is not configured. Please use email or contact support.');
+          return;
+        }
+        const formatted = id.startsWith('+') ? id : `+91${id}`;
+        clearRecaptcha();
+        const verifier = setupRecaptcha();
+        if (!verifier) { toast.error('reCAPTCHA setup failed. Please refresh and try again.'); return; }
+        const result = await signInWithPhoneNumber(auth, formatted, verifier);
+        setFirebaseConfirmation(result);
+        setOtpSent(true);
+        setResendTimer(60);
+        toast.success('OTP sent to your phone via SMS!');
+      }
+    } catch (error) {
+      console.error('[LoginPage] OTP send error:', error);
+      clearRecaptcha();
+      toast.error(error.response?.data?.detail || error.message || 'Failed to send OTP. Please try again.');
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
+  const handleOtpLogin = async (e) => {
+    e.preventDefault();
+    if (!otpCode.trim()) { toast.error('Please enter the OTP'); return; }
+    setIsLoading(true);
+    const id = otpIdentifier.trim();
+    const deviceId = localStorage.getItem('tb_device_id') ||
+      (typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : Math.random().toString(36).substring(2));
+    localStorage.setItem('tb_device_id', deviceId);
+
+    try {
+      if (isEmailInput(id)) {
+        // Email OTP → backend verify + JWT
+        await loginWithOTP({ email: id, otp_code: otpCode.trim(), device_id: deviceId });
+        toast.success('Welcome back!');
+        navigate('/dashboard');
+      } else {
+        // Phone OTP → Firebase confirm → backend JWT
+        if (!firebaseConfirmation) { toast.error('Session expired. Please request a new OTP.'); return; }
+        const result = await firebaseConfirmation.confirm(otpCode.trim());
+        const firebaseUser = result.user;
+
+        const response = await authAPI.firebaseLogin({
+          phone: firebaseUser.phoneNumber,
+          device_id: deviceId
+        });
+        const { access_token, refresh_token, token } = response.data;
+        const finalToken = token || access_token;
+        if (finalToken) localStorage.setItem('access_token', finalToken);
+        if (refresh_token) localStorage.setItem('refresh_token', refresh_token);
+
+        toast.success('Welcome back!');
+        navigate('/dashboard');
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error('[LoginPage] OTP verify error:', error);
+      toast.error(error.response?.data?.detail || error.message || 'Invalid OTP. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePasswordLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     try {
@@ -37,54 +145,11 @@ const LoginPage = () => {
     }
   };
 
-  const handleSendOtp = async (e) => {
-    e.preventDefault();
-    if (!otpIdentifier.trim()) {
-      toast.error('Please enter your email or phone');
-      return;
-    }
-    setIsSendingOtp(true);
-    try {
-      const isEmail = otpIdentifier.includes('@');
-      if (isEmail) {
-        await authAPI.sendOTPForLogin({ email: otpIdentifier.trim() });
-      } else {
-        await authAPI.sendOTPForLogin({ mobile_number: otpIdentifier.trim() });
-      }
-      setOtpSent(true);
-      toast.success('OTP sent! Check your email or phone.');
-    } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to send OTP');
-    } finally {
-      setIsSendingOtp(false);
-    }
-  };
-
-  const handleOtpLogin = async (e) => {
-    e.preventDefault();
-    if (!otpCode.trim()) {
-      toast.error('Please enter the OTP');
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const device_id = localStorage.getItem('tb_device_id') ||
-        (typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : Math.random().toString(36).substring(2));
-      localStorage.setItem('tb_device_id', device_id);
-
-      const isEmail = otpIdentifier.includes('@');
-      const payload = isEmail
-        ? { email: otpIdentifier.trim(), otp_code: otpCode.trim(), device_id }
-        : { mobile_number: otpIdentifier.trim(), otp_code: otpCode.trim(), device_id };
-
-      await loginWithOTP(payload);
-      toast.success('Welcome back!');
-      navigate('/dashboard');
-    } catch (error) {
-      toast.error(error.response?.data?.detail || 'Invalid OTP');
-    } finally {
-      setIsLoading(false);
-    }
+  const handleResend = () => {
+    setOtpSent(false);
+    setOtpCode('');
+    setFirebaseConfirmation(null);
+    clearRecaptcha();
   };
 
   return (
@@ -95,11 +160,7 @@ const LoginPage = () => {
         <div className="absolute top-20 left-10 w-64 h-64 bg-pink-300/30 rounded-full blur-3xl" />
         <div className="absolute bottom-20 right-10 w-80 h-80 bg-orange-200/30 rounded-full blur-3xl" />
         <div className="relative z-10 flex flex-col items-center justify-center w-full p-12">
-          <img
-            src="/logo.png"
-            alt="Luveloop - Find your match"
-            className="w-full max-w-md object-contain mb-8 drop-shadow-2xl rounded-2xl"
-          />
+          <img src="/logo.png" alt="Luveloop" className="w-full max-w-md object-contain mb-8 drop-shadow-2xl rounded-2xl" />
           <div className="text-center">
             <h2 className="text-3xl font-bold text-[#0F172A] mb-3">Welcome Back to Luveloop</h2>
             <p className="text-lg text-gray-700">Your next meaningful connection is waiting ✨</p>
@@ -132,20 +193,16 @@ const LoginPage = () => {
             <button
               onClick={() => setActiveTab('password')}
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                activeTab === 'password'
-                  ? 'bg-white shadow-sm text-[#0F172A]'
-                  : 'text-gray-500 hover:text-gray-700'
+                activeTab === 'password' ? 'bg-white shadow-sm text-[#0F172A]' : 'text-gray-500 hover:text-gray-700'
               }`}
             >
               <Lock size={16} />
               Password
             </button>
             <button
-              onClick={() => { setActiveTab('otp'); setOtpSent(false); setOtpCode(''); }}
+              onClick={() => { setActiveTab('otp'); setOtpSent(false); setOtpCode(''); setFirebaseConfirmation(null); clearRecaptcha(); }}
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                activeTab === 'otp'
-                  ? 'bg-white shadow-sm text-[#0F172A]'
-                  : 'text-gray-500 hover:text-gray-700'
+                activeTab === 'otp' ? 'bg-white shadow-sm text-[#0F172A]' : 'text-gray-500 hover:text-gray-700'
               }`}
             >
               <Shield size={16} />
@@ -154,7 +211,7 @@ const LoginPage = () => {
           </div>
 
           {activeTab === 'password' ? (
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handlePasswordLogin} className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-[#0F172A] mb-2">Email</label>
                 <div className="relative">
@@ -163,7 +220,7 @@ const LoginPage = () => {
                     type="email"
                     name="email"
                     value={formData.email}
-                    onChange={handleChange}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     placeholder="hello@example.com"
                     className="w-full pl-12 pr-4 py-4 rounded-xl border border-gray-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none transition-all"
                     required
@@ -179,7 +236,7 @@ const LoginPage = () => {
                     type={showPassword ? 'text' : 'password'}
                     name="password"
                     value={formData.password}
-                    onChange={handleChange}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     placeholder="Your password"
                     className="w-full pl-12 pr-12 py-4 rounded-xl border border-gray-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none transition-all"
                     required
@@ -209,18 +266,14 @@ const LoginPage = () => {
                 disabled={isLoading}
                 className="w-full py-4 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300 flex items-center justify-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                {isLoading ? (
-                  <Loader2 size={20} className="animate-spin" />
-                ) : (
-                  <>
-                    <span>Sign In</span>
-                    <ArrowRight size={20} />
-                  </>
-                )}
+                {isLoading ? <Loader2 size={20} className="animate-spin" /> : <><span>Sign In</span><ArrowRight size={20} /></>}
               </button>
             </form>
           ) : (
             <div className="space-y-6">
+              {/* Invisible reCAPTCHA container (required for Firebase phone auth) */}
+              <div id="recaptcha-container" ref={recaptchaContainerRef} />
+
               {!otpSent ? (
                 <form onSubmit={handleSendOtp} className="space-y-4">
                   <div>
@@ -238,20 +291,16 @@ const LoginPage = () => {
                         required
                       />
                     </div>
+                    <p className="mt-2 text-xs text-gray-400">
+                      Enter email for email OTP · Enter phone number for SMS OTP via Firebase
+                    </p>
                   </div>
                   <button
                     type="submit"
                     disabled={isSendingOtp}
                     className="w-full py-4 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 disabled:opacity-70"
                   >
-                    {isSendingOtp ? (
-                      <Loader2 size={20} className="animate-spin" />
-                    ) : (
-                      <>
-                        <Shield size={20} />
-                        Send OTP
-                      </>
-                    )}
+                    {isSendingOtp ? <Loader2 size={20} className="animate-spin" /> : <><Shield size={20} />Send OTP</>}
                   </button>
                 </form>
               ) : (
@@ -260,13 +309,12 @@ const LoginPage = () => {
                     OTP sent to <strong>{otpIdentifier}</strong>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-[#0F172A] mb-2">
-                      Enter OTP
-                    </label>
+                    <label className="block text-sm font-medium text-[#0F172A] mb-2">Enter OTP</label>
                     <div className="relative">
                       <Shield size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                       <input
                         type="text"
+                        inputMode="numeric"
                         value={otpCode}
                         onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         placeholder="6-digit OTP"
@@ -276,27 +324,31 @@ const LoginPage = () => {
                       />
                     </div>
                   </div>
+
                   <button
                     type="submit"
                     disabled={isLoading || otpCode.length < 6}
                     className="w-full py-4 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 disabled:opacity-70"
                   >
-                    {isLoading ? (
-                      <Loader2 size={20} className="animate-spin" />
+                    {isLoading ? <Loader2 size={20} className="animate-spin" /> : <><span>Verify & Sign In</span><ArrowRight size={20} /></>}
+                  </button>
+
+                  <div className="flex items-center justify-between text-sm text-gray-500">
+                    <button type="button" onClick={handleResend} className="hover:text-gray-700 transition-colors">
+                      Change email/phone
+                    </button>
+                    {resendTimer > 0 ? (
+                      <span className="text-gray-400">Resend in {resendTimer}s</span>
                     ) : (
-                      <>
-                        <span>Verify & Sign In</span>
-                        <ArrowRight size={20} />
-                      </>
+                      <button
+                        type="button"
+                        onClick={handleResend}
+                        className="text-pink-600 hover:text-pink-700 font-medium"
+                      >
+                        Resend OTP
+                      </button>
                     )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setOtpSent(false); setOtpCode(''); }}
-                    className="w-full py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
-                  >
-                    Change email/phone
-                  </button>
+                  </div>
                 </form>
               )}
             </div>
@@ -305,9 +357,7 @@ const LoginPage = () => {
           <div className="mt-8 text-center">
             <p className="text-gray-600">
               Don't have an account?{' '}
-              <Link to="/signup" className="text-pink-600 hover:text-pink-700 font-semibold">
-                Sign up free
-              </Link>
+              <Link to="/signup" className="text-pink-600 hover:text-pink-700 font-semibold">Sign up free</Link>
             </p>
           </div>
 

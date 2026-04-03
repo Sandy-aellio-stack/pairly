@@ -1,0 +1,154 @@
+Upgrade my authentication system to support OTP login for both phone and email in a production-ready way.
+
+---
+
+🎯 OVERVIEW
+
+* Phone OTP → Firebase Authentication
+* Email OTP → Custom backend + SendGrid
+* Remove all existing fake OTP / Twilio logic
+
+---
+
+🎯 FRONTEND (React)
+
+1. Detect input type:
+
+if input.includes("@"):
+→ Email OTP flow
+else:
+→ Phone OTP flow
+
+---
+
+📱 PHONE OTP FLOW (Firebase)
+
+* Use Firebase Auth
+* Implement RecaptchaVerifier (invisible)
+* Use signInWithPhoneNumber()
+* Store confirmationResult globally
+* Verify using confirmationResult.confirm(otp)
+
+---
+
+📧 EMAIL OTP FLOW
+
+Step 1: Send OTP
+
+POST /api/auth/send-email-otp
+
+Body:
+{
+"email": "[user@example.com](mailto:user@example.com)"
+}
+
+---
+
+Step 2: Verify OTP
+
+POST /api/auth/verify-email-otp
+
+Body:
+{
+"email": "[user@example.com](mailto:user@example.com)",
+"otp": "123456"
+}
+
+---
+
+🎯 BACKEND IMPLEMENTATION
+
+1. Install SendGrid
+
+pip install sendgrid
+
+---
+
+2. Create OTP generator
+
+* Generate 6-digit OTP
+* Store in DB or Redis with:
+
+  * email
+  * otp
+  * expiry (5 minutes)
+  * attempts count
+
+---
+
+3. Send OTP via SendGrid
+
+* Use SENDGRID_API_KEY from env
+* Send HTML email with OTP
+
+---
+
+4. Verify OTP
+
+* Match email + OTP
+* Check expiry
+* Limit attempts (max 5)
+* Delete OTP after success
+
+---
+
+5. Create user session
+
+* If user not exists → create user
+* Generate JWT token
+* Return token to frontend
+
+---
+
+🎯 DATABASE STRUCTURE
+
+Table: email_otps
+
+* email
+* otp_hash (NOT plain OTP)
+* expires_at
+* attempts
+* created_at
+
+---
+
+🎯 SECURITY RULES
+
+* Hash OTP before storing
+* Expire OTP in 5 minutes
+* Max 5 attempts
+* Rate limit requests (1 per 30 sec)
+* Do NOT return OTP in API
+
+---
+
+🎯 REMOVE OLD SYSTEM
+
+* Remove Twilio
+* Remove console OTP logs
+* Remove fake dev OTP
+* Remove old email auth logic
+
+---
+
+🎯 ENV VARIABLES
+
+Frontend:
+VITE_FIREBASE_API_KEY
+VITE_FIREBASE_AUTH_DOMAIN
+VITE_FIREBASE_PROJECT_ID
+VITE_FIREBASE_APP_ID
+
+Backend:
+SENDGRID_API_KEY
+JWT_SECRET
+
+---
+
+🎯 FINAL RESULT
+
+✅ Phone login via Firebase OTP
+✅ Email login via SendGrid OTP
+✅ No passwords needed
+✅ Secure session with JWT
+✅ Production-ready auth system

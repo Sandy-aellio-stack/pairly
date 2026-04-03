@@ -28,7 +28,8 @@ Luveloop is a full-stack dating application with a React frontend and Python Fas
 
 ## Key Features
 - JWT-based authentication with secure token handling
-- OTP login (email/phone) with single-device enforcement (force-logout previous device)
+- OTP login: phone via Firebase Auth (RecaptchaVerifier + signInWithPhoneNumber), email via SendGrid + backend
+- Single-device enforcement: force-logout previous device on new login
 - Credit-based messaging (1 coin/msg, 5 coins/min voice, 10 coins/min video)
 - Real-time chat using Socket.IO (socket URL fixed to connect to backend port 8000)
 - Audio/video calling with WebRTC (signaling via Socket.IO) with per-minute credit billing
@@ -50,12 +51,13 @@ All configuration is stored in `backend/.env` and `frontend/.env`.
 - `ADMIN_EMAIL` / `ADMIN_PASSWORD`: Admin panel credentials
 - `PAYMENTS_ENABLED` / `PAYMENTS_MOCK_MODE`: Payment system config
 - `EMAIL_ENABLED`: Email service toggle
-- `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_PHONE_NUMBER`: Twilio SMS credentials (optional; OTP falls back to terminal logging if not set)
+- `SENDGRID_API_KEY`: SendGrid API key for email OTP delivery (falls back to SMTP if not set)
 
 ### Frontend (`frontend/.env`)
 - `VITE_API_URL`: Backend API URL (points to port 8000 of the Replit domain)
 - `VITE_MAPBOX_PUBLIC_KEY`: Mapbox public key for maps
-- `VITE_TURN_URL` / `VITE_TURN_USERNAME` / `VITE_TURN_CREDENTIAL`: Optional TURN server for WebRTC calls across strict NATs (omit to use STUN-only)
+- `VITE_TURN_URL` / `VITE_TURN_USERNAME` / `VITE_TURN_CREDENTIAL`: Optional TURN server for WebRTC calls (defaults to OpenRelay public TURN)
+- `VITE_FIREBASE_API_KEY` / `VITE_FIREBASE_AUTH_DOMAIN` / `VITE_FIREBASE_PROJECT_ID` / `VITE_FIREBASE_STORAGE_BUCKET` / `VITE_FIREBASE_MESSAGING_SENDER_ID` / `VITE_FIREBASE_APP_ID`: Firebase config for phone OTP (app degrades gracefully if not set)
 
 ## API Endpoints
 - `/api/auth/*`: Authentication (signup, login, OTP)
