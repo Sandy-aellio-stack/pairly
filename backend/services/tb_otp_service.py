@@ -87,10 +87,10 @@ class OTPService:
         if not api_key:
             return False
         try:
-            import sendgrid
-            from sendgrid.helpers.mail import Mail, Email, To, Content
+            from sendgrid import SendGridAPIClient
+            from sendgrid.helpers.mail import Mail
 
-            sg = sendgrid.SendGridAPIClient(api_key=api_key)
+            sg = SendGridAPIClient(api_key)
             html_body = f"""
             <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:32px;background:#fff;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,.08)">
               <h2 style="color:#0f172a;margin-bottom:8px">Your Luveloop Login Code</h2>
@@ -100,14 +100,18 @@ class OTPService:
             </div>
             """
             message = Mail(
-                from_email=Email(from_email, "Luveloop"),
-                to_emails=To(to_email),
+                from_email=from_email,
+                to_emails=to_email,
                 subject="Your Luveloop OTP Code",
-                html_content=Content("text/html", html_body)
+                html_content=html_body
             )
-            sg.send(message)
-            logger.info(f"OTP email sent via SendGrid to {to_email}")
-            return True
+            response = sg.send(message)
+            if response.status_code >= 200 and response.status_code < 300:
+                logger.info(f"OTP email sent via SendGrid to {to_email} (status={response.status_code})")
+                return True
+            else:
+                logger.error(f"SendGrid returned non-success status for {to_email}: {response.status_code}")
+                return False
         except Exception as e:
             logger.error(f"SendGrid email failed to {to_email}: {e}")
             return False

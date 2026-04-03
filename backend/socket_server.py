@@ -11,7 +11,9 @@ import logging
 from typing import Optional, Dict, Set, Any
 
 from backend.services.tb_auth_service import AuthService
+from backend.services.firebase_auth import verify_firebase_token
 from backend.models.tb_user import TBUser
+from jose import jwt as jose_jwt
 from backend.models.tb_message import TBMessage, TBConversation
 from backend.models.tb_credit import TransactionReason
 from backend.models.call_session_v2 import CallSessionV2, CallStatus
@@ -39,7 +41,7 @@ def get_cors_origins():
 
 sio = socketio.AsyncServer(
     async_mode='asgi',
-    cors_allowed_origins=get_cors_origins(),
+    cors_allowed_origins="*",
     logger=False,
     engineio_logger=False
 )
@@ -50,31 +52,38 @@ user_sockets: Dict[str, Set[str]] = {}
 
 async def verify_token(token: str) -> Optional[dict]:
     """
-    Verify JWT token using AuthService.decode_token for consistency.
+    Try verifying as Firebase ID token first; fall back to legacy JWT.
+    Returns decoded payload on success, None on failure.
     """
+    # Try Firebase verification (preferred)
     try:
-        # Use centralized decoding logic
+        fb_payload = verify_firebase_token(token)
+        logger.debug(f"[SOCKET AUTH] Firebase token verified for uid: {fb_payload.get('uid')}")
+        return fb_payload
+    except Exception:
+        # Fall through to legacy JWT verification
+        pass
+
+    try:
         payload = AuthService.decode_token(token)
-        
         # Check token type - must be "access"
         if payload.get("type") != "access" and payload.get("token_type") != "access":
             logger.warning(f"[SOCKET AUTH] Invalid token type: {payload.get('type')}")
             return None
-        
+
         # Check if token is blacklisted
         jti = payload.get("jti")
         if jti and await token_blacklist.is_blacklisted(jti):
             logger.warning(f"[SOCKET AUTH] Token blacklisted (jti: {jti})")
             return None
-            
+
         user_id = payload.get("sub")
         if user_id and await token_blacklist.is_user_blacklisted(user_id):
             logger.warning(f"[SOCKET AUTH] User blacklisted: {user_id}")
             return None
-            
-        logger.debug(f"[SOCKET AUTH] Token verified for user: {user_id}")
+
+        logger.debug(f"[SOCKET AUTH] Legacy JWT verified for user: {user_id}")
         return payload
-        
     except Exception as e:
         logger.warning(f"[SOCKET AUTH] Token verification error: {e}")
         return None
@@ -126,11 +135,12 @@ async def handle_pubsub_message(channel: str, event: str, data: dict):
         sender_id = data.get('sender_id') # For receipts (read/delivered)
         
         target_room = None
+        # Use consistent room naming with the Socket.IO server (user:{id})
         if receiver_id:
-            target_room = f"user_{receiver_id}"
+            target_room = f"user:{receiver_id}"
         elif sender_id and (event.startswith("message:") or event.startswith("call:")):
             # Receipts for messages/calls are often sent back to the sender
-            target_room = f"user_{sender_id}"
+            target_room = f"user:{sender_id}"
         
         # 2. Emit to the room (or globally for presence)
         if target_room:
@@ -152,7 +162,8 @@ def decode_access_token(token):
 @sio.event
 async def connect(sid, environ, auth):
     """
-    Production-safe connection handler with mandatory JWT authentication.
+    Production-safe connection handler. Accepts Firebase ID tokens (preferred)
+    and falls back to legacy JWT for compatibility.
     """
     if not auth:
         logger.warning(f"[SOCKET AUTH] Rejected: no auth provided (sid={sid})")
@@ -164,37 +175,42 @@ async def connect(sid, environ, auth):
         return False
 
     try:
-        # REMOVE "Bearer " if present
+        # Normalize "Bearer " prefix
         if token.startswith("Bearer "):
-            token = token.split(" ")[1]
+            token = token.split(" ", 1)[1]
 
-        # Decode JWT using standardized logic
-        payload = decode_access_token(token)
-        
-        # Verify user ID existence in payload
-        user_id = payload.get("sub") or payload.get("id")
+        # Verify token (tries Firebase first)
+        payload = await verify_token(token)
+        if not payload:
+            logger.error(f"[SOCKET AUTH] Rejected: token verification failed (sid={sid})")
+            return False
+
+        # Determine user id: Firebase uses 'uid', legacy JWT uses 'sub' or 'id'
+        user_id = payload.get("uid") or payload.get("sub") or payload.get("id")
         if not user_id:
             logger.error(f"[SOCKET AUTH] Rejected: invalid token payload (sid={sid})")
             return False
 
-        # Store session data securely
+        # Store session data securely using UID as canonical identity
         await sio.save_session(sid, {"user_id": str(user_id)})
-        
+
         # Global connection tracking
         connected_users[sid] = {'user_id': str(user_id), 'connected_at': datetime.now(timezone.utc).isoformat()}
-        
+
         if str(user_id) not in user_sockets:
             user_sockets[str(user_id)] = set()
         user_sockets[str(user_id)].add(sid)
 
         # Join personal room for targeted events
         await sio.enter_room(sid, f"user:{user_id}")
-        
+
         # Update presence service and broadcast
         if redis_pubsub.is_connected:
             await redis_pubsub.publish_presence(str(user_id), is_online=True)
         await update_user_presence(str(user_id), True)
 
+        # Helpful console output for debugging connection problems
+        print("Client connected:", sid)
         logger.info(f"✅ [SOCKET AUTH] Connected: {user_id} (sid={sid})")
         return True
 
@@ -258,6 +274,20 @@ async def join_chat(sid, data):
     room_id = f"chat_{min(user_id, other_user_id)}_{max(user_id, other_user_id)}"
     await sio.enter_room(sid, room_id)
     return {'success': True, 'room_id': room_id}
+
+
+@sio.event
+async def join(sid, data):
+    """Allow frontend to explicitly join a personal room: socket.emit('join', { user_id })"""
+    user_id = data.get('user_id') if isinstance(data, dict) else None
+    if not user_id:
+        return {'error': 'Invalid payload'}
+    try:
+        await sio.enter_room(sid, f"user:{user_id}")
+        return {'success': True}
+    except Exception as e:
+        logger.warning(f"Join room failed for {user_id}: {e}")
+        return {'error': str(e)}
 
 @sio.event
 async def leave_chat(sid, data):
@@ -415,10 +445,24 @@ async def message_send(sid, data):
         # Local emit
         # Send to receiver (triggers delivery receipt)
         await sio.emit('message:new', delivered_data, room=f"user:{receiver_id}")
+        # Also emit legacy/new_message for frontend compatibility
+        await sio.emit('new_message', delivered_data, room=f"user:{receiver_id}")
         
         # Sender initially sees 'sent' status
         sent_data = {**message_data, 'status': 'sent'}
         await sio.emit('message:sent', sent_data, room=f"user:{sender_id}")
+        await sio.emit('message_sent', sent_data, room=f"user:{sender_id}")
+
+        # Notify admin dashboards (best-effort)
+        try:
+            await sio.emit('admin_update', {
+                'event': 'new_message',
+                'sender_id': sender_id,
+                'receiver_id': receiver_id,
+                'message_id': str(message.id)
+            })
+        except Exception:
+            pass
     except Exception as broadcast_err:
         logger.warning(f"Broadcast failed: {broadcast_err}")
         pass  # Non-fatal
@@ -701,6 +745,43 @@ async def webrtc_offer(sid, data):
                 await redis_pubsub.publish("calls", "", "webrtc:offer", offer_data)
             await sio.emit('webrtc:offer', offer_data, room=f"user:{other_id}")
             return {'success': True}
+    except Exception as e:
+        return {'error': str(e)}
+
+
+@sio.on('call_offer')
+async def call_offer_compat(sid, data):
+    """Compatibility: forward old 'call_offer' to 'webrtc:offer'"""
+    try:
+        target = data.get('to') or data.get('receiver_id') or data.get('user_id')
+        if not target:
+            return {'error': 'Missing target'}
+        await sio.emit('webrtc:offer', data, room=f"user:{target}")
+        return {'success': True}
+    except Exception as e:
+        return {'error': str(e)}
+
+
+@sio.on('call_answer')
+async def call_answer_compat(sid, data):
+    try:
+        target = data.get('to') or data.get('receiver_id') or data.get('user_id')
+        if not target:
+            return {'error': 'Missing target'}
+        await sio.emit('webrtc:answer', data, room=f"user:{target}")
+        return {'success': True}
+    except Exception as e:
+        return {'error': str(e)}
+
+
+@sio.on('ice_candidate')
+async def ice_candidate_compat(sid, data):
+    try:
+        target = data.get('to') or data.get('receiver_id') or data.get('user_id')
+        if not target:
+            return {'error': 'Missing target'}
+        await sio.emit('webrtc:ice-candidate', data, room=f"user:{target}")
+        return {'success': True}
     except Exception as e:
         return {'error': str(e)}
 

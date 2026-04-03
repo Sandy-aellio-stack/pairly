@@ -28,17 +28,16 @@ class TestOTPService:
         from backend.services.tb_otp_service import OTPService
         result = await OTPService.send_otp("+919999999999", purpose="login")
         assert result["success"] is True
-        # In development mode, dev_otp should be present
-        assert "dev_otp" in result
-        assert len(result["dev_otp"]) == 6
+        # The service no longer returns plaintext OTPs in responses
+        assert "dev_otp" not in result
 
     @pytest.mark.asyncio
     async def test_send_email_otp_returns_dev_otp_in_dev_mode(self):
         from backend.services.tb_otp_service import OTPService
         result = await OTPService.send_email_otp("test@example.com", purpose="login")
         assert result["success"] is True
-        assert "dev_otp" in result
-        assert len(result["dev_otp"]) == 6
+        # Production behavior: plaintext OTP is not returned to callers
+        assert "dev_otp" not in result
 
     @pytest.mark.asyncio
     async def test_verify_otp_success(self):

@@ -104,7 +104,7 @@ const DashboardLayout = () => {
     };
 
     updateLocation();
-    const interval = setInterval(updateLocation, 30000);
+    const interval = setInterval(updateLocation, 60000);
     return () => clearInterval(interval);
   }, [user]);
 

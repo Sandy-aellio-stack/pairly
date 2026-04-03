@@ -19,7 +19,7 @@ CURRENT CRITICAL ISSUES:
 4. OTP system:
 
    * Shows "Dev OTP"
-   * Not sending real email/SMS
+      * Else: return a masked delivery hint in responses; do NOT return plaintext OTPs in API responses. For production, configure a real SMS/email provider.
    * Not validating against actual user account
 
 5. Admin pages partially broken

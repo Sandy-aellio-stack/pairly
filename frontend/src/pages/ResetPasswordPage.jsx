@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { authAPI } from '../services/api';
 
 // Password strength validator
 const validatePassword = (password) => {
@@ -47,19 +48,15 @@ export default function ResetPasswordPage() {
     }
 
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/auth/validate-reset-token?token=${token}`
-      );
-
-      if (response.ok) {
+      const response = await authAPI.validateResetToken(token);
+      if (response && response.data && response.data.valid) {
         setTokenValid(true);
       } else {
-        const data = await response.json();
-        setError(data.detail || 'Invalid or expired reset link');
+        setError('Invalid or expired reset link');
       }
     } catch (err) {
-      setError('Failed to validate reset link. Please try again.');
       console.error('Token validation error:', err);
+      setError(err.response?.data?.detail || 'Failed to validate reset link. Please try again.');
     } finally {
       setValidating(false);
     }
@@ -84,30 +81,18 @@ export default function ResetPasswordPage() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/reset-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          token,
-          new_password: newPassword,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
+      const resp = await authAPI.resetPassword(token, newPassword);
+      if (resp && resp.data && resp.data.success) {
         setSuccess(true);
         setTimeout(() => {
           navigate('/login');
         }, 3000);
       } else {
-        setError(data.detail || 'Failed to reset password');
+        setError('Failed to reset password');
       }
     } catch (err) {
-      setError('Network error. Please try again.');
       console.error('Reset password error:', err);
+      setError(err.response?.data?.detail || 'Network error. Please try again.');
     } finally {
       setLoading(false);
     }

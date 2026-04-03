@@ -40,6 +40,7 @@ from backend.routes.tb_notifications import router as notifications_router
 from backend.routes.tb_search import router as search_router
 from backend.routes.calling_v2 import router as calling_v2_router
 from backend.routes.user_settings import router as settings_router
+from backend.routes.upload import router as upload_router
 
 from backend.routes.tb_admin_auth import router as admin_auth_router
 from backend.routes.tb_admin_users import router as admin_users_router
@@ -165,6 +166,7 @@ fastapi_app.include_router(settings_router)
 fastapi_app.include_router(search_router)
 fastapi_app.include_router(calling_v2_router)
 fastapi_app.include_router(webhooks_router)
+fastapi_app.include_router(upload_router)
 
 # Standardize Admin Routers
 fastapi_app.include_router(admin_auth_router)
@@ -250,5 +252,12 @@ async def root():
 # SOCKET.IO INTEGRATION
 # ============================================
 import socketio
+
+# Mount uploads static directory so uploaded files are served
+from fastapi.staticfiles import StaticFiles
+UPLOAD_DIR = (Path(__file__).parent / '..' / 'uploads').resolve()
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+fastapi_app.mount('/uploads', StaticFiles(directory=str(UPLOAD_DIR)), name='uploads')
+
 app = socketio.ASGIApp(sio, other_asgi_app=fastapi_app)
 socket_app = app  # Alias expected by the workflow runner

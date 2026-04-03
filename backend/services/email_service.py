@@ -46,47 +46,44 @@ class EmailService:
         Returns:
             True if email sent successfully, False otherwise
         """
+        # If email service is disabled, act as mock (no plaintext OTPs logged)
         if not self.enabled:
             logger.info(f"📧 [MOCK] Email to {to}: {subject}")
-            logger.info(f"📧 [MOCK] Content: {html[:100]}...")
+            logger.info(f"📧 [MOCK] Content (truncated): {html[:120]}...")
             return True
 
-        try:
-            import smtplib
-            import asyncio
-            from email.mime.text import MIMEText
-            from email.mime.multipart import MIMEMultipart
+        # Prefer SendGrid if API key is configured
+        sendgrid_api_key = os.getenv("SENDGRID_API_KEY")
+        if sendgrid_api_key:
+            try:
+                from sendgrid import SendGridAPIClient
+                from sendgrid.helpers.mail import Mail
 
-            if not self.smtp_host or not self.smtp_user or not self.smtp_password:
-                logger.error("SMTP credentials not configured. Set SMTP_HOST, SMTP_USER, SMTP_PASSWORD env vars.")
+                sg = SendGridAPIClient(sendgrid_api_key)
+                message = Mail(
+                    from_email=self.from_email,
+                    to_emails=to,
+                    subject=subject,
+                    html_content=html,
+                )
+                if text:
+                    # SendGrid will handle both html/text if provided via Mail helper
+                    pass
+
+                response = sg.send(message)
+                if 200 <= getattr(response, 'status_code', 0) < 300:
+                    logger.info(f"📧 SendGrid: Email sent to {to} (status={response.status_code})")
+                    return True
+                else:
+                    logger.error(f"📧 SendGrid returned non-success status for {to}: {getattr(response, 'status_code', None)}")
+                    return False
+            except Exception as e:
+                logger.error(f"📧 SendGrid send failed for {to}: {e}")
                 return False
 
-            port = int(self.smtp_port or 587)
-
-            msg = MIMEMultipart('alternative')
-            msg['Subject'] = subject
-            msg['From'] = self.from_email
-            msg['To'] = to
-
-            if text:
-                msg.attach(MIMEText(text, 'plain'))
-            msg.attach(MIMEText(html, 'html'))
-
-            def _send():
-                with smtplib.SMTP(self.smtp_host, port) as server:
-                    server.ehlo()
-                    server.starttls()
-                    server.login(self.smtp_user, self.smtp_password)
-                    server.send_message(msg)
-
-            loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, _send)
-            logger.info(f"📧 Email sent to {to}: {subject}")
-            return True
-
-        except Exception as e:
-            logger.error(f"Failed to send email to {to}: {e}")
-            return False
+        # SMTP fallback removed — SendGrid is required for production emails.
+        logger.error("SMTP fallback disabled. Configure SENDGRID_API_KEY to send emails.")
+        return False
 
     async def send_password_reset_email(
         self,

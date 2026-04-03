@@ -249,10 +249,7 @@ class PasswordResetService:
             # Generate reset link with unhashed token
             reset_link = f"{frontend_url}/reset-password?token={token}"
             
-            # Log the token for development when email is disabled
-            if not email_service.enabled:
-                logger.info(f"🔐 [DEV MODE] Password reset token for {email_lower}: {token}")
-                logger.info(f"🔐 [DEV MODE] Reset link: {reset_link}")
+            # Do not log sensitive tokens in any environment
             
             # Send email
             email_sent = await email_service.send_password_reset_email(

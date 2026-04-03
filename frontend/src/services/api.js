@@ -3,8 +3,11 @@ import axios from 'axios';
 import { API_BASE_URL } from '../config/api';
 
 // Create a single production-ready axios instance
+// Determine API base URL with sensible fallbacks when VITE_API_URL is not provided
+const defaultApiUrl = import.meta.env.VITE_API_URL || (window?.location?.hostname === 'localhost' ? 'http://localhost:8000' : `${window.location.protocol}//${window.location.host}`);
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: defaultApiUrl,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -15,10 +18,12 @@ const api = axios.create({
 const addRequestInterceptor = (axiosInstance) => {
   axiosInstance.interceptors.request.use(
     (config) => {
-      const token = localStorage.getItem('access_token');
-      console.log(`[AXIOS DEBUG] Request: ${config.method?.toUpperCase()} ${config.url} - Auth: ${token ? 'PRESENT' : 'MISSING'}`);
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+      // Prefer Firebase ID token (new system), fall back to legacy access_token
+      const firebaseToken = localStorage.getItem('firebase_token');
+      const accessToken = firebaseToken || localStorage.getItem('access_token');
+      console.log(`[AXIOS DEBUG] Request: ${config.method?.toUpperCase()} ${config.url} - Auth: ${accessToken ? 'PRESENT' : 'MISSING'}`);
+      if (accessToken) {
+        config.headers.Authorization = `Bearer ${accessToken}`;
       }
       return config;
     },
@@ -52,7 +57,7 @@ const addResponseInterceptor = (axiosInstance) => {
 
           if (refreshToken) {
             try {
-              const response = await axios.post(`${api.defaults.baseURL}/auth/refresh`, {
+              const response = await axios.post(`${api.defaults.baseURL}/api/auth/refresh`, {
                 refresh_token: refreshToken
               });
 

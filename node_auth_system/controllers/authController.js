@@ -35,12 +35,11 @@ exports.sendEmailOTP = async (req, res) => {
             { upsert: true, new: true }
         );
 
-        // Check for Mock Mode
+        // If email credentials are not configured, still store the OTP but
+        // do not print or return the plaintext OTP. Always return a
+        // generic success response to avoid leaking sensitive codes.
         if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-            console.log('-----------------------------------------');
-            console.log(`MOCK MODE: OTP for ${email} is ${otp}`);
-            console.log('-----------------------------------------');
-            return res.json({ message: 'OTP sent successfully (MOCK MODE - Check Console)' });
+            return res.json({ message: 'OTP sent successfully' });
         }
 
         // Real Email Mode

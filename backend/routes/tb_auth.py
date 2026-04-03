@@ -13,6 +13,7 @@ from backend.services.tb_auth_service import (
     AuthService, SignupRequest, LoginRequest, TokenResponse,
     SignupWithOTPRequest, LoginWithOTPRequest
 )
+from backend.socket_server import sio
 from backend.services.tb_otp_service import OTPService
 from backend.services.password_reset_service import password_reset_service
 
@@ -99,6 +100,16 @@ async def login(data: LoginRequest):
             "is_verified": user.is_verified
         }
     }
+    # Notify admin panels about user login (non-blocking, do not fail login on emit errors)
+    try:
+        await sio.emit('admin_update', {
+            'event': 'user_login',
+            'user_id': str(user.id),
+            'name': user.name,
+            'email': user.email
+        })
+    except Exception:
+        pass
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh_token(data: RefreshTokenRequest):
@@ -233,11 +244,43 @@ async def verify_email_otp(data: VerifyEmailOTPRequest):
     """
     Verify the 6-digit OTP sent to email.
     """
-    is_valid = await OTPService.verify_email_otp(data.email, data.otp)
+    # Verify OTP against DB
+    is_valid = await OTPService.verify_email_otp(data.email, data.otp, purpose="login")
     if not is_valid:
         raise HTTPException(status_code=400, detail="Invalid or expired OTP")
-    
-    return {"message": "Email verified successfully", "verified": True}
+
+    # Find user and return JWT tokens (login-on-verify behaviour)
+    user = await TBUser.find_one({"email": data.email.lower()})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found. Please sign up.")
+
+    tokens = TokenResponse(
+        access_token=AuthService.create_access_token(str(user.id)),
+        refresh_token=AuthService.create_refresh_token(str(user.id)),
+        user_id=str(user.id)
+    )
+
+    # Developer account special handling (coins)
+    DEV_USER_ID = "69a18167be16ddc2a28e19aa"
+    DEV_EMAIL = "indiranigopi677@gmail.com"
+    is_dev = str(user.id) == DEV_USER_ID or user.email.lower() == DEV_EMAIL.lower()
+    coins_to_show = 999999 if is_dev else user.coins
+
+    return {
+        "success": True,
+        "message": "OTP verified and logged in",
+        "access_token": tokens.access_token,
+        "refresh_token": tokens.refresh_token,
+        "user_id": str(user.id),
+        "user": {
+            "id": str(user.id),
+            "name": user.name,
+            "email": user.email,
+            "role": user.role,
+            "coins": coins_to_show,
+            "is_verified": user.is_verified
+        }
+    }
 
 
 @router.post("/otp/verify-email")

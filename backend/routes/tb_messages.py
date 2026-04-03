@@ -195,7 +195,9 @@ async def send_message(data: SendMessageRequest, user: TBUser = Depends(get_curr
 
         # Also emit locally via Socket.IO - SYNCED to user:{id}
         await sio.emit('message:new', message_data, room=f"user:{data.receiver_id}")
+        await sio.emit('new_message', message_data, room=f"user:{data.receiver_id}")
         await sio.emit('message:new', message_data, room=f"user:{str(user.id)}")
+        await sio.emit('new_message', message_data, room=f"user:{str(user.id)}")
 
         # Real-time notification badge bump for receiver (works whether online or not)
         await sio.emit('new_notification', {
@@ -204,6 +206,17 @@ async def send_message(data: SendMessageRequest, user: TBUser = Depends(get_curr
             'body': data.content[:80],
             'sender_id': str(user.id),
         }, room=f"user:{data.receiver_id}")
+
+        # Also notify any admin dashboards about the new message (best-effort)
+        try:
+            await sio.emit('admin_update', {
+                'event': 'new_message',
+                'sender_id': str(user.id),
+                'receiver_id': data.receiver_id,
+                'message_id': result['message_id']
+            })
+        except Exception:
+            pass
 
         logger.debug(f"Message {result['message_id']} delivered in real-time")
 
@@ -513,7 +526,9 @@ async def upload_image_message(
     # Broadcast to both parties - SYNCED to user:{id}
     try:
         await sio.emit("message:new", message_data, room=f"user:{receiver_id}")
+        await sio.emit("new_message", message_data, room=f"user:{receiver_id}")
         await sio.emit("message:new", message_data, room=f"user:{str(user.id)}")
+        await sio.emit("new_message", message_data, room=f"user:{str(user.id)}")
         await redis_pubsub.publish_new_message(receiver_id, message_data)
     except Exception as e:
         logger.warning(f"Real-time delivery of image message failed (persisted): {e}")
@@ -578,7 +593,9 @@ async def upload_image_message_new(
     try:
         data = { **message_data, "status": "sent" }
         await sio.emit("message:new", data, room=f"user:{receiver_id}")
+        await sio.emit("new_message", data, room=f"user:{receiver_id}")
         await sio.emit("message:new", data, room=f"user:{str(user.id)}")
+        await sio.emit("new_message", data, room=f"user:{str(user.id)}")
         await redis_pubsub.publish_new_message(receiver_id, data)
     except Exception as e:
         logger.warning(f"Real-time delivery of image message failed: {e}")

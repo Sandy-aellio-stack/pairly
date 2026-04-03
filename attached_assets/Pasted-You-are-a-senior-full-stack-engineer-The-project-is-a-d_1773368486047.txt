@@ -224,7 +224,7 @@ Backend:
     * server: generate random 6-digit, save TBOTP with expires (5 minutes), deliver:
 
       * If `EMAIL_ENABLED`/`SMS_ENABLED` env true, attempt to send via provider (if configured).
-      * Else: **return masked OTP in the response** only in DEV mode (e.g., `{ ok:true, dev_otp: "123456", masked: "******@domain.com" }`) — do this only if `ENV=development`.
+      * Else: return a masked delivery hint in responses; do NOT return plaintext OTPs in API responses. In production, always send OTPs via a configured provider.
     * Rate limit: ensure max 5 attempts per hour per destination.
   * `POST /api/auth/otp/verify` with `{ destination, code, device_id }`
 

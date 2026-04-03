@@ -110,14 +110,19 @@ const LoginPage = () => {
         const result = await firebaseConfirmation.confirm(otpCode.trim());
         const firebaseUser = result.user;
 
-        const response = await authAPI.firebaseLogin({
-          phone: firebaseUser.phoneNumber,
-          device_id: deviceId
-        });
-        const { access_token, refresh_token, token } = response.data;
-        const finalToken = token || access_token;
-        if (finalToken) localStorage.setItem('access_token', finalToken);
-        if (refresh_token) localStorage.setItem('refresh_token', refresh_token);
+        // Get Firebase ID token and store it as canonical auth token
+        const idToken = await firebaseUser.getIdToken();
+        if (idToken) {
+          localStorage.setItem('firebase_token', idToken);
+        }
+
+        // Inform backend about this user via firebase-login endpoint (optional)
+        try {
+          await authAPI.firebaseLogin({ phone: firebaseUser.phoneNumber, device_id: deviceId });
+        } catch (e) {
+          // Non-fatal: backend may create user on first request; proceed regardless
+          console.warn('firebaseLogin backend call failed (non-fatal):', e?.message || e);
+        }
 
         toast.success('Welcome back!');
         navigate('/dashboard');

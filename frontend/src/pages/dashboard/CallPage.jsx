@@ -162,6 +162,11 @@ const CallPage = () => {
   }, []);
 
   const initiateCall = useCallback(async () => {
+    const socket = getSocket();
+    if (!socket || !socket.connected) {
+      toast.error('Cannot start call: socket not connected');
+      return;
+    }
     const stream = await setupMediaStream();
     if (!stream) return;
     
@@ -212,6 +217,11 @@ const CallPage = () => {
   }, [setupMediaStream, createPeerConnection, incomingOffer, incomingCallId]);
 
   const acceptCall = useCallback(async () => {
+    const socket = getSocket();
+    if (!socket || !socket.connected) {
+      toast.error('Cannot accept call: socket not connected');
+      return;
+    }
     if (!peerConnectionRef.current || !callIdRef.current) return;
     
     try {
@@ -307,8 +317,9 @@ const CallPage = () => {
   const toggleMute = () => {
     if (localStreamRef.current) {
       const newState = !isMuted;
+      // If newState is true -> now muted => tracks should be disabled
       localStreamRef.current.getAudioTracks().forEach((track) => {
-        track.enabled = isMuted; // if previously muted (isMuted=true), now enabled=true
+        track.enabled = !newState;
       });
       setIsMuted(newState);
       

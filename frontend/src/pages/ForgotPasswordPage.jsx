@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { authAPI } from '../services/api';
 
 // Email validation regex
 const isValidEmail = (email) => {
@@ -44,24 +45,15 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/forgot-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: email.trim().toLowerCase() }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
+      const resp = await authAPI.forgotPassword(email.trim().toLowerCase());
+      if (resp && resp.data) {
         setSubmitted(true);
       } else {
-        setError(data.detail || 'Failed to send reset link. Please try again.');
+        setError('Failed to send reset link. Please try again.');
       }
     } catch (err) {
-      setError('Network error. Please check your connection and try again.');
       console.error('Forgot password error:', err);
+      setError(err.response?.data?.detail || 'Network error. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }

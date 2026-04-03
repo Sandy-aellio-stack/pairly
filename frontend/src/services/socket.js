@@ -9,10 +9,12 @@ let socket = null;
   both local dev (Vite) and Replit's HTTPS domain, avoiding mixed-content blocks.
 */
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL ||
-  (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000');
+  (typeof window !== 'undefined' ? window.location.origin.replace(/:\d+$/, ':8001') : 'http://localhost:8001');
 
 export const connectSocket = (token) => {
-  const accessToken = token || localStorage.getItem("access_token");
+  // Prefer Firebase ID token stored by frontend after OTP/login
+  const firebaseToken = localStorage.getItem("firebase_token");
+  const accessToken = firebaseToken || token || localStorage.getItem("access_token") || localStorage.getItem("jwt_token");
 
   if (socket) {
     return socket;
@@ -22,8 +24,9 @@ export const connectSocket = (token) => {
     auth: {
       token: accessToken,
     },
+    transports: ['websocket'],
     reconnection: true,
-    reconnectionAttempts: Infinity,
+    reconnectionAttempts: 5,
     reconnectionDelay: 1000,
     reconnectionDelayMax: 5000,
     timeout: 20000,
@@ -33,6 +36,29 @@ export const connectSocket = (token) => {
 
   /* ---------- CONNECTION EVENTS ---------- */
 
+  socket.on('connect', () => {
+    console.log('Socket connected');
+    try {
+      // Prefer explicit numeric/string userId stored by app
+      const gid = localStorage.getItem('userId');
+      if (gid) {
+        socket.emit('join', { user_id: gid });
+      } else {
+        const userRaw = localStorage.getItem('tb_user');
+        if (userRaw) {
+          const user = JSON.parse(userRaw);
+          if (user && user.id) socket.emit('join', { user_id: user.id });
+        }
+      }
+    } catch (e) {
+      // silent
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Socket disconnected');
+  });
+
   socket.on("connect_error", (error) => {
     console.error("[Socket] Connection error:", error.message);
   });
@@ -41,12 +67,41 @@ export const connectSocket = (token) => {
     console.error("[Socket] Call failed:", err);
   });
 
+  // Mirror server's message:new into a generic 'new_message' custom event
+  socket.on('message:new', (data) => {
+    const event = new CustomEvent('Luveloop:new_message', { detail: data });
+    window.dispatchEvent(event);
+  });
+  // Also mirror server's 'new_message' if backend emits that event name
+  socket.on('new_message', (data) => {
+    const event = new CustomEvent('Luveloop:new_message', { detail: data });
+    window.dispatchEvent(event);
+  });
+
+  // Auto-connect once on module import if token exists and socket not already created
+  try {
+    if (typeof window !== 'undefined') {
+      const firebaseToken = localStorage.getItem('firebase_token');
+      const accessToken = firebaseToken || localStorage.getItem('access_token') || localStorage.getItem('jwt_token');
+      if (accessToken && !socket) {
+        // kick off connection
+        // keep token in auth object for server verification
+        console.log('Auto-connecting socket (background)');
+        // Recreate socket if absent
+        if (!socket) connectSocket(accessToken);
+      }
+    }
+  } catch (e) {
+    // ignore auto-connect errors
+  }
+
   /* ---------- GLOBAL EVENTS ---------- */
 
   socket.on("force_logout", () => {
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
     localStorage.removeItem("tb_user");
+    localStorage.removeItem("firebase_token");
 
     socket.disconnect();
     socket = null;
