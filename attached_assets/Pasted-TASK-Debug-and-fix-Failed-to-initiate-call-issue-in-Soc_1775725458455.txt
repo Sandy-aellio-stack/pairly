@@ -1,0 +1,142 @@
+TASK: Debug and fix "Failed to initiate call" issue in Socket.IO + WebRTC (Replit environment)
+
+GOAL:
+Identify exactly where the call flow is breaking and ensure call_offer signaling works end-to-end.
+
+---
+
+STEP 1: VERIFY SOCKET CONNECTION (FRONTEND)
+
+Add this in socket setup:
+
+socket.on("connect", () => {
+console.log("✅ CONNECTED:", socket.id);
+});
+
+socket.on("disconnect", () => {
+console.log("❌ DISCONNECTED");
+});
+
+socket.on("connect_error", (err) => {
+console.error("❌ SOCKET ERROR:", err);
+});
+
+---
+
+STEP 2: ENSURE SOCKET INITIALIZATION (IMPORTANT)
+
+Use EXACT:
+
+const socket = io(window.location.origin, {
+transports: ["websocket"],
+upgrade: false
+});
+
+---
+
+STEP 3: ENSURE USER JOINS ROOM
+
+After login:
+
+socket.on("connect", () => {
+socket.emit("join", userId);
+console.log("👤 JOIN SENT:", userId);
+});
+
+---
+
+STEP 4: DEBUG CALL BUTTON
+
+Before initiating call:
+
+if (!socket.connected) {
+console.log("❌ Socket not connected");
+return;
+}
+
+console.log("📞 Calling user:", receiverId);
+
+socket.emit("call_offer", {
+to: receiverId,
+offer: offer
+});
+
+---
+
+STEP 5: BACKEND - VERIFY CALL OFFER RECEIVED
+
+Add in FastAPI socket handler:
+
+@sio.event
+async def call_offer(sid, data):
+print("🔥 CALL OFFER RECEIVED:", data)
+to_user = data.get("to")
+
+```
+await sio.emit("call_offer", data, room=to_user)
+```
+
+---
+
+STEP 6: VERIFY JOIN HANDLER (BACKEND)
+
+@sio.event
+async def join(sid, user_id):
+print("👤 USER JOIN:", user_id, sid)
+await sio.save_session(sid, {"user_id": user_id})
+await sio.enter_room(sid, user_id)
+
+---
+
+STEP 7: RECEIVER SIDE CHECK
+
+Add in frontend:
+
+socket.on("call_offer", (data) => {
+console.log("📲 INCOMING CALL:", data);
+});
+
+---
+
+STEP 8: TEST FLOW (MANDATORY)
+
+Open two users:
+
+User A → click call
+User B → check console
+
+---
+
+EXPECTED LOG FLOW:
+
+✔ "CONNECTED"
+✔ "JOIN SENT"
+✔ "Calling user"
+✔ "CALL OFFER RECEIVED" (backend)
+✔ "INCOMING CALL" (receiver)
+
+---
+
+FAILURE DIAGNOSIS:
+
+❌ No "CONNECTED" → socket not working
+❌ No "CALL OFFER RECEIVED" → emit broken
+❌ No "INCOMING CALL" → room/join broken
+
+---
+
+IMPORTANT:
+
+* Do NOT use localhost in frontend
+* Must use window.location.origin
+* Socket must connect BEFORE emitting
+* Join must happen BEFORE call
+
+---
+
+SUCCESS CONDITION:
+
+✔ call_offer reaches backend
+✔ receiver gets event
+✔ call starts successfully
+✔ no "Failed to initiate call"

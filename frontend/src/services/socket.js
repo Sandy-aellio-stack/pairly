@@ -25,6 +25,7 @@ export const connectSocket = (token) => {
       token: accessToken,
     },
     transports: ['websocket'],
+    upgrade: false,
     reconnection: true,
     reconnectionAttempts: Infinity,
     reconnectionDelay: 1000,
