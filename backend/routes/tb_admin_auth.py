@@ -91,7 +91,7 @@ async def admin_login(data: AdminLoginRequest):
     if not admin:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    if not bcrypt.checkpw(data.password.encode(), admin["password_hash"].encode()):
+    if not bcrypt.checkpw(data.password.encode("utf-8")[:72], admin["password_hash"].encode()):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
     # Generate admin token

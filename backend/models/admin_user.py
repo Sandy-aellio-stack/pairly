@@ -32,9 +32,13 @@ class AdminUser(Document):
     class Settings:
         name = "admin_users"
 
+    @staticmethod
+    def _truncate(password: str) -> bytes:
+        return password.encode("utf-8")[:72]
+
     def verify_password(self, password: str) -> bool:
-        return bcrypt.checkpw(password.encode(), self.password_hash.encode())
+        return bcrypt.checkpw(self._truncate(password), self.password_hash.encode())
 
     @staticmethod
     def hash_password(password: str) -> str:
-        return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+        return bcrypt.hashpw(AdminUser._truncate(password), bcrypt.gensalt()).decode()

@@ -115,9 +115,15 @@ class AuthService:
         return f"{prefix}{suffix}"
 
     @staticmethod
+    def _truncate_password(password: str) -> str:
+        """Bcrypt has a hard 72-byte limit — truncate to stay within it."""
+        encoded = password.encode("utf-8")
+        return encoded[:72].decode("utf-8", errors="ignore")
+
+    @staticmethod
     def hash_password(password: str) -> str:
-        """Hash password using bcrypt."""
-        return pwd_context.hash(password)
+        """Hash password using bcrypt (truncated to 72 bytes)."""
+        return pwd_context.hash(AuthService._truncate_password(password))
 
     @staticmethod
     def verify_password(password: str, hashed: str) -> bool:
@@ -128,13 +134,10 @@ class AuthService:
         if not hashed:
             return False
         
-        # Strip potential whitespace from hash
         clean_hash = hashed.strip()
         
         try:
-            # passlib verify handles both string and bytes, 
-            # and automatically detects the hash algorithm (bcrypt)
-            return pwd_context.verify(password, clean_hash)
+            return pwd_context.verify(AuthService._truncate_password(password), clean_hash)
         except Exception as e:
             logging.error(f"Password verification error: {e}")
             return False
