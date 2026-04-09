@@ -18,9 +18,7 @@ const api = axios.create({
 const addRequestInterceptor = (axiosInstance) => {
   axiosInstance.interceptors.request.use(
     (config) => {
-      // Prefer Firebase ID token (new system), fall back to legacy access_token
-      const firebaseToken = localStorage.getItem('firebase_token');
-      const accessToken = firebaseToken || localStorage.getItem('access_token');
+      const accessToken = localStorage.getItem('access_token');
       console.log(`[AXIOS DEBUG] Request: ${config.method?.toUpperCase()} ${config.url} - Auth: ${accessToken ? 'PRESENT' : 'MISSING'}`);
       if (accessToken) {
         config.headers.Authorization = `Bearer ${accessToken}`;
@@ -118,8 +116,6 @@ export const authAPI = {
   approveLogin: (pending_session_id) => api.post('/api/auth/login/approve', { pending_session_id }),
   denyLogin: (pending_session_id) => api.post('/api/auth/login/deny', { pending_session_id }),
   checkLoginStatus: (pending_session_id) => api.get(`/api/auth/login/status/${pending_session_id}`),
-  // Firebase Phone Auth
-  firebaseLogin: (data) => api.post('/api/auth/firebase-login', data),
 };
 
 // User APIs

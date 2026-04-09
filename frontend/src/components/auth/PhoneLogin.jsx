@@ -1,18 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
-import { auth, firebaseConfigured } from '@/firebase/firebaseConfig';
-import { Phone, Shield, ArrowLeft, Loader2, Sparkles, Heart } from 'lucide-react';
+import { Mail, Shield, ArrowLeft, Loader2, Sparkles, Heart } from 'lucide-react';
 import { toast } from 'sonner';
 import { authAPI } from '@/services/api';
 import { useNavigate } from 'react-router-dom';
+import useAuthStore from '@/store/authStore';
 
-const PhoneLogin = ({ onBack }) => {
+const EmailOTPLogin = ({ onBack }) => {
     const navigate = useNavigate();
-    const [phoneNumber, setPhoneNumber] = useState('');
+    const { loginWithOTP } = useAuthStore();
+    const [email, setEmail] = useState('');
     const [otp, setOtp] = useState('');
-    const [step, setStep] = useState('phone'); // 'phone' | 'otp'
+    const [step, setStep] = useState('email');
     const [isLoading, setIsLoading] = useState(false);
-    const [confirmationResult, setConfirmationResult] = useState(null);
     const [timer, setTimer] = useState(0);
 
     useEffect(() => {
@@ -25,46 +24,21 @@ const PhoneLogin = ({ onBack }) => {
         return () => clearInterval(interval);
     }, [timer]);
 
-    const setupRecaptcha = () => {
-        if (!firebaseConfigured || !auth) return null;
-        if (!window.recaptchaVerifier) {
-            window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-                'size': 'invisible',
-                'callback': () => {}
-            });
-        }
-        return window.recaptchaVerifier;
-    };
-
     const handleSendOTP = async (e) => {
         e.preventDefault();
-        if (!firebaseConfigured || !auth) {
-            toast.error('Phone login is not configured. Please contact support.');
+        if (!email || !email.includes('@')) {
+            toast.error('Please enter a valid email address');
             return;
         }
-        if (!phoneNumber || phoneNumber.length < 10) {
-            toast.error('Please enter a valid phone number');
-            return;
-        }
-
-        const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
-
         setIsLoading(true);
         try {
-            const appVerifier = setupRecaptcha();
-            if (!appVerifier) { toast.error('reCAPTCHA setup failed. Please refresh.'); return; }
-            const confirmation = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
-            setConfirmationResult(confirmation);
+            await authAPI.sendOTPForLogin({ email: email.trim().toLowerCase() });
             setStep('otp');
             setTimer(60);
-            toast.success('OTP sent successfully! 📱');
+            toast.success('OTP sent to your email! 📧');
         } catch (error) {
-            console.error('Firebase Auth Error:', error);
-            toast.error(error.message || 'Failed to send OTP. Please try again.');
-            if (window.recaptchaVerifier) {
-                window.recaptchaVerifier.clear();
-                window.recaptchaVerifier = null;
-            }
+            console.error('Email OTP send error:', error);
+            toast.error(error.response?.data?.detail || 'Failed to send OTP. Please try again.');
         } finally {
             setIsLoading(false);
         }
@@ -76,34 +50,17 @@ const PhoneLogin = ({ onBack }) => {
             toast.error('Please enter a 6-digit OTP');
             return;
         }
-
         setIsLoading(true);
+        const deviceId = localStorage.getItem('tb_device_id') ||
+            (typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : Math.random().toString(36).substring(2));
+        localStorage.setItem('tb_device_id', deviceId);
         try {
-            const result = await confirmationResult.confirm(otp);
-            const user = result.user;
-
-            // Call backend to verify and get JWT
-            const response = await authAPI.firebaseLogin({
-                phone: user.phoneNumber,
-                device_id: localStorage.getItem('pairly_device_id') || Math.random().toString(36).substring(7)
-            });
-
-            if (response.data.success || response.data.token) {
-                const { access_token, refresh_token, token } = response.data;
-                const finalToken = token || access_token;
-
-                if (finalToken) localStorage.setItem('access_token', finalToken);
-                if (refresh_token) localStorage.setItem('refresh_token', refresh_token);
-
-                toast.success('Login successful! Welcome to Pairly 💕');
-                navigate('/dashboard');
-                window.location.reload();
-            } else {
-                toast.error(response.data.message || 'Backend login failed');
-            }
+            await loginWithOTP({ email: email.trim().toLowerCase(), otp_code: otp.trim(), device_id: deviceId });
+            toast.success('Login successful! Welcome to Luveloop 💕');
+            navigate('/dashboard');
         } catch (error) {
-            console.error('Verification Error:', error);
-            toast.error('Invalid OTP code. Please try again.');
+            console.error('OTP verification error:', error);
+            toast.error(error.response?.data?.detail || 'Invalid OTP code. Please try again.');
         } finally {
             setIsLoading(false);
         }
@@ -111,57 +68,57 @@ const PhoneLogin = ({ onBack }) => {
 
     return (
         <div className="w-full space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div id="recaptcha-container"></div>
-
-            {step === 'phone' ? (
+            {step === 'email' ? (
                 <form onSubmit={handleSendOTP} className="space-y-6">
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Enter Mobile Number
+                            Enter Email Address
                         </label>
                         <div className="relative group">
-                            <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2 text-slate-400 group-focus-within:text-rose-500 transition-colors">
-                                <Phone size={20} />
-                                <span className="font-medium border-r border-slate-200 pr-2">+91</span>
+                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-rose-500 transition-colors">
+                                <Mail size={20} />
                             </div>
                             <input
-                                type="tel"
-                                value={phoneNumber}
-                                onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                                placeholder="99940 53392"
-                                className="w-full pl-24 pr-4 py-4 rounded-2xl border border-slate-200 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 outline-none transition-all text-lg tracking-wider"
+                                type="email"
+                                autoComplete="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder="hello@example.com"
+                                className="w-full pl-12 pr-4 py-4 rounded-2xl border border-slate-200 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 outline-none transition-all text-lg"
                                 required
                                 disabled={isLoading}
                             />
                         </div>
                         <p className="mt-3 text-xs text-slate-500 flex items-center gap-2">
                             <Shield size={14} className="text-emerald-500" />
-                            We'll send a secure 6-digit code via SMS
+                            We'll send a secure 6-digit code to your email
                         </p>
                     </div>
 
                     <button
                         type="submit"
-                        disabled={isLoading || phoneNumber.length < 10}
+                        disabled={isLoading || !email.includes('@')}
                         className="w-full py-4 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-2xl font-bold shadow-lg shadow-rose-200 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-3 disabled:opacity-50 disabled:scale-100 disabled:shadow-none"
                     >
                         {isLoading ? (
                             <Loader2 className="animate-spin" size={24} />
                         ) : (
                             <>
-                                <span>Get Verification Code</span>
+                                <span>Send Verification Code</span>
                                 <Sparkles size={20} />
                             </>
                         )}
                     </button>
 
-                    <button
-                        type="button"
-                        onClick={onBack}
-                        className="w-full py-2 text-slate-400 hover:text-slate-600 text-sm font-medium transition-colors"
-                    >
-                        Back to Login Options
-                    </button>
+                    {onBack && (
+                        <button
+                            type="button"
+                            onClick={onBack}
+                            className="w-full py-2 text-slate-400 hover:text-slate-600 text-sm font-medium transition-colors"
+                        >
+                            Back to Login Options
+                        </button>
+                    )}
                 </form>
             ) : (
                 <form onSubmit={handleVerifyOTP} className="space-y-6">
@@ -171,7 +128,7 @@ const PhoneLogin = ({ onBack }) => {
                         </div>
                         <h2 className="text-2xl font-bold text-slate-800">Verify it's you</h2>
                         <p className="text-slate-500">
-                            Enter the code sent to <span className="font-bold text-slate-700">+91 {phoneNumber}</span>
+                            Enter the code sent to <span className="font-bold text-slate-700">{email}</span>
                         </p>
                     </div>
 
@@ -179,6 +136,7 @@ const PhoneLogin = ({ onBack }) => {
                         <div className="relative">
                             <input
                                 type="text"
+                                inputMode="numeric"
                                 value={otp}
                                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                                 placeholder="0 0 0 0 0 0"
@@ -193,10 +151,10 @@ const PhoneLogin = ({ onBack }) => {
                         <div className="flex items-center justify-between text-sm px-2">
                             <button
                                 type="button"
-                                onClick={() => setStep('phone')}
+                                onClick={() => { setStep('email'); setOtp(''); }}
                                 className="text-slate-500 hover:text-rose-500 font-medium flex items-center gap-1 transition-colors"
                             >
-                                <ArrowLeft size={14} /> Change Number
+                                <ArrowLeft size={14} /> Change Email
                             </button>
                             {timer > 0 ? (
                                 <span className="text-slate-400">Resend in {timer}s</span>
@@ -229,7 +187,6 @@ const PhoneLogin = ({ onBack }) => {
                 </form>
             )}
 
-            {/* Premium Trust Badge */}
             <div className="pt-8 flex items-center justify-center gap-6 border-t border-slate-100">
                 <div className="flex flex-col items-center gap-1">
                     <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center">
@@ -248,4 +205,4 @@ const PhoneLogin = ({ onBack }) => {
     );
 };
 
-export default PhoneLogin;
+export default EmailOTPLogin;

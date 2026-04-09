@@ -40,9 +40,7 @@ const ChatPage = () => {
 
   // Connect socket and set up listeners
   useEffect(() => {
-    // Prefer Firebase token if present
-    const firebaseToken = localStorage.getItem('firebase_token');
-    const token = firebaseToken || localStorage.getItem('access_token');
+    const token = localStorage.getItem('access_token');
     if (token) {
       connectSocket(token);
     }

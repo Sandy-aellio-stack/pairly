@@ -12,9 +12,7 @@ const SOCKET_URL = import.meta.env.VITE_SOCKET_URL ||
   (typeof window !== 'undefined' ? window.location.origin : '');
 
 export const connectSocket = (token) => {
-  // Prefer Firebase ID token stored by frontend after OTP/login
-  const firebaseToken = localStorage.getItem("firebase_token");
-  const accessToken = firebaseToken || token || localStorage.getItem("access_token") || localStorage.getItem("jwt_token");
+  const accessToken = token || localStorage.getItem("access_token") || localStorage.getItem("jwt_token");
 
   if (socket) {
     return socket;
@@ -82,8 +80,7 @@ export const connectSocket = (token) => {
   // Auto-connect once on module import if token exists and socket not already created
   try {
     if (typeof window !== 'undefined') {
-      const firebaseToken = localStorage.getItem('firebase_token');
-      const accessToken = firebaseToken || localStorage.getItem('access_token') || localStorage.getItem('jwt_token');
+      const accessToken = localStorage.getItem('access_token') || localStorage.getItem('jwt_token');
       if (accessToken && !socket) {
         // kick off connection
         // keep token in auth object for server verification
@@ -102,7 +99,6 @@ export const connectSocket = (token) => {
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
     localStorage.removeItem("tb_user");
-    localStorage.removeItem("firebase_token");
 
     socket.disconnect();
     socket = null;

@@ -1,19 +1,17 @@
 import random
 import os
 import logging
+import bcrypt
 from fastapi import HTTPException
 from backend.models.tb_otp import TBOTP
-from passlib.context import CryptContext
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 logger = logging.getLogger("otp")
 
 
 class OTPService:
     """OTP Service with database persistence and hashing.
 
-    Phone OTP delivery is handled client-side via Firebase Auth.
-    Email OTP delivery is handled server-side via SendGrid (or SMTP fallback).
+    Email OTP delivery is handled server-side via SendGrid.
     """
 
     @staticmethod
@@ -23,14 +21,17 @@ class OTPService:
 
     @staticmethod
     def hash_otp(otp_code: str) -> str:
-        """Hash OTP code using bcrypt"""
-        return pwd_context.hash(otp_code)
+        """Hash OTP code using bcrypt directly (avoids passlib/bcrypt 4.x incompatibility)"""
+        otp_bytes = otp_code.encode("utf-8")
+        return bcrypt.hashpw(otp_bytes, bcrypt.gensalt()).decode("utf-8")
 
     @staticmethod
     def verify_otp_hash(otp_code: str, hashed_otp: str) -> bool:
         """Verify OTP code against hash"""
         try:
-            return pwd_context.verify(otp_code, hashed_otp)
+            otp_bytes = otp_code.encode("utf-8")
+            hashed_bytes = hashed_otp.encode("utf-8")
+            return bcrypt.checkpw(otp_bytes, hashed_bytes)
         except Exception:
             return False
 

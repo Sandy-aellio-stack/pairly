@@ -1,11 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, Mail, Lock, Eye, EyeOff, ArrowRight, Sparkles, Phone, Shield, Loader2 } from 'lucide-react';
+import { Heart, Mail, Lock, Eye, EyeOff, ArrowRight, Sparkles, Shield, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import useAuthStore from '@/store/authStore';
 import { authAPI } from '@/services/api';
-import { auth, firebaseConfigured } from '@/firebase/firebaseConfig';
-import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -15,75 +13,34 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // OTP state
-  const [otpIdentifier, setOtpIdentifier] = useState('');
+  const [otpEmail, setOtpEmail] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
-  const [firebaseConfirmation, setFirebaseConfirmation] = useState(null);
-  const recaptchaContainerRef = useRef(null);
 
-  // Countdown for resend button
   useEffect(() => {
     if (resendTimer <= 0) return;
     const t = setInterval(() => setResendTimer(s => s - 1), 1000);
     return () => clearInterval(t);
   }, [resendTimer]);
 
-  const isEmailInput = (val) => val.includes('@');
-
-  const setupRecaptcha = () => {
-    if (!auth || !RecaptchaVerifier) return null;
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        size: 'invisible',
-        callback: () => {}
-      });
-    }
-    return window.recaptchaVerifier;
-  };
-
-  const clearRecaptcha = () => {
-    if (window.recaptchaVerifier) {
-      try { window.recaptchaVerifier.clear(); } catch (_) {}
-      window.recaptchaVerifier = null;
-    }
-  };
-
   const handleSendOtp = async (e) => {
     e.preventDefault();
-    const id = otpIdentifier.trim();
-    if (!id) { toast.error('Please enter your email or phone number'); return; }
-
+    const email = otpEmail.trim();
+    if (!email || !email.includes('@')) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
     setIsSendingOtp(true);
     try {
-      if (isEmailInput(id)) {
-        // Email → backend API
-        await authAPI.sendOTPForLogin({ email: id });
-        setOtpSent(true);
-        setResendTimer(60);
-        toast.success('OTP sent to your email!');
-      } else {
-        // Phone → Firebase
-        if (!firebaseConfigured || !auth) {
-          toast.error('Phone login is not configured. Please use email or contact support.');
-          return;
-        }
-        const formatted = id.startsWith('+') ? id : `+91${id}`;
-        clearRecaptcha();
-        const verifier = setupRecaptcha();
-        if (!verifier) { toast.error('reCAPTCHA setup failed. Please refresh and try again.'); return; }
-        const result = await signInWithPhoneNumber(auth, formatted, verifier);
-        setFirebaseConfirmation(result);
-        setOtpSent(true);
-        setResendTimer(60);
-        toast.success('OTP sent to your phone via SMS!');
-      }
+      await authAPI.sendOTPForLogin({ email });
+      setOtpSent(true);
+      setResendTimer(60);
+      toast.success('OTP sent to your email!');
     } catch (error) {
       console.error('[LoginPage] OTP send error:', error);
-      clearRecaptcha();
-      toast.error(error.response?.data?.detail || error.message || 'Failed to send OTP. Please try again.');
+      toast.error(error.response?.data?.detail || 'Failed to send OTP. Please try again.');
     } finally {
       setIsSendingOtp(false);
     }
@@ -91,46 +48,21 @@ const LoginPage = () => {
 
   const handleOtpLogin = async (e) => {
     e.preventDefault();
-    if (!otpCode.trim()) { toast.error('Please enter the OTP'); return; }
+    if (!otpCode.trim() || otpCode.length < 6) {
+      toast.error('Please enter the 6-digit OTP');
+      return;
+    }
     setIsLoading(true);
-    const id = otpIdentifier.trim();
     const deviceId = localStorage.getItem('tb_device_id') ||
       (typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : Math.random().toString(36).substring(2));
     localStorage.setItem('tb_device_id', deviceId);
-
     try {
-      if (isEmailInput(id)) {
-        // Email OTP → backend verify + JWT
-        await loginWithOTP({ email: id, otp_code: otpCode.trim(), device_id: deviceId });
-        toast.success('Welcome back!');
-        navigate('/dashboard');
-      } else {
-        // Phone OTP → Firebase confirm → backend JWT
-        if (!firebaseConfirmation) { toast.error('Session expired. Please request a new OTP.'); return; }
-        const result = await firebaseConfirmation.confirm(otpCode.trim());
-        const firebaseUser = result.user;
-
-        // Get Firebase ID token and store it as canonical auth token
-        const idToken = await firebaseUser.getIdToken();
-        if (idToken) {
-          localStorage.setItem('firebase_token', idToken);
-        }
-
-        // Inform backend about this user via firebase-login endpoint (optional)
-        try {
-          await authAPI.firebaseLogin({ phone: firebaseUser.phoneNumber, device_id: deviceId });
-        } catch (e) {
-          // Non-fatal: backend may create user on first request; proceed regardless
-          console.warn('firebaseLogin backend call failed (non-fatal):', e?.message || e);
-        }
-
-        toast.success('Welcome back!');
-        navigate('/dashboard');
-        window.location.reload();
-      }
+      await loginWithOTP({ email: otpEmail.trim(), otp_code: otpCode.trim(), device_id: deviceId });
+      toast.success('Welcome back!');
+      navigate('/dashboard');
     } catch (error) {
       console.error('[LoginPage] OTP verify error:', error);
-      toast.error(error.response?.data?.detail || error.message || 'Invalid OTP. Please try again.');
+      toast.error(error.response?.data?.detail || 'Invalid OTP. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -153,13 +85,11 @@ const LoginPage = () => {
   const handleResend = () => {
     setOtpSent(false);
     setOtpCode('');
-    setFirebaseConfirmation(null);
-    clearRecaptcha();
+    setResendTimer(0);
   };
 
   return (
     <div className="min-h-screen flex">
-      {/* Left Side - Romantic Background */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-[#E8D5E7] via-[#F5E6E8] to-[#FDE8D7]" />
         <div className="absolute top-20 left-10 w-64 h-64 bg-pink-300/30 rounded-full blur-3xl" />
@@ -179,7 +109,6 @@ const LoginPage = () => {
         </div>
       </div>
 
-      {/* Right Side - Form */}
       <div className="flex-1 flex items-center justify-center px-6 py-12 bg-white">
         <div className="w-full max-w-md">
           <Link to="/" className="flex items-center gap-3 mb-8">
@@ -193,7 +122,6 @@ const LoginPage = () => {
           </div>
           <p className="text-gray-600 mb-6">Sign in to continue your journey to love</p>
 
-          {/* Tab Switcher */}
           <div className="flex bg-gray-100 rounded-xl p-1 mb-6">
             <button
               onClick={() => setActiveTab('password')}
@@ -205,7 +133,7 @@ const LoginPage = () => {
               Password
             </button>
             <button
-              onClick={() => { setActiveTab('otp'); setOtpSent(false); setOtpCode(''); setFirebaseConfirmation(null); clearRecaptcha(); }}
+              onClick={() => { setActiveTab('otp'); setOtpSent(false); setOtpCode(''); setOtpEmail(''); setResendTimer(0); }}
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 activeTab === 'otp' ? 'bg-white shadow-sm text-[#0F172A]' : 'text-gray-500 hover:text-gray-700'
               }`}
@@ -224,6 +152,7 @@ const LoginPage = () => {
                   <input
                     type="email"
                     name="email"
+                    autoComplete="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     placeholder="hello@example.com"
@@ -240,6 +169,7 @@ const LoginPage = () => {
                   <input
                     type={showPassword ? 'text' : 'password'}
                     name="password"
+                    autoComplete="current-password"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     placeholder="Your password"
@@ -276,28 +206,26 @@ const LoginPage = () => {
             </form>
           ) : (
             <div className="space-y-6">
-              {/* Invisible reCAPTCHA container (required for Firebase phone auth) */}
-              <div id="recaptcha-container" ref={recaptchaContainerRef} />
-
               {!otpSent ? (
                 <form onSubmit={handleSendOtp} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-[#0F172A] mb-2">
-                      Email or Phone Number
+                      Email Address
                     </label>
                     <div className="relative">
-                      <Phone size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <Mail size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                       <input
-                        type="text"
-                        value={otpIdentifier}
-                        onChange={(e) => setOtpIdentifier(e.target.value)}
-                        placeholder="email@example.com or +91xxxxxxxxxx"
+                        type="email"
+                        autoComplete="email"
+                        value={otpEmail}
+                        onChange={(e) => setOtpEmail(e.target.value)}
+                        placeholder="hello@example.com"
                         className="w-full pl-12 pr-4 py-4 rounded-xl border border-gray-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none transition-all"
                         required
                       />
                     </div>
                     <p className="mt-2 text-xs text-gray-400">
-                      Enter email for email OTP · Enter phone number for SMS OTP via Firebase
+                      We'll send a 6-digit code to your email — no password needed.
                     </p>
                   </div>
                   <button
@@ -311,7 +239,7 @@ const LoginPage = () => {
               ) : (
                 <form onSubmit={handleOtpLogin} className="space-y-4">
                   <div className="p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">
-                    OTP sent to <strong>{otpIdentifier}</strong>
+                    OTP sent to <strong>{otpEmail}</strong>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-[#0F172A] mb-2">Enter OTP</label>
@@ -322,10 +250,11 @@ const LoginPage = () => {
                         inputMode="numeric"
                         value={otpCode}
                         onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                        placeholder="6-digit OTP"
+                        placeholder="0 0 0 0 0 0"
                         maxLength={6}
                         className="w-full pl-12 pr-4 py-4 rounded-xl border border-gray-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none transition-all tracking-widest text-center text-2xl font-bold"
                         required
+                        autoFocus
                       />
                     </div>
                   </div>
@@ -340,7 +269,7 @@ const LoginPage = () => {
 
                   <div className="flex items-center justify-between text-sm text-gray-500">
                     <button type="button" onClick={handleResend} className="hover:text-gray-700 transition-colors">
-                      Change email/phone
+                      Change email
                     </button>
                     {resendTimer > 0 ? (
                       <span className="text-gray-400">Resend in {resendTimer}s</span>
