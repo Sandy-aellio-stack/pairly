@@ -250,7 +250,7 @@ const NearbyPage = () => {
           });
           
           if (testError.code === 'ERR_NETWORK') {
-            toast.error('Backend server not running - Please start backend on localhost:8000');
+            toast.error('Unable to reach the server. Please check your connection.');
           } else if (testError.response?.status === 404) {
             toast.error('API endpoint not found - Check backend routes');
           } else {
@@ -296,7 +296,7 @@ const NearbyPage = () => {
         });
         
         if (error.code === 'ERR_NETWORK') {
-          toast.error('Backend server not running - Please start backend on localhost:8000');
+          toast.error('Unable to reach the server. Please check your connection.');
         } else if (error.response?.status === 405) {
           toast.error('Method Not Allowed - Please contact support');
         } else if (error.response?.status === 401) {

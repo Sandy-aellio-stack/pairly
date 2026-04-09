@@ -9,7 +9,7 @@ let socket = null;
   both local dev (Vite) and Replit's HTTPS domain, avoiding mixed-content blocks.
 */
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL ||
-  (typeof window !== 'undefined' ? window.location.origin.replace(/:\d+$/, ':8001') : 'http://localhost:8001');
+  (typeof window !== 'undefined' ? window.location.origin : '');
 
 export const connectSocket = (token) => {
   // Prefer Firebase ID token stored by frontend after OTP/login

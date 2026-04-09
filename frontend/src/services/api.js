@@ -2,9 +2,9 @@ import axios from 'axios';
 
 import { API_BASE_URL } from '../config/api';
 
-// Create a single production-ready axios instance
-// Determine API base URL with sensible fallbacks when VITE_API_URL is not provided
-const defaultApiUrl = import.meta.env.VITE_API_URL || (window?.location?.hostname === 'localhost' ? 'http://localhost:8000' : `${window.location.protocol}//${window.location.host}`);
+// Empty base URL = relative paths. Vite proxies /api → localhost:8000 in dev;
+// in production the same-origin server handles /api directly.
+const defaultApiUrl = import.meta.env.VITE_API_URL || "";
 
 const api = axios.create({
   baseURL: defaultApiUrl,
