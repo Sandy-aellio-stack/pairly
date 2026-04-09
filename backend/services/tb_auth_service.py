@@ -18,12 +18,16 @@ from backend.models.tb_credit import TBCreditTransaction, TransactionReason
 from backend.models.auth_models import FirebaseLoginRequest
 from backend.services.tb_otp_service import OTPService
 from backend.config import settings
-from passlib.context import CryptContext
+import bcrypt as _bcrypt_lib
 from bson.errors import InvalidId
 from bson import ObjectId
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 logger = logging.getLogger(__name__)
+
+
+def _bcrypt_truncate(password: str) -> bytes:
+    """Return password encoded to UTF-8 and hard-capped at 72 bytes."""
+    return password.encode("utf-8")[:72]
 
 JWT_SECRET = settings.JWT_SECRET
 if not JWT_SECRET:
@@ -115,31 +119,29 @@ class AuthService:
         return f"{prefix}{suffix}"
 
     @staticmethod
-    def _truncate_password(password: str) -> str:
-        """Bcrypt has a hard 72-byte limit — truncate to stay within it."""
-        encoded = password.encode("utf-8")
-        return encoded[:72].decode("utf-8", errors="ignore")
+    def _truncate_password(password: str) -> bytes:
+        """Return password encoded to UTF-8 hard-capped at 72 bytes (bcrypt limit)."""
+        return password.encode("utf-8")[:72]
 
     @staticmethod
     def hash_password(password: str) -> str:
-        """Hash password using bcrypt (truncated to 72 bytes)."""
-        return pwd_context.hash(AuthService._truncate_password(password))
+        """Hash password using bcrypt directly (passlib bypassed to avoid version bugs)."""
+        hashed = _bcrypt_lib.hashpw(AuthService._truncate_password(password), _bcrypt_lib.gensalt())
+        return hashed.decode("utf-8")
 
     @staticmethod
     def verify_password(password: str, hashed: str) -> bool:
-        """
-        Verify password against hash using passlib CryptContext.
-        Handles both $2b$ and $2a$ prefixes automatically.
-        """
+        """Verify password using bcrypt directly. Handles $2a$/$2b$ prefix normalisation."""
         if not hashed:
             return False
-        
-        clean_hash = hashed.strip()
-        
         try:
-            return pwd_context.verify(AuthService._truncate_password(password), clean_hash)
+            clean = hashed.strip()
+            # Normalise $2a$ → $2b$ so bcrypt library accepts it
+            if clean.startswith("$2a$"):
+                clean = "$2b$" + clean[4:]
+            return _bcrypt_lib.checkpw(AuthService._truncate_password(password), clean.encode("utf-8"))
         except Exception as e:
-            logging.error(f"Password verification error: {e}")
+            logger.error(f"Password verification error: {e}")
             return False
 
     @staticmethod
@@ -333,7 +335,7 @@ class AuthService:
                 legacy_user = await LegacyUser.find_one({"email": email_regex})
                 if legacy_user:
                     # Legacy user found - verify password and migrate to new collection
-                    if pwd_context.verify(AuthService._truncate_password(data.password), legacy_user.password_hash):
+                    if AuthService.verify_password(data.password, legacy_user.password_hash):
                         # Create new TBUser from legacy data
                         from backend.models.tb_user import Preferences, Gender, Intent
                         new_user = TBUser(

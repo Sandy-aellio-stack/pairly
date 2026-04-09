@@ -140,11 +140,9 @@ async def disable_2fa(req: DisableRequest, user: User = Depends(get_current_user
     if not user.twofa_enabled:
         raise HTTPException(400, "2FA not enabled")
     
-    from passlib.context import CryptContext
     from backend.services.tb_auth_service import AuthService
-    pwd_context = CryptContext(schemes=["bcrypt"])
     
-    if not pwd_context.verify(AuthService._truncate_password(req.password), user.password_hash):
+    if not AuthService.verify_password(req.password, user.password_hash):
         raise HTTPException(401, "Invalid password")
     
     user.twofa_enabled = False
