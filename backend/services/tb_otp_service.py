@@ -85,8 +85,13 @@ class OTPService:
         """Send OTP email using SendGrid. Returns True on success."""
         api_key = os.getenv("SENDGRID_API_KEY")
         from_email = os.getenv("EMAIL_FROM", "noreply@luveloop.app")
+
         if not api_key:
+            logger.error("[SendGrid] SENDGRID_API_KEY is not set — cannot send OTP email.")
             return False
+
+        logger.info(f"[SendGrid] Sending OTP email to: {to_email} from: {from_email}")
+
         try:
             from sendgrid import SendGridAPIClient
             from sendgrid.helpers.mail import Mail
@@ -107,19 +112,36 @@ class OTPService:
                 html_content=html_body
             )
             response = sg.send(message)
-            if response.status_code >= 200 and response.status_code < 300:
-                logger.info(f"OTP email sent via SendGrid to {to_email} (status={response.status_code})")
+            status = getattr(response, "status_code", None)
+            body = getattr(response, "body", None)
+            logger.info(f"[SendGrid] Response status={status} body={body}")
+
+            if status and 200 <= status < 300:
+                logger.info(f"[SendGrid] OTP email delivered to {to_email} (status={status})")
                 return True
             else:
-                logger.error(f"SendGrid returned non-success status for {to_email}: {response.status_code}")
+                logger.error(f"[SendGrid] Non-success status {status} for {to_email}. Body: {body}")
                 return False
+
         except Exception as e:
-            logger.error(f"SendGrid email failed to {to_email}: {e}")
+            err_str = str(e)
+            logger.error(f"[SendGrid] Exception sending to {to_email}: {err_str}")
+
+            if "403" in err_str:
+                logger.error(
+                    "[SendGrid] *** 403 Forbidden — sender not verified. ***\n"
+                    f"  EMAIL_FROM is set to: '{from_email}'\n"
+                    "  Fix: Go to SendGrid → Settings → Sender Authentication and verify this address.\n"
+                    "  Then set EMAIL_FROM in Replit Secrets to that verified address."
+                )
+            elif "401" in err_str:
+                logger.error("[SendGrid] *** 401 Unauthorized — check that SENDGRID_API_KEY is correct and has 'Mail Send' permission. ***")
+
             return False
 
     @staticmethod
     async def send_email_otp(email: str, purpose: str = "email_verification") -> dict:
-        """Generate, store, and deliver OTP to email via SendGrid (SMTP fallback)."""
+        """Generate, store, and deliver OTP to email via SendGrid."""
         if not email:
             raise HTTPException(status_code=400, detail="Email address missing")
 
@@ -138,17 +160,16 @@ class OTPService:
         )
         await otp_record.insert()
 
-        logger.info(f"Email OTP created for {email}, purpose={purpose}")
+        logger.info(f"[OTP] Email OTP created for {email}, purpose={purpose}")
 
-        # Try SendGrid first, then fall back to SMTP email_service
         sent = await OTPService._send_email_via_sendgrid(email, otp_code)
+
         if not sent:
-            try:
-                from backend.services.email_service import email_service
-                await email_service.send_otp_email(to_email=email, otp_code=otp_code)
-                logger.info(f"OTP email sent via SMTP fallback to {email}")
-            except Exception as e:
-                logger.error(f"Email OTP delivery failed for {email}: {e}")
+            logger.error(f"[OTP] Email delivery failed for {email} — OTP was NOT sent.")
+            raise HTTPException(
+                status_code=503,
+                detail="Failed to send OTP email. Please check server logs for SendGrid configuration issues."
+            )
 
         return {
             "success": True,
