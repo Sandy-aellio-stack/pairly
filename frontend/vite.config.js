@@ -13,7 +13,8 @@ export default defineConfig({
 
   server: {
     port: 5000,
-    host: true,
+    host: "0.0.0.0",
+    strictPort: true,
     allowedHosts: "all",
     proxy: {
       "/api": {
