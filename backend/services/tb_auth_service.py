@@ -333,7 +333,7 @@ class AuthService:
                 legacy_user = await LegacyUser.find_one({"email": email_regex})
                 if legacy_user:
                     # Legacy user found - verify password and migrate to new collection
-                    if pwd_context.verify(data.password, legacy_user.password_hash):
+                    if pwd_context.verify(AuthService._truncate_password(data.password), legacy_user.password_hash):
                         # Create new TBUser from legacy data
                         from backend.models.tb_user import Preferences, Gender, Intent
                         new_user = TBUser(

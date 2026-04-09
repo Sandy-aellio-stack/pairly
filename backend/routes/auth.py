@@ -26,6 +26,12 @@ pwd_context = CryptContext(schemes=["bcrypt"])
 security = HTTPBearer()
 
 
+def _truncate_password(password: str) -> str:
+    """Bcrypt hard limit is 72 bytes — truncate before hashing/verifying."""
+    encoded = password.encode("utf-8")
+    return encoded[:72].decode("utf-8", errors="ignore")
+
+
 class SignupRequest(BaseModel):
     email: EmailStr
     password: str
@@ -93,7 +99,7 @@ async def signup(req: SignupRequest, request: Request):
 
     user = User(
         email=email_normalized,
-        password_hash=pwd_context.hash(req.password),
+        password_hash=pwd_context.hash(_truncate_password(req.password)),
         name=req.name,
         role=req.role,
         credits_balance=0
@@ -166,7 +172,7 @@ async def login(req: LoginRequest, request: Request):
     
     user = await User.find_one(User.email == email_normalized)
     
-    if not user or not pwd_context.verify(req.password, user.password_hash):
+    if not user or not pwd_context.verify(_truncate_password(req.password), user.password_hash):
         await register_failed_attempt(client_ip, user.id if user else None)
         await log_event(
             actor_user_id=user.id if user else None,
