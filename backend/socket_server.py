@@ -576,7 +576,7 @@ async def initiate_call_socket(sid, data):
     
     try:
         from backend.services.calling_service_v2 import get_calling_service_v2
-        service = await get_calling_service_v2()
+        service = get_calling_service_v2()
         call_session = await service.initiate_call(
             caller_id=user_id,
             receiver_id=target_user_id,
@@ -628,7 +628,7 @@ async def call_user(sid, data):
         return {'error': 'blocked'}
 
     try:
-        service = await get_calling_service_v2()
+        service = get_calling_service_v2()
         call_session = await service.initiate_call(
             caller_id=user_id,
             receiver_id=target_user,
@@ -677,7 +677,7 @@ async def answer_call(sid, data):
     call_id = data.get('call_id')
     answer = data.get('answer')  # WebRTC SDP answer from callee
     try:
-        service = await get_calling_service_v2()
+        service = get_calling_service_v2()
         call_session = await service.accept_call(call_id=call_id, receiver_id=user_id)
         ans_data = {
             "call_id": call_id,
@@ -698,7 +698,7 @@ async def reject_call(sid, data):
     call_id = data.get('call_id')
     reason = data.get('reason', 'rejected')
     try:
-        service = await get_calling_service_v2()
+        service = get_calling_service_v2()
         call_session = await service.reject_call(call_id=call_id, receiver_id=user_id, reason=reason)
         rej_data = {"call_id": call_id, "reason": reason, "sender_id": call_session.caller_id}
         if redis_pubsub.is_connected:
@@ -713,7 +713,7 @@ async def end_call(sid, data):
     user_id = connected_users.get(sid, {}).get('user_id')
     call_id = data.get('call_id')
     try:
-        service = await get_calling_service_v2()
+        service = get_calling_service_v2()
         call_session = await service.end_call(call_id=call_id, user_id=user_id)
         caller_id = str(call_session.caller_id)
         other_id = call_session.receiver_id if user_id == caller_id else call_session.caller_id
